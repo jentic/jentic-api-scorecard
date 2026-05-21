@@ -10,7 +10,7 @@ All of the following must be true before this branch is merged.
 [CONCRETE_COMMAND]
 ```
 
-[EXACT_EXPECTATION — HTTP status, exit code, output substring, file contents. Be concrete: "HTTP 200, body contains `<h1>Jentic</h1>`" — not "endpoint works".]
+[EXACT_EXPECTATION — exit code, output substring, file contents. Be concrete: "`docker run … score --url <allowlisted-url>` exits 0 and stdout contains a `\"score\":` JSON field" — not "scorer works".]
 
 ### 2. [CHECK_TITLE]
 

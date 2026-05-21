@@ -1,6 +1,6 @@
 ---
 name: sdd-create-constitution
-description: Bootstrap the SDD constitution (specs/mission.md, specs/tech-stack.md, specs/roadmap.md) from current repository evidence. Refuses by default if any of the three files already exists — overwriting requires explicit confirmation via AskUserQuestion. Loads the constitution templates, runs parallel Explore subagents over src/, ui/, docs/, and top-level config to ground claims in evidence, synthesizes findings, then issues a single grouped AskUserQuestion call (Mission / Tech Stack / Roadmap) before writing the three files. Edits files in place and stops — committing, branching, and opening a PR are user actions.
+description: Bootstrap the SDD constitution (specs/mission.md, specs/tech-stack.md, specs/roadmap.md) from current repository evidence. Refuses by default if any of the three files already exists — overwriting requires explicit confirmation via AskUserQuestion. Loads the constitution templates, runs parallel Explore subagents over the code trees that exist (e.g. `docker/`, `packages/`), `docs/`, and top-level config to ground claims in evidence, synthesizes findings, then issues a single grouped AskUserQuestion call (Mission / Tech Stack / Roadmap) before writing the three files. Edits files in place and stops — committing, branching, and opening a PR are user actions.
 argument-hint: "(no arguments)"
 ---
 
@@ -14,7 +14,7 @@ The **constitution** is the project foundation that every later SDD action (feat
 
 - **Refuse to overwrite without explicit user confirmation.** If `specs/mission.md`, `specs/tech-stack.md`, or `specs/roadmap.md` already exists, the skill stops at Phase 0 and asks the user via `AskUserQuestion` whether to overwrite. Default-deny: anything other than an explicit "overwrite all three files" selection aborts the run. Do not auto-backup, rename, or move existing files — the user owns them.
 - **Do not write to disk before the Phase 4 AskUserQuestion completes.** The grouped clarifying questions lock in decisions that shape file content; writing earlier wastes the call.
-- **Ground every claim in repository evidence.** Prefer facts from `src/`, `ui/`, `docs/`, `pyproject.toml`, `package.json`, `Dockerfile`, and similar over assumptions. Use `Explore` subagents for parallel research; do not invent capabilities, libraries, or constraints the repo does not support.
+- **Ground every claim in repository evidence.** Prefer facts from the code trees that exist (e.g. `docker/`, `packages/`, `src/`), `docs/`, `pyproject.toml`, `package.json`, `Dockerfile`, and similar over assumptions. Use `Explore` subagents for parallel research; do not invent capabilities, libraries, or constraints the repo does not support.
 - **Distinguish confirmed facts from inferred conclusions and unknowns.** Mark uncertainty inline; do not present inferences as facts.
 - **No git actions, no commits, no branching.** This skill writes files and stops. Branching, committing, and PR creation are user actions per `.claude/rules/git-workflow.md`.
 - **Templates are structural scaffolds, not content.** Replace every `[PLACEHOLDER]`; do not copy template prose verbatim.
@@ -60,34 +60,34 @@ Launch four `Explore` subagents in parallel — a single message with multiple `
 - **Thoroughness:** `very thorough` on every subagent. The constitution is load-bearing; shallow grounding produces a shallow constitution that future agents will misuse.
 - **Briefs are self-contained.** Each subagent does not see this conversation. Include the goal (constitution bootstrapping) and the specific area to inspect.
 
-**Subagent A — Backend research** (`src/`):
-- What does the system do (routes, request flow, core modules)?
-- Implemented capabilities (search, broker, workflows, credentials, etc.)
-- Architecture invariants and constraints (e.g. router registration order, middleware chain, DB access patterns)
-- Tech-stack signals (dependencies, runtime/server choice)
+**Subagent A — Primary code research** (the main code tree — pick what exists, e.g. `src/`, `docker/`, `packages/`):
+- What does the system do (entry points, request/CLI flow, core modules)?
+- Implemented capabilities (the user-facing verbs the system exposes today)
+- Architecture invariants and constraints (e.g. registration order, middleware chain, gate / allowlist enforcement, DB access patterns — whichever apply)
+- Tech-stack signals (dependencies, runtime/server/CLI choice)
 - Return: confirmed capabilities, architectural invariants, uncertainty markers.
 
-**Subagent B — UI research** (`ui/`):
-- What admin/user interface ships (pages, primary flows)
-- UI tech stack (framework, styling system, build tool, generated API client)
-- Design conventions (theming approach, component library, where generated code lives)
-- Return: capabilities visible in the UI, UI stack facts, conventions worth preserving.
+**Subagent B — Secondary code research** (skip when not applicable — e.g. UI tree at `ui/`, a sibling package tree at `packages/`, a separate runner tree):
+- What additional surface ships (pages, commands, sibling deliverables)
+- Stack signals specific to this tree (framework, styling, build tool, generated client)
+- Design conventions (where generated code lives, theming/layout approach, component conventions)
+- Return: capabilities visible in this tree, stack facts, conventions worth preserving. If the tree does not exist, say so explicitly and return early — do not invent content.
 
-**Subagent C — Documentation research** (`docs/`, `README.md`, `AGENTS.md`, `CLAUDE.md`):
+**Subagent C — Documentation research** (`docs/`, `README.md`, `CLAUDE.md`):
 - Stated mission and product purpose
 - Documented architecture and constraints
 - User personas / target audiences mentioned
 - Threat models, design decisions, load-bearing invariants
 - Return: stated facts about why the project exists, who it serves, what is load-bearing.
 
-**Subagent D — Top-level config research** (`pyproject.toml`, `package.json`, `Dockerfile`, `compose.yml`, CI workflows under `.github/`, `.editorconfig`, `.tool-versions`):
+**Subagent D — Top-level config research** (`docker/pyproject.toml`, `Dockerfile`, CI workflows under `.github/`, `.editorconfig`, `.tool-versions`):
 - Languages, runtimes, build tools, deployment shape
 - Test frameworks and CI gates
 - Linting / formatting / type-checking choices
 - Return: tech-stack evidence with file references.
 
 **Rules:**
-- Every brief must instruct the subagent to lead its summary with a `## Blockers` section (write `_none_` when there are none). Examples of blockers: the repo is empty (nothing to ground a constitution); critical files referenced from `CLAUDE.md` or `AGENTS.md` are missing; the repo contains multiple disjoint projects with unclear scope.
+- Every brief must instruct the subagent to lead its summary with a `## Blockers` section (write `_none_` when there are none). Examples of blockers: the repo is empty (nothing to ground a constitution); critical files referenced from `CLAUDE.md` are missing; the repo contains multiple disjoint projects with unclear scope.
 - Subagents are read-only (`Explore` type; cannot edit, write, or commit).
 - If any subagent returns a non-empty `## Blockers` section, stop and report to the user before Phase 3.
 

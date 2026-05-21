@@ -19,6 +19,6 @@
 
 ## Group N — Verify
 
-9. [CONCRETE_COMMAND_AND_EXPECTED_RESULT — e.g. `uv run poe test tests/broker` exits 0]
-10. [CONCRETE_COMMAND_AND_EXPECTED_RESULT — e.g. `curl localhost:8900/search?q=...` returns 200 with JSON containing `{ "operations": [...] }`]
+9. [CONCRETE_COMMAND_AND_EXPECTED_RESULT — e.g. `cd docker && uv run poe test tests/test_gate.py` exits 0]
+10. [CONCRETE_COMMAND_AND_EXPECTED_RESULT — e.g. `echo '{...}' | docker run -i --rm ghcr.io/jentic/jentic-api-scorecard:dev score` returns JSON with `{ "summary": { "score": <number> } }`]
 11. [CONCRETE_COMMAND_AND_EXPECTED_RESULT]

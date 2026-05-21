@@ -18,8 +18,8 @@ Argument in `$ARGUMENTS` (optional):
 
 - empty → enumerate unprocessed specs and pick via AskUserQuestion
 - integer (`24`, `25`) → spec whose `requirements.md` H1 starts with `# Phase <N>`
-- slug fragment (`"oauth-broker"`) → case-insensitive contains match against spec dir slugs (the portion after the date prefix); if ambiguous, list matches and ask
-- relative path (`specs/2026-05-07-google-oauth-broker-token-mode`) → use directly; verify it exists and is a valid spec dir
+- slug fragment (`"gate-allowlist"`) → case-insensitive contains match against spec dir slugs (the portion after the date prefix); if ambiguous, list matches and ask
+- relative path (`specs/2026-05-21-gate-allowlist`) → use directly; verify it exists and is a valid spec dir
 
 ## Hard constraints
 
@@ -51,7 +51,6 @@ Load context in parallel:
 - @.claude/rules/sdd-constitution.md
 - @.claude/rules/git-workflow.md
 - @.claude/rules/conventional-commits.md
-- @.claude/rules/testing.md
 - @.claude/rules/karpathy-guidelines.md
 
 ## Phase 1 — Enumerate unprocessed specs and pick
@@ -150,12 +149,11 @@ For each `## Group <N> — <Title>` in order, **excluding** the final Verify gro
    - Match existing code patterns; surgical changes only (per `.claude/rules/karpathy-guidelines.md`).
    - Use the file/line references in `plan.md` as authoritative starting points. Minor drift (line numbers off by a few from intervening commits) is fine and silent; if a referenced file or symbol is clearly absent or has been replaced wholesale, stop and surface — do not improvise around the spec.
    - Do not add scope the spec did not call for. If the work obviously requires an adjacent change the spec missed, surface it and ask before adding.
-3. After the group's tasks are implemented, run any group-relevant local gates per `.claude/rules/testing.md` (scoped to the area touched if practical):
-   - Backend changes: `uv run poe lint` and `uv run poe test` (target a subset like `uv run poe test tests/<area>` when the change is narrow)
-   - UI changes: `cd ui && npm run lint && npx tsc --noEmit && npm run test:run` — chained so all three run inside `ui/`. Use `test:run`, not `test` (`test` is watch mode and won't exit).
+3. After the group's tasks are implemented, run any group-relevant local gates (scoped to the area touched if practical). The exact test/lint commands depend on the code tree — examples for shapes this repo has shipped:
+   - Docker runner changes: `cd docker && uv run poe lint` and `cd docker && uv run poe test` (target a subset like `cd docker && uv run poe test tests/test_gate.py` when the change is narrow). The `cd docker &&` prefix is required — `pyproject.toml` and `poethepoet` only resolve from inside `docker/`.
 4. Stage the files this group touched by explicit path. Run `git diff --cached --name-only` and confirm only the expected paths appear; if anything else is staged, stop and surface.
 5. Commit per `.claude/rules/conventional-commits.md`:
-   - Header `<type>(<scope>): <description>` ≤ 69 chars; type/scope reflect the group's primary subject (e.g. `feat(broker): support reverse-proxy path prefix`, `test(root_path): add three-mode integration coverage`)
+   - Header `<type>(<scope>): <description>` ≤ 69 chars; type/scope reflect the group's primary subject (e.g. `feat(gate): allow github-raw spec URLs anonymously`, `test(score): add engine-timeout integration coverage`)
    - Body: short paragraph naming what shipped. Include `Refs #<issue>` if the user provided one. **Do not** use GitHub close-keywords (`Closes`, `Fixes`, `Resolves`) here — they belong only in the PR body.
    - `git commit -s` (DCO sign-off)
 6. `TaskUpdate` the group task → `completed`.
@@ -285,12 +283,12 @@ If the deviation list is non-empty, write `specs/<date>-<slug>/retrospective.dra
 git push -u origin <branch>
 ```
 
-**Search for related issues** before drafting the PR body. Run `gh issue list --search "<keyword from phase title>"` and try one or two close synonyms (e.g. for Phase 24, search "oauth", "broker", "credentials"). Per `.claude/rules/git-workflow.md`, link related issues in the PR body. If any open issues plausibly relate to the phase and weren't named in Phase 3, surface them to the user and ask whether to link any with `Closes #<issue>` (full resolution) or `Refs #<issue>` (partial). If nothing relevant turns up, proceed with only the Phase 3 issue (if any).
+**Search for related issues** before drafting the PR body. Run `gh issue list --search "<keyword from phase title>"` and try one or two close synonyms (e.g. for a phase about the URL allowlist, search "gate", "allowlist", "url"). Per `.claude/rules/git-workflow.md`, link related issues in the PR body. If any open issues plausibly relate to the phase and weren't named in Phase 3, surface them to the user and ask whether to link any with `Closes #<issue>` (full resolution) or `Refs #<issue>` (partial). If nothing relevant turns up, proceed with only the Phase 3 issue (if any).
 
 Open the PR with `gh pr create`. The PR title shape is the Conventional Commits header that will become the squash-merge commit (commitlint enforces this on the merge):
 
-- Pick the type+scope of the headline change for the phase. Often this is the same shape as the largest non-Verify group's commit (e.g. `feat(broker): support reverse-proxy path prefix`).
-- If the phase spans multiple modules (backend + UI + docs is common), prefer the most user-facing scope — the squash-merge commit must read like a release-note line for the phase as a whole, not a description of one slice.
+- Pick the type+scope of the headline change for the phase. Often this is the same shape as the largest non-Verify group's commit (e.g. `feat(gate): allow github-raw spec URLs anonymously`).
+- If the phase spans multiple modules (CLI + runner + docs is common), prefer the most user-facing scope — the squash-merge commit must read like a release-note line for the phase as a whole, not a description of one slice.
 - ≤ 69 chars; lowercase imperative; no trailing period.
 
 Body via HEREDOC:

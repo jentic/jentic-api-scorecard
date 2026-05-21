@@ -20,7 +20,7 @@ Argument in `$ARGUMENTS` (optional):
 
 ## Hard constraints
 
-- **Spec-only — zero code changes.** This skill never modifies `src/`, `ui/`, `tests/`, `alembic/`, `docs/`, `AGENTS.md`, `CLAUDE.md`, or any implementation/doc file outside `specs/<date>-<slug>/`. It does not run test suites or linters against code. The only files it touches are the three it scaffolds. The PR it opens is for review of the spec itself; the implementation that the spec describes happens in a follow-up PR.
+- **Spec-only — zero code changes.** This skill never modifies any code tree, `docs/`, `CLAUDE.md`, or any implementation/doc file outside `specs/<date>-<slug>/`. It does not run test suites or linters against code. The only files it touches are the three it scaffolds. The PR it opens is for review of the spec itself; the implementation that the spec describes happens in a follow-up PR.
 - **Do not write to disk before the Phase 4 AskUserQuestion step completes.** The grouped questions exist to lock in decisions that shape the files; writing early wastes the call.
 - **AskUserQuestion groups exactly three questions**, one per output file (requirements, plan, validation). Issue them in a single call.
 - **Do not create a new roadmap phase.** If the user wants one, tell them edits to `specs/roadmap.md` are a separate explicit action — this skill only materializes existing phases.
@@ -44,7 +44,6 @@ Then load context in parallel:
 - @specs/lessons.md
 - @.claude/rules/git-workflow.md
 - @.claude/rules/conventional-commits.md
-- @.claude/rules/testing.md
 - @.claude/rules/karpathy-guidelines.md
 
 After loading, scan `specs/lessons.md` for any lessons that apply to the phase being scaffolded. Carry the relevant ones into Phase 4 (use them to shape `AskUserQuestion` options where appropriate) and Phase 6 (apply them when writing requirements / plan / validation content). Mention in Phase 9 which lessons influenced this scaffold. The lessons file is operational, not load-bearing: a lesson that does not apply to this phase is fine to skip — do not force-fit guidance.
@@ -57,7 +56,7 @@ For each phase extract: number, title, `**Goal:**`, `**Depends on:**`, `**Priori
 
 **Parsing `**Depends on:**`** — the value is one or more comma-separated dependency references; trim each.
 
-- A reference of the form `none` (optionally followed by a parenthetical rationale, e.g. `none (self-contained broker change)`) means the phase has no dependency; produce an empty list and skip resolution.
+- A reference of the form `none` (optionally followed by a parenthetical rationale, e.g. `none (self-contained gate change)`) means the phase has no dependency; produce an empty list and skip resolution.
 - For every other reference, strip any trailing ` (<rationale>)` parenthetical to recover the bare phase-title fragment, then resolve it case-insensitively against the headings parsed above via **substring match** (the fragment must appear inside one and only one heading). Substring matching handles short fragments like `Backend Unit Test Coverage` correctly even when the canonical heading is longer; if a fragment matches more than one heading, surface the ambiguity and stop.
 
 A phase is a **candidate** when it is active and every resolved dependency carries `✅` on its heading (i.e. that dependency has shipped per the lifecycle rule). Active phases with still-pending dependencies (resolved phases whose heading lacks `✅`) are valid to pick but must be flagged. A reference that resolves to no phase at all — and is not the `none` form above — is a malformed roadmap; surface the mismatch and stop.
@@ -90,16 +89,16 @@ Launch **three `Explore` subagents in parallel** — a single message with multi
 - Return: constraints that MUST be preserved (one-line rationale each), relevant `docs/*.md` links, stakeholder-context signals, and any prior-context that reframes the phase.
 
 **Subagent B — Plan research** (grounds `plan.md`):
-- Map the `src/` modules, routers, migrations, and UI pages the phase will touch (based on the roadmap-phase body).
-- Identify file-layout conventions (where new routers live, where tests live, where generated UI client code goes per `CLAUDE.md`).
-- Find similar-shape features that have already shipped (git log + `src/`) as implementation references.
-- Return: concrete file/module paths to touch or create, existing patterns to follow, the order in which layers depend on each other, and any gotchas (e.g. broker catch-all must remain last in `main.py`).
+- Map the modules, entry points, packages, and (where applicable) migrations / pages the phase will touch (based on the roadmap-phase body), inside whichever code trees exist (e.g. `docker/src/`, `packages/*/src/`, `src/`).
+- Identify file-layout conventions (where new modules live, where tests live, where generated client code goes per `CLAUDE.md` if relevant).
+- Find similar-shape features that have already shipped (git log + the touched code trees) as implementation references.
+- Return: concrete file/module paths to touch or create, existing patterns to follow, the order in which layers depend on each other, and any gotchas (e.g. a load-bearing invariant the phase must not break).
 
 **Subagent C — Validation research** (grounds `validation.md`):
-- Identify the test suites and CI workflows relevant to the areas touched (per `.claude/rules/testing.md` and `.github/workflows/`).
-- Find existing endpoints / UI flows / trace-log inspections that will demonstrate the phase works end-to-end.
-- Check whether `schemathesis` contract tests, `ui/openapi.json` regeneration, or Playwright E2E apply.
-- Return: concrete test targets (`uv run poe test …`, `npm run test:run`, `npm run test:e2e`), curl / UI check commands with expected responses, and whether contract / E2E / migration gates apply.
+- Identify the test suites and CI workflows relevant to the areas touched (per the test rules in `.claude/rules/` and `.github/workflows/`).
+- Find existing entry points (CLI invocations, endpoints, UI flows, trace-log inspections — whichever apply) that will demonstrate the phase works end-to-end.
+- Check whether contract tests, generated-client regeneration, or end-to-end gates apply.
+- Return: concrete test targets (e.g. `cd docker && uv run poe test …`), invocation commands with expected output, and whether contract / E2E / migration gates apply.
 
 **Rules:**
 - Every brief must instruct the subagent to lead its summary with a `## Blockers` section (write `_none_` when there are none). Examples of blockers: the phase depends on an assumption that is false in the current code; prior work already landed and the phase is partly obsolete; a load-bearing file referenced by the phase body does not exist.
@@ -137,7 +136,7 @@ Issue a single `AskUserQuestion` call containing three questions, one per output
 
 **Question 3 — Validation** (shapes `validation.md`):
   - Prompt: "What is the primary acceptance signal, and are there merge gates beyond green CI?"
-  - Options should cover common shapes (e.g. "integration test passing", "contract test (`schemathesis`) passing", "UI flow verified manually", "endpoint reproducible via curl", "docs + AGENTS.md must update", "other").
+  - Options should cover common shapes (e.g. "integration test passing", "CLI invocation reproducible from a documented command", "UI flow verified manually", "docs must update alongside the change", "other").
 
 Only after the user answers do you proceed.
 
@@ -166,7 +165,7 @@ Sections in this order:
 - **Scope** — one or two short paragraphs naming what this phase delivers. Written in plain language, informed by the user's Question 1 answer. Not a copy of the roadmap bullet list.
 - **Out of Scope** — explicit exclusions the user confirmed. Empty is allowed — do not invent exclusions.
 - **Decisions** — one `### <Decision Title>` subsection per decision from the user's answers. Body is a short paragraph: what was chosen, why, and any consequence for implementation (alternatives noted if weighed).
-- **Constraints** — load-bearing invariants from `specs/mission.md` and `specs/tech-stack.md` that this phase must preserve. Only what is actually relevant (e.g. "broker catch-all must be registered last" only if the work touches router registration). Do not copy every invariant.
+- **Constraints** — load-bearing invariants from `specs/mission.md` and `specs/tech-stack.md` that this phase must preserve. Only what is actually relevant (e.g. cite a specific invariant only when the work touches the surface that depends on it). Do not copy every invariant.
 - **Context** — one to three short paragraphs: why this phase exists now, what it enables, how it fits the roadmap. Cross-reference any relevant `docs/*.md`.
 - **Stakeholder Notes** — `- **<Name or Role>** — <need; how satisfied>`. Omit the whole section if the user named no stakeholders.
 
@@ -187,7 +186,7 @@ Numbered task groups. Granularity per the user's Question 2 answer.
 ```
 
 - Tasks are plain numbered items, **not checkboxes**. One concrete change each (file / function / test / route / migration / CLI command).
-- **The last group is always `Verify`**, listing the concrete checks that confirm the whole plan succeeded: command + expected result (e.g. `uv run poe test tests/broker` exits 0; `curl localhost:8900/…` returns 200 with JSON containing `{ … }`).
+- **The last group is always `Verify`**, listing the concrete checks that confirm the whole plan succeeded: command + expected result (e.g. `cd docker && uv run poe test tests/test_gate.py` exits 0; `echo '{...}' | docker run -i --rm ghcr.io/jentic/jentic-api-scorecard:dev score` returns JSON with `{ "summary": { "score": <number> } }`).
 - **Include the roadmap-completion task** as a concrete numbered task in the final non-Verify group (typically a docs/lifecycle group). The task says to append ` ✅` — a single space followed by the U+2705 checkmark — to the `## Phase N — <Title>` heading in `specs/roadmap.md` and leave the rest of the block untouched, per the lifecycle rule in `specs/roadmap.md`. The leading space is load-bearing: the Verify assertion `grep -F`s for the exact ` ✅` suffix, so a heading rendered as `Title✅` (no space) silently fails the gate. Phase-completion marking is a phase-specific markdown edit that ships with the work, not generic meta-workflow — `/sdd-implement-spec` halts on plans that omit it. Pair it with an assertion in the Verify group that confirms the heading now ends with ` ✅` (e.g. `grep -F "## Phase <N> — <Title> ✅" specs/roadmap.md` exits 0).
 - **Do not include meta-workflow** in the plan (test-suite runs belong in `Verify`; squash/commit/PR creation are governed by `.claude/rules/git-workflow.md` and `.claude/rules/conventional-commits.md` — no need to repeat per phase).
 

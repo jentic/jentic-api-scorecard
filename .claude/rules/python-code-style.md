@@ -12,4 +12,4 @@ Formatting is `ruff format` — [PEP 8](https://peps.python.org/pep-0008/)-align
 
 - **Don't import other modules' private names.** Symbols prefixed with `_` are module-private. If another module needs one, promote it to public (rename without the leading underscore) rather than cross-importing `_foo`. Enforced by ruff `PLC2701`.
 
-- **Modern type syntax for Python 3.11.** Prefer `list[str]`, `dict[str, int]` ([PEP 585](https://peps.python.org/pep-0585/)) and `X | None` ([PEP 604](https://peps.python.org/pep-0604/)) over `typing.List` / `typing.Optional`.
+- **Modern type syntax for Python 3.12.** Prefer `list[str]`, `dict[str, int]` ([PEP 585](https://peps.python.org/pep-0585/)) and `X | None` ([PEP 604](https://peps.python.org/pep-0604/)) over `typing.List` / `typing.Optional`.

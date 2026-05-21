@@ -11,9 +11,9 @@ Format: `type(scope): description` — max 69 characters in the header.
   types (`refactor`, `test`, `docs`, `perf`, `build`, `ci`, `style`,
   `revert`) take precedence over `chore` when they fit.
 - Scope: always include a scope. Use the primary subject of the change:
-  - For `docs`: the doc file name without extension (e.g. `docs(DEVELOPMENT)`, `docs(README)`, `docs(TESTING)`)
-  - For `ci`: the workflow/config file name without extension (e.g. `ci(ci-backend)`, `ci(docker-publish)`, `ci(release)`). When the change IS the CI config, use type `ci` — not `chore(ci)`.
-  - For code: the module, router, or component name (e.g. `fix(broker)`, `feat(search)`, `refactor(ui)`)
+  - For `docs`: the doc file name without extension (e.g. `docs(README)`, `docs(architecture)`)
+  - For `ci`: the workflow/config file name without extension (e.g. `ci(docker-image)`, `ci(npm-publish)`). When the change IS the CI config, use type `ci` — not `chore(ci)`.
+  - For code: the module, package, or component name (e.g. `fix(gate)`, `feat(score)`, `refactor(cli)`)
   - For `chore`: prefer harness-agnostic scopes — `chore(harness)`
     covers anything under `.claude/`, `.cursor/`, `.codex/`, etc.
 - Description: lowercase, imperative mood, no trailing period

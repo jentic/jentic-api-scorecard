@@ -53,7 +53,7 @@ If `$ARGUMENTS` is empty, prompt the user for a one-sentence description of what
 
 **Duplicate-overlap check:** if the proposal obviously overlaps with an existing active phase (strong keyword overlap with a phase title or goal), surface the overlap to the user and ask whether to proceed anyway, merge into the existing phase, or cancel. Do not silently proceed past an apparent duplicate.
 
-**Constitution-conflict check:** reason briefly about whether the proposal fits within the project's mission scope and tech-stack invariants. If there is an obvious conflict (proposes a capability outside the mission; proposes a runtime dependency the tech-stack forbids; violates a load-bearing constraint like the broker-last router rule), surface it and pause. If there is no obvious conflict, proceed silently — do not pad the response with "nothing conflicts" noise.
+**Constitution-conflict check:** reason briefly about whether the proposal fits within the project's mission scope and tech-stack invariants. If there is an obvious conflict (proposes a capability outside the mission; proposes a runtime dependency the tech-stack forbids; violates a load-bearing constraint named in `specs/tech-stack.md`), surface it and pause. If there is no obvious conflict, proceed silently — do not pad the response with "nothing conflicts" noise.
 
 Derive a candidate **title** in Title Case (e.g. "Local Service Routing", not "local service routing" or "LOCAL SERVICE ROUTING"). Show it to the user alongside the proposed phase number and confirm (or let them override) before Phase 2.
 
@@ -114,7 +114,7 @@ Edit `specs/roadmap.md` to insert the new phase. **Insertion rules:**
 - <bullet 3>
 ```
 
-If `Depends on:` is `none`, follow an existing example like `none (self-contained broker change)` when the user provided a one-line reason; bare `none` is also fine. Do not invent a rationale.
+If `Depends on:` is `none`, follow an existing example like `none (self-contained gate change)` when the user provided a one-line reason; bare `none` is also fine. Do not invent a rationale.
 
 ## Phase 5 — Review the edit
 

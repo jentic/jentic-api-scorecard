@@ -13,7 +13,7 @@ Optional. Written manually after the implementation PR merges, when the implemen
 
 ## Lesson for future specs
 
-- [LESSON_1 — actionable guidance for `/sdd-new-spec` and `/sdd-new-phase`, specific enough to apply (not generic advice). Example: "when a phase touches the broker router, the spec must remind the implementer that the broker catch-all must remain last in `src/main.py`".]
+- [LESSON_1 — actionable guidance for `/sdd-new-spec` and `/sdd-new-phase`, specific enough to apply (not generic advice). Example: "when a phase touches the gate allowlist, the spec must remind the implementer that local files always require a key, regardless of URL form".]
 - [LESSON_2]
 
 ## Promotion candidate
