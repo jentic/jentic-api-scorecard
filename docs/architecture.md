@@ -86,8 +86,8 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 │    ├── arg parse:  --url <url>  |  read stdin                                 │
 │    ├── gate check:  if no key, URL must match jentic-public-apis allowlist    │
 │    ├── prepare:    URL → pass through  |  stdin → write to tempfile           │
-│    ├── score:  `jentic-apitools score <url-or-path> --json                    │
-│                                            --include-diagnostics`             │
+│    ├── score:  `jentic-apitools score <url-or-path> --format json             │
+│                                  --include-diagnostics --quiet`               │
 │    └── stdout: result JSON                                                    │
 │                                                                               │
 │  stderr: progress / engine warnings                                           │
@@ -333,7 +333,7 @@ host:        docker run -i --rm
                score                         ← appended to ENTRYPOINT
 container 1: python -m jentic_scorecard_runner score
                └─ runner: auth check, gate, stdin→tempfile, then spawn:
-container N: jentic-apitools score /tmp/spec.json --json
+container N: jentic-apitools score /tmp/spec.json --format json --include-diagnostics --quiet
                └─ engine: spawn validators via npx, score, emit JSON
 ```
 
@@ -354,7 +354,7 @@ This matters because the engine ships JS tools as bundled tarballs inside its Py
 ENV NPM_CONFIG_CACHE=/var/cache/npm
 RUN pip install --no-cache-dir jentic-apitools-cli==<pinned-version>
 COPY .build/sample.yaml /tmp/sample.yaml
-RUN jentic-apitools score /tmp/sample.yaml --json >/dev/null
+RUN jentic-apitools score /tmp/sample.yaml --format json --quiet >/dev/null
 ```
 
 The score against a representative sample spec exercises every validator the engine will invoke at runtime, populating `/var/cache/npm` with extracted tarballs (`_npx/<hash>/`) and downloaded transitive deps (`_cacache/`). The cache lives in an image layer; every `--rm` container inherits it via the image's read-only layers. No network at runtime.
@@ -375,7 +375,7 @@ Two large-data boundaries cross the wrapper. Both go through tempfiles, neither 
 
 **Stdin → tempfile (input side).** For local and bundled-URL modes, the wrapper reads `sys.stdin.buffer` in chunks and writes to a tempfile, then passes the path to the engine. `sys.stdin` has no hard size limit — it's a stream, kernel pipe buffers are just an in-flight window — but reading the whole spec into memory before persisting it is wasteful. Chunked read keeps RSS flat regardless of bundled-spec size.
 
-**Engine stdout → tempfile (output side).** The wrapper invokes `jentic-apitools score <spec> --json` with `stdout=<tempfile>` rather than `stdout=PIPE`. Two reasons:
+**Engine stdout → tempfile (output side).** The wrapper invokes `jentic-apitools score <spec> --format json --include-diagnostics --quiet` with `stdout=<tempfile>` rather than `stdout=PIPE`. Two reasons:
 
 1. **Pipe-full deadlock.** If the engine's combined stdout+stderr exceeds the kernel pipe buffer (~64 KB) faster than our reader drains, writes block and the process hangs. `subprocess.run` does drain, but only by buffering the entire stream in Python RSS. Redirecting to a file shifts buffering to the kernel + filesystem, which is unbounded.
 2. **Memory.** A JAIRF result tree on a large spec with `--with-llm` and full diagnostics can be several MB. There's no reason to hold it in Python RAM when we're about to copy it to the container's stdout anyway.
@@ -398,7 +398,7 @@ score [--url <url>] [--with-llm]
                  Provider keys must be in env (see below).
 ```
 
-The runner always invokes the engine with `--json --include-diagnostics`; those flags are not exposed on the runner's surface because they're not optional. See Behavior step 5.
+The runner always invokes the engine with `--format json --include-diagnostics --quiet`; those flags are not exposed on the runner's surface because they're not optional. See Behavior step 5.
 
 ### Inputs the container reads
 
@@ -430,7 +430,7 @@ The runner always invokes the engine with `--json --include-diagnostics`; those 
                   URL, so the engine receives an authorized source.
      - stdin:     read sys.stdin.buffer in chunks to a tempfile, then pass
                   the path to the engine.
-5. Score: spawn `jentic-apitools score <url-or-path> --json --include-diagnostics` (appending `--enable-llm-analysis` when our `--with-llm` is set) and capture its JSON output. `--include-diagnostics` is always passed: the container produces one canonical payload regardless of host-side flags. Filtering for terminal output is the host CLI's job.
+5. Score: spawn `jentic-apitools score <url-or-path> --format json --include-diagnostics --quiet` (appending `--enable-llm-analysis` when our `--with-llm` is set) and capture its JSON output. `--format json`, `--include-diagnostics`, and `--quiet` are always passed: the container produces one canonical JSON payload regardless of host-side flags, with no log noise on stdout. Filtering for terminal output is the host CLI's job.
 6. Emit result JSON to stdout (engine output is forwarded verbatim).
 ```
 
@@ -449,7 +449,7 @@ CLI translates these to its own exit codes plus user-friendly messages.
 
 ## 7. Result JSON schema
 
-The CLI does not invent a schema. It emits **whatever `jentic-apitools score --json` emits, verbatim** (with the engine's `--json` being its default `--format=json`). Reformatting in the renderer (`--verbose`, pretty output) is a read-only projection — keys are not renamed, restructured, or filtered. The pretty/HTML renderers tolerate unknown keys and absent optional keys, so engine bumps that add new fields don't break rendering.
+The CLI does not invent a schema. It emits **whatever `jentic-apitools score --format json` emits, verbatim**. Reformatting in the renderer (`--verbose`, pretty output) is a read-only projection — keys are not renamed, restructured, or filtered. The pretty/HTML renderers tolerate unknown keys and absent optional keys, so engine bumps that add new fields don't break rendering.
 
 The shape below was captured by running `jentic-apitools score https://petstore3.swagger.io/api/v3/openapi.json` against `jentic-apitools-cli==1.0.0a16`. Treat this as a sample, not a contract — the engine owns the schema.
 

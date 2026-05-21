@@ -1,0 +1,50 @@
+[project]
+name = "jentic-scorecard-runner"
+version = "0.1.0"
+description = "Container-internal runner for jentic-api-scorecard"
+requires-python = ">=3.12"
+dependencies = [
+    "jentic-apitools-cli==1.0.0a16",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3,<10",
+    "ruff>=0.14.1,<0.16.0",
+    "poethepoet>=0.37,<0.47",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "PLC0415", "PLC2701"]
+preview = true
+explicit-preview-rules = true
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+
+[tool.poe.tasks.lint]
+sequence = [
+  { cmd = "ruff check" },
+  { cmd = "ruff format --check --diff" },
+]
+
+[tool.poe.tasks."lint:fix"]
+sequence = [
+  { cmd = "ruff check --fix" },
+  { cmd = "ruff format" },
+]
+
+[tool.poe.tasks.test]
+cmd = "pytest -v ${target} --tb=short"
+args = [{name = "target", default = "tests", positional = true}]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

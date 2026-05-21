@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+COPY --from=node:24-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+# uv for fast Python dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+WORKDIR /app
+
+# Install Python dependencies via uv
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY src/ ./src/
+ENV PYTHONPATH=/app/src
+
+# Warm npm cache: run a real score so npx-invoked validators get cached
+ENV NPM_CONFIG_CACHE=/var/cache/npm
+COPY .build/sample.yaml /tmp/sample.yaml
+RUN uv run jentic-apitools score /tmp/sample.yaml --format json --quiet > /dev/null && \
+    rm /tmp/sample.yaml
+
+ENTRYPOINT ["uv", "run", "python", "-m", "jentic_scorecard_runner"]

@@ -1,0 +1,74 @@
+"""Unit tests for __main__.py arg parsing and dispatch."""
+
+import os
+import subprocess
+import sys
+
+
+def run_runner(*args, env_override=None, stdin_data=None):
+    """Run the runner as a subprocess to test arg parsing and exit codes."""
+    env = os.environ.copy()
+    env.pop("JENTIC_API_KEY", None)
+    if env_override:
+        env.update(env_override)
+
+    cmd = [sys.executable, "-m", "jentic_scorecard_runner", *args]
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        env=env,
+        input=stdin_data,
+        cwd=str(__file__).rsplit("/tests/", 1)[0],
+        timeout=10,
+    )
+    return result
+
+
+class TestArgParsing:
+    def test_no_args_shows_usage(self):
+        result = run_runner()
+        assert result.returncode == 1
+        assert "usage:" in result.stderr
+
+    def test_unknown_subcommand(self):
+        result = run_runner("login")
+        assert result.returncode == 1
+
+    def test_unknown_flag(self):
+        result = run_runner("score", "--bogus")
+        assert result.returncode == 1
+        assert "unrecognized arguments" in result.stderr
+
+    def test_score_no_url_no_stdin_tty(self):
+        # Without piped stdin and no --url, should detect no input
+        # In a subprocess without -i, stdin is not a TTY but is empty
+        # This will hit the gate (anonymous + stdin = rejected)
+        result = run_runner("score")
+        assert result.returncode == 2
+
+
+class TestGateIntegration:
+    def test_bad_key_exits_2(self):
+        result = run_runner(
+            "score",
+            "--url",
+            "https://example.com/spec.yaml",
+            env_override={"JENTIC_API_KEY": "wrong-key"},
+        )
+        assert result.returncode == 2
+        assert "not recognized" in result.stderr
+
+    def test_anonymous_non_allowlisted_exits_3(self):
+        result = run_runner(
+            "score",
+            "--url",
+            "https://example.com/spec.yaml",
+        )
+        assert result.returncode == 3
+        assert "anonymous scoring is restricted" in result.stderr
+
+    def test_anonymous_stdin_exits_2(self):
+        result = run_runner("score", stdin_data='{"openapi":"3.0.0"}')
+        assert result.returncode == 2
+        assert "requires a Jentic API key" in result.stderr

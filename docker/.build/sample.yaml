@@ -1,0 +1,20 @@
+openapi: "3.0.3"
+info:
+  title: Sample API
+  version: "0.0.1"
+  description: Minimal spec used at image build time to warm npm/npx caches.
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
