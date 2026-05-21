@@ -9,6 +9,7 @@ from jentic_scorecard_runner.exit_codes import ExitCode
 
 
 _ENGINE_SPEC_FAILURE_CODE = 2
+_ENGINE_TIMEOUT_SECONDS = 300
 
 
 def run_score(url: str | None, with_llm: bool) -> ExitCode:
@@ -42,11 +43,19 @@ def _invoke_engine(spec_target: str, with_llm: bool) -> ExitCode:
         cmd.append("--enable-llm-analysis")
 
     with tempfile.NamedTemporaryFile(suffix=".json") as out_file:
-        result = subprocess.run(
-            cmd,
-            stdout=out_file,
-            stderr=sys.stderr,
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=out_file,
+                stderr=sys.stderr,
+                timeout=_ENGINE_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            print(
+                f"error: engine timed out after {_ENGINE_TIMEOUT_SECONDS}s",
+                file=sys.stderr,
+            )
+            return ExitCode.ENGINE_FAILURE
 
         if result.returncode != 0:
             print(

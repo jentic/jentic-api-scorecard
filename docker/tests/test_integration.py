@@ -18,7 +18,6 @@ from jentic_scorecard_runner.exit_codes import ExitCode
 IMAGE = os.environ.get("IMAGE", "jentic-api-scorecard:dev")
 
 PETSTORE_URL = "https://petstore3.swagger.io/api/v3/openapi.json"
-ALLOWLISTED_URL = "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/petstore3.swagger.io/main/openapi.json"
 
 
 def docker_run(*args, env=None, stdin_data=None, timeout=120):

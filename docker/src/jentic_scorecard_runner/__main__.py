@@ -43,7 +43,7 @@ def main() -> int:
         return ExitCode.GENERIC_ERROR
 
     gate_result = check_gate(url=args.url)
-    if gate_result != 0:
+    if gate_result != ExitCode.SUCCESS:
         return gate_result
 
     return run_score(url=args.url, with_llm=args.with_llm)
