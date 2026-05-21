@@ -3,6 +3,10 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 
 
 def run_runner(*args, env_override=None, stdin_data=None):
@@ -18,8 +22,8 @@ def run_runner(*args, env_override=None, stdin_data=None):
         capture_output=True,
         text=True,
         env=env,
-        input=stdin_data,
-        cwd=str(__file__).rsplit("/tests/", 1)[0],
+        input=stdin_data if stdin_data is not None else "",
+        cwd=_PROJECT_ROOT,
         timeout=10,
     )
     return result
@@ -40,10 +44,8 @@ class TestArgParsing:
         assert result.returncode == 1
         assert "unrecognized arguments" in result.stderr
 
-    def test_score_no_url_no_stdin_tty(self):
-        # Without piped stdin and no --url, should detect no input
-        # In a subprocess without -i, stdin is not a TTY but is empty
-        # This will hit the gate (anonymous + stdin = rejected)
+    def test_score_no_url_no_stdin(self):
+        # stdin is not a TTY and has no data → gate rejects (anonymous + stdin = key required)
         result = run_runner("score")
         assert result.returncode == 2
 

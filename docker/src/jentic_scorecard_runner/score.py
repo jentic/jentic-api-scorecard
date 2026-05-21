@@ -1,5 +1,6 @@
 """Invoke jentic-apitools score and stream results."""
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -7,14 +8,27 @@ import tempfile
 from jentic_scorecard_runner.exit_codes import ExitCode
 
 
+_ENGINE_SPEC_FAILURE_CODE = 2
+
+
 def run_score(url: str | None, with_llm: bool) -> ExitCode:
     if url is not None:
         spec_target = url
+        stdin_tempfile = None
     else:
-        spec_target = _stdin_to_tempfile()
-        if spec_target is None:
+        stdin_tempfile = _stdin_to_tempfile()
+        if stdin_tempfile is None:
             return ExitCode.GENERIC_ERROR
+        spec_target = stdin_tempfile
 
+    try:
+        return _invoke_engine(spec_target, with_llm)
+    finally:
+        if stdin_tempfile is not None:
+            os.unlink(stdin_tempfile)
+
+
+def _invoke_engine(spec_target: str, with_llm: bool) -> ExitCode:
     cmd = [
         "jentic-apitools",
         "score",
@@ -39,6 +53,8 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
                 f"error: engine exited with code {result.returncode}",
                 file=sys.stderr,
             )
+            if result.returncode == _ENGINE_SPEC_FAILURE_CODE:
+                return ExitCode.SPEC_FAILURE
             return ExitCode.ENGINE_FAILURE
 
         out_file.seek(0)
