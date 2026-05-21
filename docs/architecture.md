@@ -137,8 +137,9 @@ jentic-api-scorecard/
 │       ├── gate.py                           (URL allowlist enforcement)
 │       └── score.py                          (spawns `jentic-apitools score`; parses JSON)
 └── .github/workflows/
-    ├── docker-image.yml                      (build + push GHCR on tag; context: ./docker)
-    └── npm-publish.yml                       (publish npm packages on tag)
+    ├── ci.yml                                (lint + test on PRs; also callable via workflow_call)
+    ├── docker-publish.yml                    (build + push :unstable to GHCR on main; gated on ci.yml)
+    └── release.yml                           (versioned image + npm publish on tag — future)
 ```
 
 A few layout notes worth calling out:
@@ -588,7 +589,9 @@ When the engine releases an update we want to ship, we:
 2. Cut a new CLI version (e.g. `0.1.1`).
 3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:0.1.1` containing the new engine, and publishes `@jentic/api-scorecard@0.1.1`.
 
-**Release pipeline** (CI): pushing a git tag `v<version>` triggers (a) Docker image build + push to GHCR with `:<version>` and `:latest`, and (b) npm publish for both packages. Both workflows run only on tag refs.
+**Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64).
+
+**Release pipeline** (CI, future): pushing a git tag `v<version>` will trigger a Docker image build + push to GHCR with `:<version>` and `:latest`, and npm publish for both packages.
 
 **Breaking changes**: the CLI does not introduce its own schema version. The result JSON is the engine's verbatim output, and the engine versions its scorecard format independently via `metadata.version` (e.g. `"1.0.27"`). Consumers tracking schema changes should key off `metadata.version` from the engine, not anything CLI-introduced. If we need to break the result shape on our side (we shouldn't — see §7), we'd announce it via the CLI's release notes, not via an envelope key we don't actually emit.
 
