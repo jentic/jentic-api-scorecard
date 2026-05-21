@@ -4,7 +4,20 @@ Score an OpenAPI document against the [Jentic API AI Readiness Framework (JAIRF)
 
 ## What it does
 
-Pass an OpenAPI spec — by URL or by piping bundled JSON to the container — and the scorer evaluates it across six JAIRF dimensions (foundational compliance, developer experience, AI-readiness, agent usability, security, AI discoverability), then prints an overall score plus a per-dimension breakdown.
+Pass an OpenAPI spec — by URL or by piping bundled JSON to the container — and the scorer evaluates it across six JAIRF dimensions (foundational compliance, developer experience, AI-readiness, agent usability, security, AI discoverability) and emits the result as JSON. Today the published Docker image is JSON-only; piping its output to `jq` is the way to read a score:
+
+```bash
+$ docker run --rm ghcr.io/jentic/jentic-api-scorecard \
+    score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<spec-path> \
+  | jq '{score: .summary.score, level: .summary.level, grade: .summary.grade}'
+{
+  "score": 68.62,
+  "level": "ai-aware",
+  "grade": "B+"
+}
+```
+
+The npm CLI on the roadmap will layer a human-readable scorecard on top of the same JSON (target shape — *not yet shipped*, see [`docs/architecture.md`](docs/architecture.md) §1):
 
 ```
 Jentic API Readiness Scorecard
@@ -20,9 +33,6 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
     AU    Agent Usability                                  93.70  A+
     SEC   Security                                         42.50  D-
     AID   AI Discoverability                              100.00  A+
-
-  Run with --verbose for signal breakdown.
-  Full report: --format json --include-diagnostics
 ```
 
 ## How it works

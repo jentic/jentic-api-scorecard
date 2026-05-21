@@ -30,7 +30,8 @@ def emit_deny(reason: str) -> None:
 
 
 def extract_message(command: str) -> str | None:
-    # Pattern: -m "$(cat <<'DELIM' ... DELIM)" — what Claude's CLAUDE.md prescribes.
+    # Pattern: -m "$(cat <<'DELIM' ... DELIM)" — the HEREDOC form Claude Code emits for
+    # multi-line commit messages (so commit-message formatting survives shell quoting).
     # Terminator anchored to start of line (MULTILINE); `<<-` form allows leading tabs/spaces.
     m = re.search(
         r"-m\s+\"?\$\(\s*cat\s+<<(-?)\s*['\"]?(\w+)['\"]?\s*\n(.*?)\n[\t ]*\2\s*$",

@@ -11,7 +11,7 @@ A zero-install CLI that scores an OpenAPI document against the Jentic API AI Rea
 - **`docker/`** — the only code that exists. A Python 3.12 + uv runner image that wraps `jentic-apitools-cli` (the JAIRF scoring engine). This is everything that ships in v0.1.
 - **`packages/`** — does **not** exist yet. The TypeScript CLI (`@jentic/api-scorecard`) and a stub HTML renderer are on the roadmap per @../docs/architecture.md §4.
 - **`docs/architecture.md`** — the architecture document and the source of truth for every product/architectural claim.
-- **`specs/`** — does not exist yet. Spec-Driven Development (`/sdd-create-constitution`) bootstraps `specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md` from current repository evidence; until that runs, there is no constitution.
+- **`specs/`** — the SDD constitution: `specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md` (plus an empty `specs/lessons.md` placeholder that `/sdd-distill-lessons` will fill once retrospectives land). The constitution captures load-bearing invariants and points at `docs/architecture.md` for operational detail. Bootstrapped via `/sdd-create-constitution`; future phases append via `/sdd-new-phase` and materialize via `/sdd-new-spec`.
 
 When you read this file and find a mismatch with what's on disk (e.g. `packages/` now exists, `specs/` is populated), update this file in the same change.
 
