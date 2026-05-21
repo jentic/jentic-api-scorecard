@@ -18,7 +18,7 @@ The starting point is the current repository state: the `docker/` runner ships, 
 
 **Lifecycle:** when a phase ships, append ` ✅` (a single space followed by the U+2705 checkmark) to its `## Phase N — Title` heading and leave the rest of the block in place — do not delete or renumber. The leading space is load-bearing — completion-verify steps `grep -F` for the exact ` ✅` suffix. Phase numbers are stable identifiers; completed phases stay in the file as history. New work takes the next number after the largest existing phase.
 
-## Phase 1 — Ship CI: checks, unstable image from main, versioned release on tag ✅
+## Phase 1 — Ship CI: checks and unstable image from main ✅
 
 **Goal:** establish CI quality gates on PRs, publish an `:unstable` image from every green `main` push, and publish versioned images on git tags.
 **Depends on:** none (self-contained CI scaffolding)
