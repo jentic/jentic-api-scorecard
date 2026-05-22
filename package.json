@@ -21,6 +21,11 @@
     "lint:fix": "lerna run lint:fix",
     "prepare": "husky"
   },
+  "overrides": {
+    "@conventional-changelog/git-client": {
+      "conventional-commits-filter": "^3.0.0"
+    }
+  },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
