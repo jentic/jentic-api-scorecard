@@ -1,7 +1,7 @@
 {
   "name": "jentic-api-scorecard-monorepo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Workspace root for @jentic/api-scorecard.",
   "license": "Apache-2.0",
   "author": "Jentic <hello@jentic.com>",
@@ -14,7 +14,9 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "clean": "lerna run clean"
+    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$npm_package_version ./docker",
+    "clean": "lerna run clean",
+    "dev": "npm run build && npm run build:image"
   },
   "devDependencies": {
     "lerna": "^9.0.0",
