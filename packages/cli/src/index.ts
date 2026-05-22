@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 
-import { runScore } from './commands/score.js';
-import { cliVersion } from './version.js';
+import { runScore } from './commands/score.ts';
+import { cliVersion } from './version.ts';
 
 export async function main(argv: string[] = process.argv): Promise<void> {
   const program = new Command();

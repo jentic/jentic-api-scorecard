@@ -1,8 +1,8 @@
 import { existsSync, statSync } from 'node:fs';
 
-import { bundleSpec } from '../bundle.js';
-import { runDocker } from '../docker.js';
-import { ExitCode } from '../exit-codes.js';
+import { bundleSpec } from '../bundle.ts';
+import { runDocker } from '../docker.ts';
+import { ExitCode } from '../exit-codes.ts';
 
 export interface ScoreOptions {
   withLlm?: boolean;

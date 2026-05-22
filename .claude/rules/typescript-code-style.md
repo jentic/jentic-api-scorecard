@@ -9,7 +9,7 @@ Formatting is Prettier 3 (`.prettierrc` at the repo root) wired into ESLint via 
 
 A PostToolUse hook (`.claude/hooks/eslint-fix.sh`) runs `eslint --fix` on every Claude-edited `.ts` file under `packages/`, and `.claude/hooks/typescript-check.sh` runs `tsc --noEmit -p <package-tsconfig>` so type errors surface immediately.
 
-- **`'.js'` suffix on every relative TypeScript import.** ESM under NodeNext requires explicit extensions, and `import/extensions: ['error', 'always', { ts: 'always', js: 'always', ignorePackages: true }]` enforces it on relative paths only — package imports stay extension-free. Example: `import { runScore } from './commands/score.js';` (the `.js` resolves to `score.ts` at compile time).
+- **`'.ts'` suffix on every relative TypeScript import.** ESM under NodeNext requires explicit extensions on relative paths. We set `rewriteRelativeImportExtensions: true` in `tsconfig.base.json` (TS 5.7+), which rewrites `.ts` → `.js` during emit so the source reads as the actual file on disk and the emitted JS satisfies Node's ESM resolver. `import/extensions: ['error', 'always', { ts: 'always', ignorePackages: true }]` enforces the suffix on relative paths only — package imports (`commander`, `@redocly/openapi-core`) stay extension-free. Example: `import { runScore } from './commands/score.ts';` resolves to `score.ts` at type-check time and emits as `./commands/score.js` at runtime.
 
 - **Single quotes for strings.** `quotes: ['error', 'single', { avoidEscape: true }]`. Use a double-quoted literal only when the string contains a single quote and escaping would be noisier.
 
@@ -21,7 +21,7 @@ A PostToolUse hook (`.claude/hooks/eslint-fix.sh`) runs `eslint --fix` on every 
 
 - **`any` is a warning, not an error — and a smell.** `@typescript-eslint/no-explicit-any: 'warn'` lets `any` slip through in narrow cases (e.g. when typing third-party JSON), but every `any` is an unfinished thought. Prefer `unknown` and narrow with type guards; reach for `Record<string, unknown>` for opaque object shapes.
 
-- **`tsconfig.base.json` is strict on purpose.** `strict: true`, `noUncheckedIndexedAccess: true`, `noImplicitOverride: true`, `forceConsistentCasingInFileNames: true`. `noUncheckedIndexedAccess` means indexed access returns `T | undefined`; for `process.env`, use bracket access (`process.env['JENTIC_API_KEY']`) and check for `undefined` rather than truthiness. Don't loosen these flags to silence errors — fix the type.
+- **`tsconfig.base.json` is strict on purpose.** `strict: true`, `noUncheckedIndexedAccess: true`, `noImplicitOverride: true`, `forceConsistentCasingInFileNames: true`, `rewriteRelativeImportExtensions: true`. `noUncheckedIndexedAccess` means indexed access returns `T | undefined`; for `process.env`, use bracket access (`process.env['JENTIC_API_KEY']`) and check for `undefined` rather than truthiness. Don't loosen these flags to silence errors — fix the type.
 
 - **Modules are NodeNext ESM.** `tsconfig.base.json` sets `module: "NodeNext"`, `moduleResolution: "NodeNext"`. Every package has `"type": "module"` in its `package.json`, exports compiled `.js` plus `.d.ts`, and uses `"main"` + `"exports"`. Don't add CJS interop shims.
 
