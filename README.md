@@ -2,8 +2,10 @@
 
 Score an OpenAPI document against the
 [Jentic API AI Readiness Framework (JAIRF)](https://github.com/jentic/api-ai-readiness-framework)
-and get a readable scorecard. Today the project ships as a public Docker image; an
-`npx @jentic/api-scorecard` CLI wrapper is upcoming — see [`specs/roadmap.md`](specs/roadmap.md).
+and get a readable scorecard. The project ships in two pieces: the public Docker image
+`ghcr.io/jentic/jentic-api-scorecard`, and an `@jentic/api-scorecard` npm CLI that orchestrates the
+image. Both are tracked in this monorepo (`packages/cli/` for the CLI, `docker/` for the image).
+Per-phase progress lives in [`specs/roadmap.md`](specs/roadmap.md).
 
 ## What it does
 
@@ -119,17 +121,22 @@ docker run --rm \
 
 ## Status
 
-Today the scorecard ships only as the GHCR image — direct `docker run` is the supported invocation,
-and the only published tag is `:unstable`.
-
-`:unstable` is rebuilt on every push to `main`. Docker caches by tag name,
-so subsequent runs reuse your local copy — pass `--pull=always` when you want the latest build.
+The GHCR image is the production-supported entry point — direct `docker run` is fully documented,
+and the only published tag is `:unstable`. `:unstable` is rebuilt on every push to `main`. Docker
+caches by tag name, so subsequent runs reuse your local copy — pass `--pull=always` when you want
+the latest build.
 
 ```bash
 docker run --pull=always --rm ghcr.io/jentic/jentic-api-scorecard:unstable \
   score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json \
   | jq '.summary | {score, level, grade, dimensions: [.dimensions[] | {kind, name, score, grade}]}'
 ```
+
+The `@jentic/api-scorecard` npm CLI (in `packages/cli/`) wraps the image with a friendlier
+invocation and is built end-to-end against the published GHCR image. It currently streams the
+engine's verbatim JSON to stdout — pretty / Markdown rendering, `--detail` / `--format` / `-o` /
+`--quiet` / `--verbose`, and the `npx @jentic/api-scorecard` distribution itself land in later
+phases.
 
 ## License
 

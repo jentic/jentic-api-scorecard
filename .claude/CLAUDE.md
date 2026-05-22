@@ -8,12 +8,14 @@ A zero-install CLI that scores an OpenAPI document against the Jentic API AI Rea
 
 ## Repository state today
 
-- **`docker/`** — the only code that exists. A Python 3.12 + uv runner image that wraps `jentic-apitools-cli` (the JAIRF scoring engine). This is everything that ships in v0.1.
-- **`packages/`** — does **not** exist yet. The TypeScript CLI (`@jentic/api-scorecard`) and a stub HTML renderer are on the roadmap per `docs/architecture.md` §4.
+- **`docker/`** — Python 3.12 + uv runner image that wraps `jentic-apitools-cli` (the JAIRF scoring engine). This is the GHCR artifact (`ghcr.io/jentic/jentic-api-scorecard`).
+- **`packages/`** — Lerna fixed-version npm workspaces root (`package.json`, `lerna.json`, `tsconfig.base.json` at the repo root). Two packages:
+  - `packages/cli/` (`@jentic/api-scorecard`) — TypeScript CLI built with [commander](https://www.npmjs.com/package/commander). One subcommand: `score <input>` with `--with-llm`. Local files are bundled via `@redocly/openapi-core` and piped to the container's stdin; URLs are forwarded as `--url` so the container-side gate stays authoritative. The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` and forwards `JENTIC_API_KEY` via docker's `-e` passthrough. **Pretty / JSON / Markdown rendering and the full `--detail` / `--format` / `-o` / `--quiet` / `--verbose` surface are deferred to Phase 3** — today the CLI streams the engine's verbatim JSON to stdout.
+  - `packages/html-renderer/` (`@jentic/api-scorecard-html`) — typed `render(result): string` stub. Throws "not implemented" until Phase 9.
 - **`docs/architecture.md`** — the architecture document and the source of truth for every product/architectural claim.
 - **`specs/`** — the SDD constitution: `specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md` (plus an empty `specs/lessons.md` placeholder that `/sdd-distill-lessons` will fill once retrospectives land). The constitution captures load-bearing invariants and points at `docs/architecture.md` for operational detail. Bootstrapped via `/sdd-create-constitution`; future phases append via `/sdd-new-phase` and materialize via `/sdd-new-spec`.
 
-When you read this file and find a mismatch with what's on disk (e.g. `packages/` now exists, `specs/` is populated), update this file in the same change.
+When you read this file and find a mismatch with what's on disk, update this file in the same change.
 
 ## Architecture
 
@@ -51,17 +53,21 @@ Multi-stage `python:3.12-slim` + `node:24-slim` (engine spawns Redocly / Spectra
 
 ## Common commands
 
-All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poethepoet` are not at the repo root, so `uv run poe …` from the root fails with `Failed to spawn: poe`.
+All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poethepoet` are not at the repo root, so `uv run poe …` from the root fails with `Failed to spawn: poe`. JS tooling resolves from the repo root (npm workspaces).
 
 | Task | Command |
 |---|---|
-| Run tests | `cd docker && uv run poe test` |
-| Run a subset | `cd docker && uv run poe test tests/test_gate.py` |
-| Lint check | `cd docker && uv run poe lint` |
-| Lint fix | `cd docker && uv run poe lint:fix` |
+| Install JS deps | `npm install` (run from repo root) |
+| Build all packages | `npm run build` (Lerna fans out to each package's `tsc`) |
+| Run Python tests | `cd docker && uv run poe test` |
+| Run a Python test subset | `cd docker && uv run poe test tests/test_gate.py` |
+| Python lint check | `cd docker && uv run poe lint` |
+| Python lint fix | `cd docker && uv run poe lint:fix` |
 | Build the image | `docker build -t jentic-scorecard:dev ./docker` |
-| Smoke an allowlisted URL | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
-| Smoke from stdin | `cat openapi.json \| docker run -i --rm -e JENTIC_API_KEY=mvp-preview jentic-scorecard:dev score` |
+| Smoke an allowlisted URL via image | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
+| Smoke an allowlisted URL via CLI | `node packages/cli/bin/jentic-api-scorecard.mjs score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
+| Smoke a local file via CLI | `JENTIC_API_KEY=mvp-preview node packages/cli/bin/jentic-api-scorecard.mjs score docker/.build/sample.yaml` |
+| Smoke from stdin via image | `cat openapi.json \| docker run -i --rm -e JENTIC_API_KEY=mvp-preview jentic-scorecard:dev score` |
 
 Tests use pytest, no mocking — `tests/test_main.py` and `tests/test_gate.py` exercise the runner directly; `tests/test_integration.py` exercises the engine end-to-end.
 
