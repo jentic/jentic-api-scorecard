@@ -1,3 +1,9 @@
+// Carried verbatim from jentic/jentic-arazzo-tools for cross-repo consistency.
+// React, JSX-a11y, and Mocha blocks have no matching files in this repo today —
+// keep them so a future React/test surface lands without re-deriving the config.
+// `npm run lint` delegates via `lerna run lint`, so this file isn't itself linted
+// (would otherwise trip no-unused-vars on the eslintPluginReact / eslintPluginJsxA11y
+// imports below). Don't "clean up" the unused imports.
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import eslintPluginImportX from 'eslint-plugin-import-x';
