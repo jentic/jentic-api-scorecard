@@ -12,7 +12,7 @@ During the MVP preview, key-required scoring works with `JENTIC_API_KEY=mvp-prev
 ```
 $ JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard score https://petstore3.swagger.io/api/v3/openapi.json
 # or with --format json -o report.json for machine output
-⏳ Pulling ghcr.io/jentic/jentic-api-scorecard:0.1.0…
+⏳ Pulling ghcr.io/jentic/jentic-api-scorecard:1.0.0…
 ⏳ Scoring…
 ✓ done in 8.2s
 
@@ -367,7 +367,7 @@ host:        npx @jentic/api-scorecard score ./openapi.yaml --format json
                └─ TS CLI: bundle, build docker argv, spawn:
 host:        docker run -i --rm
                -e JENTIC_API_KEY
-               ghcr.io/jentic/jentic-api-scorecard:0.1.0
+               ghcr.io/jentic/jentic-api-scorecard:1.0.0
                score                         ← appended to ENTRYPOINT
 container 1: python -m jentic_scorecard_runner score
                └─ runner: auth check, gate, stdin→tempfile, then spawn:
@@ -594,17 +594,17 @@ The shape below was captured by running `jentic-apitools score https://petstore3
 
 **Coupling**: CLI npm version = GHCR image tag. The Python engine package (`jentic-apitools-cli`) versions independently upstream; each image build pins one specific engine version.
 
-`v0.1.0` (the first release):
-- npm `@jentic/api-scorecard@0.1.0` and `@jentic/api-scorecard-html@0.1.0` (Lerna fixed-version, both publish together).
-- `ghcr.io/jentic/jentic-api-scorecard:0.1.0`.
+`v1.0.0` (the first stable release):
+- npm `@jentic/api-scorecard@1.0.0` and `@jentic/api-scorecard-html@1.0.0` (Lerna fixed-version, both publish together).
+- `ghcr.io/jentic/jentic-api-scorecard:1.0.0`.
 - `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-cli==<exact-version>` (e.g. `1.0.0a16`).
 
-The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard@0.1.0`) — that pulls `:0.1.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
+The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard@1.0.0`) — that pulls `:1.0.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
 
 When the engine releases an update we want to ship, we:
 1. Bump `jentic-apitools-cli` in `docker/pyproject.toml`.
-2. Cut a new CLI version (e.g. `0.1.1`).
-3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:0.1.1` containing the new engine, and publishes `@jentic/api-scorecard@0.1.1`.
+2. Cut a new CLI version (e.g. `1.0.1`).
+3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.1` containing the new engine, and publishes `@jentic/api-scorecard@1.0.1`.
 
 **Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64).
 
