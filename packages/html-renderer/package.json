@@ -1,0 +1,52 @@
+{
+  "name": "@jentic/api-scorecard-html",
+  "version": "0.1.0",
+  "description": "HTML renderer for Jentic API Scorecard results (stub).",
+  "keywords": [
+    "openapi",
+    "jentic",
+    "jairf",
+    "scorecard",
+    "html"
+  ],
+  "license": "Apache-2.0",
+  "author": "Jentic <hello@jentic.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jentic/jentic-api-scorecard.git",
+    "directory": "packages/html-renderer"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true,
+    "tag": "latest"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "typescript:check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  }
+}
