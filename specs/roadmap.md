@@ -37,7 +37,7 @@ Currently every image is hand-built and hand-pushed; there's no recorded provena
 - Use Docker Buildx with GHA cache (`cache-from: type=gha`, `cache-to: type=gha,mode=max`).
 - Update `docs/architecture.md` §4 / §8 only if the implemented workflows diverge from the descriptions there.
 
-## Phase 2 — Scaffold packages/ + first end-to-end CLI smoke
+## Phase 2 — Scaffold packages/ + first end-to-end CLI smoke ✅
 
 **Goal:** stand up the npm workspaces root and the smallest `score` subcommand that orchestrates the published GHCR image.
 **Depends on:** Phase 1
