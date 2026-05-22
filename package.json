@@ -14,12 +14,13 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$npm_package_version ./docker",
     "clean": "lerna run clean",
-    "dev": "npm run build && npm run build:image"
+    "typescript:check-types": "lerna run typescript:check-types"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "lerna": "^9.0.0",
+    "rimraf": "^6.0.0",
     "typescript": "^5.6.0"
   },
   "engines": {

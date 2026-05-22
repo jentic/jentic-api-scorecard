@@ -17,6 +17,10 @@ A zero-install CLI that scores an OpenAPI document against the Jentic API AI Rea
 
 When you read this file and find a mismatch with what's on disk, update this file in the same change.
 
+### Local dev loop (image)
+
+The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no env-var override (per `docs/architecture.md` §2 — image management is fully abstracted). For a published version, Docker resolves that to the GHCR image; while developing, **`npm run build`** does the right thing — for `@jentic/api-scorecard` that script orchestrates `build:typescript` (tsc) and `build:image` (docker build at the same canonical tag). Both subscripts live in `packages/cli/package.json` because the image-tag coupling is a CLI runtime concern, not a workspace-wide one. Docker's local cache wins over the registry for an exact `name:tag` match, so the CLI then runs against your local build with no flag, no env var, no mode switch. If you want to force-pull the published image instead, `docker rmi` the local tag.
+
 ## Architecture
 
 ### Container entrypoint and order (CRITICAL)
@@ -58,7 +62,11 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Task | Command |
 |---|---|
 | Install JS deps | `npm install` (run from repo root) |
-| Build all packages | `npm run build` (Lerna fans out to each package's `tsc`) |
+| Build all packages (CLI builds JS + image, html-renderer builds JS) | `npm run build` |
+| Clean all packages' build output | `npm run clean` |
+| Build only the CLI's TypeScript | `npm run build:typescript -w @jentic/api-scorecard` |
+| Build only the CLI's image at the matching tag | `npm run build:image -w @jentic/api-scorecard` |
+| Remove the CLI's local image | `npm run clean:image -w @jentic/api-scorecard` |
 | Run Python tests | `cd docker && uv run poe test` |
 | Run a Python test subset | `cd docker && uv run poe test tests/test_gate.py` |
 | Python lint check | `cd docker && uv run poe lint` |

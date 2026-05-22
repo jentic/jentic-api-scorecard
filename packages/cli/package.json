@@ -42,18 +42,16 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:typescript && npm run build:image",
+    "build:typescript": "tsc -p tsconfig.json",
+    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$npm_package_version ../../docker",
     "clean": "rimraf dist *.tsbuildinfo",
+    "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$npm_package_version || true",
     "typescript:check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@redocly/openapi-core": "^1.30.0",
     "commander": "^14.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "rimraf": "^6.0.0",
-    "typescript": "^5.6.0"
   },
   "engines": {
     "node": ">=20.10.0"
