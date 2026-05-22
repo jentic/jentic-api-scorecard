@@ -4,6 +4,9 @@ __pycache__/
 .pytest_cache/
 node_modules/
 dist/
+*.tsbuildinfo
+lerna-debug.log
+npm-debug.log*
 !/.claude
 /.claude/settings.local.json
 /.claude/worktrees/*
