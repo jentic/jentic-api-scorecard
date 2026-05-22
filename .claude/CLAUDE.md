@@ -72,9 +72,7 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Python lint check | `cd docker && uv run poe lint` |
 | Python lint fix | `cd docker && uv run poe lint:fix` |
 | JS/TS lint check (all packages) | `npm run lint` |
-| JS/TS lint fix (all packages) | `npm run lint:fix` |
-| Prettier format check | `npm run format:check` |
-| Prettier format fix | `npm run format` |
+| JS/TS lint fix (all packages) | `npm run lint:fix` (Prettier runs via `eslint-plugin-prettier`) |
 | Build the image | `docker build -t jentic-scorecard:dev ./docker` |
 | Smoke an allowlisted URL via image | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
 | Smoke an allowlisted URL via CLI | `node packages/cli/bin/jentic-api-scorecard.mjs score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
