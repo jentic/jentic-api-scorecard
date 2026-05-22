@@ -38,11 +38,7 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
   return new Promise((resolve, reject) => {
     const child = spawn('docker', dockerArgs, {
-      stdio: [
-        opts.stdinPayload !== undefined ? 'pipe' : 'inherit',
-        'inherit',
-        'inherit',
-      ],
+      stdio: [opts.stdinPayload !== undefined ? 'pipe' : 'inherit', 'inherit', 'inherit'],
     });
 
     let settled = false;

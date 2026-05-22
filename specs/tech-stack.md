@@ -14,11 +14,11 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 ## Architecture Summary
 
-- **Application style:** CLI (Docker image today; an npm CLI wrapper is on the roadmap — see `docs/architecture.md` §1)
-- **Primary language:** Python 3.12 (in `docker/`; TypeScript will join when `packages/` lands)
+- **Application style:** CLI (Docker image today; the npm CLI wrapper has shipped as a smoke-only Phase 2 slice — see `docs/architecture.md` §1)
+- **Primary language:** Python 3.12 (in `docker/`); TypeScript 5.6+ (in `packages/`, npm workspaces)
 - **Rendering model:** API_ONLY — the container emits JSON to stdout. Pretty / Markdown rendering is deferred to the npm CLI.
 - **Deployment / runtime shape:** CONTAINER (`ghcr.io/jentic/jentic-api-scorecard`, multi-stage Docker build under `docker/`)
-- **Current maturity:** PROTOTYPE — the runner code, image build, and tests exist; CI, the npm CLI, and real auth do not. See `docs/architecture.md` §2 for the design spec; see `What We Are Not Using` below for the gap.
+- **Current maturity:** PROTOTYPE — the runner code, image build, tests, CI, the Phase 2 CLI smoke, and lint/commit hooks (Phase 5) all exist; renderer formats and real auth do not. See `docs/architecture.md` §2 for the design spec; see `What We Are Not Using` below for the gap.
 
 ## Core Stack
 
@@ -31,7 +31,10 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Dependency manager | uv | `docker/uv.lock`; `docker/Dockerfile:9` pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
 | Build / packaging | Docker multi-stage | `docker/Dockerfile`; build-time `npx` cache warming via `docker/.build/sample.yaml` (`docker/Dockerfile:20-24`) |
 | Test framework | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
-| Lint / format | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
+| Lint / format (Python) | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
+| Lint / format (JS/TS) | ESLint 9 (flat config) + Prettier 3 | `eslint.config.js`, `.prettierrc` at repo root; `eslint-plugin-import-x`, `typescript-eslint`, `eslint-plugin-prettier` recommended |
+| Commit-message lint | commitlint + `@commitlint/config-conventional` | `.commitlintrc.json` at repo root; `header-max-length: 69`; shared by `.husky/commit-msg` (humans) and `.claude/hooks/commitlint-before-commit.py` (Claude) |
+| Pre-commit hooks | husky + lint-staged | `.husky/{pre-commit,commit-msg}`; `.lintstagedrc.json` runs eslint on TS, ruff check + format check on Python |
 | Task runner | poethepoet (poe) | `docker/pyproject.toml:14, 33-48`; tasks: `lint`, `lint:fix`, `test` |
 
 ## Key Libraries and Frameworks
@@ -57,10 +60,12 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 - **Local development:** `cd docker && uv sync` to install; `cd docker && uv run python -m jentic_scorecard_runner score …` to invoke the runner outside Docker.
 - **Build / release:** `docker build ./docker` produces the image. Release is **manual today** — tag, build, push to GHCR by hand. Automation is on the roadmap.
-- **Formatting / linting:** ruff (rules `E4`, `E7`, `E9`, `F`, `I`, `PLC0415`, `PLC2701`; line length 100; `lines-after-imports = 2`). Run `cd docker && uv run poe lint:fix`.
-- **Type checking:** none. Python 3.12 syntax (`list[str]`, `X | None`) is used; no mypy / pyright in CI.
-- **CI/CD:** NONE_OBSERVED. `.github/` does not exist on disk at all. `docker-image.yml` and `npm-publish.yml` are described in `docs/architecture.md` §4 / §8 as planned, not implemented.
-- **Conventional Commits enforcement:** Claude PreToolUse hook `.claude/hooks/commitlint-before-commit.py` blocks malformed `git commit -m` payloads. The hook soft-no-ops until commitlint is installed at the repo root (`node_modules/.bin/commitlint`); the husky `commit-msg` hook for human/CI commits is on the roadmap.
+- **Formatting / linting (Python):** ruff (rules `E4`, `E7`, `E9`, `F`, `I`, `PLC0415`, `PLC2701`; line length 100; `lines-after-imports = 2`). Run `cd docker && uv run poe lint:fix`.
+- **Formatting / linting (JS/TS):** ESLint 9 flat config (`eslint.config.js`) + Prettier 3 (`.prettierrc`, `printWidth: 100`, single quotes, `trailingComma: all`). `eslint-plugin-import-x` rules cover `import/extensions`, `import/order`, `import/no-extraneous-dependencies`. Run `npm run lint` / `npm run lint:fix` from the repo root (delegates via `lerna run lint`).
+- **Type checking:** none on Python (no mypy / pyright in CI). TypeScript itself runs strict-mode (`tsconfig.base.json`); `lerna run typescript:check-types` verifies via `tsc --noEmit` per package.
+- **CI/CD:** GitHub Actions — `ci.yml` (lint + test on PRs to `main`), `docker-publish.yml` (push `:unstable` from `main`, versioned tags from git tags). See `docs/architecture.md` §4. Phase 5 lands the lint pipeline; CI hookup is tracked as a follow-up.
+- **Conventional Commits enforcement:** two hooks share `.commitlintrc.json` — `.husky/commit-msg` runs `npx commitlint -e` for human / CI commits; `.claude/hooks/commitlint-before-commit.py` (PreToolUse) intercepts Claude-driven `git commit -m` payloads before they fire. Both are active now that `node_modules/.bin/commitlint` is installed at the repo root (Phase 5).
+- **Pre-commit lint pipeline:** `.husky/pre-commit` invokes `npx lint-staged`; `.lintstagedrc.json` runs `eslint` on staged `packages/**/*.ts` and `cd docker && uv run ruff check && uv run ruff format --check` on staged `docker/**/*.py`.
 - **DCO sign-off:** required by convention. `git commit -s` adds `Signed-off-by:` per `.claude/rules/git-workflow.md`.
 
 ## Deployment and Operations
@@ -88,9 +93,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 - **No FastAPI / web server.** This is a CLI, not a service. The architecture deliberately has no backend in the loop (`docs/architecture.md` §1).
 - **No database.** No persistent state; one spec per `docker run` invocation.
-- **No husky / lint-staged today.** Pre-commit hooks are described in `docs/architecture.md` §4 as planned; only the Claude PreToolUse commitlint hook is live today.
-- **No CI workflows today.** `.github/` is absent entirely. `docker-image.yml` and `npm-publish.yml` are roadmap.
-- **No type checker (mypy / pyright).** Ruff handles linting; type checks are not enforced.
+- **No type checker (mypy / pyright).** Ruff handles Python linting; Python type checks are not enforced. TypeScript runs strict-mode `tsc --noEmit` for `packages/`.
 - **No usage tracking / telemetry / rate-limiting beyond the static URL allowlist.** Explicit non-goals (`docs/architecture.md` §10).
 - **No `dockerode` (Docker SDK).** When the npm CLI lands, it shells out to `docker` via `child_process.spawn`. Decision recorded in `docs/architecture.md` §2.
 
@@ -98,12 +101,10 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 These exist in `docs/architecture.md` but **not on disk**. Future phases will land them:
 
-- **`packages/` Lerna monorepo** — TypeScript npm workspaces root with `@jentic/api-scorecard` (CLI) and `@jentic/api-scorecard-html` (renderer stub).
-- **`.github/workflows/docker-image.yml`** — build + push image on tag.
-- **`.github/workflows/npm-publish.yml`** — publish npm packages on tag.
-- **`.husky/`** — pre-commit + commit-msg hooks for human/CI commits (commitlint, lint-staged).
-- **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container.
-- **HTML renderer implementation.** `@jentic/api-scorecard-html` ships as a stub today (per the architecture doc); the actual renderer is post-MVP.
+- **`.github/workflows/npm-publish.yml`** — publish npm packages on tag (Phase 4 of the roadmap).
+- **Renderer formats and CLI surface.** `--format` (pretty / json / markdown / html), `--detail`, `-o`, `--quiet`, `--verbose` are deferred to Phase 3+. The CLI streams engine-verbatim JSON today.
+- **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container (Phase 8).
+- **HTML renderer implementation.** `@jentic/api-scorecard-html` ships as a stub today (per the architecture doc); the actual renderer lands in Phase 9.
 
 ## Open Questions / Uncertain Areas
 

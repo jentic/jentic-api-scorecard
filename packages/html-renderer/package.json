@@ -41,6 +41,8 @@
     "build": "npm run build:typescript",
     "build:typescript": "tsc -p tsconfig.json",
     "clean": "rimraf dist *.tsbuildinfo",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "typescript:check-types": "tsc --noEmit"
   },
   "engines": {

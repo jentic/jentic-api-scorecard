@@ -83,7 +83,7 @@ The CLI version = image tag invariant requires that the same git tag triggers bo
 - Smoke-test post-publish: `npx @jentic/api-scorecard@<version> score --help` succeeds; the version string reported by `--version` matches the tag.
 - Document the release ritual: branch → tag → both workflows fire → image and packages land together.
 
-## Phase 5 — Husky + commit-msg hook for human commits
+## Phase 5 — Husky + commit-msg hook for human commits ✅
 
 **Goal:** enforce Conventional Commits and DCO sign-off on every human / CI commit, not just Claude-driven ones.
 **Depends on:** Phase 2 (needs the npm root)

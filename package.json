@@ -9,19 +9,40 @@
     "type": "git",
     "url": "git+https://github.com/jentic/jentic-api-scorecard.git"
   },
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "build": "lerna run build",
     "clean": "lerna run clean",
-    "typescript:check-types": "lerna run typescript:check-types"
+    "typescript:check-types": "lerna run typescript:check-types",
+    "lint": "lerna run lint",
+    "lint:fix": "lerna run lint:fix",
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
+    "format:check": "prettier --check \"packages/**/*.{ts,tsx,js,mjs,cjs,json,md}\"",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@eslint/js": "^9.28.0",
     "@types/node": "^22.0.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import-x": "^4.16.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-mocha": "^11.2.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^17.1.0",
+    "husky": "^9.1.7",
     "lerna": "^9.0.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "rimraf": "^6.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.34.0"
   },
   "engines": {
     "node": ">=20.10.0"

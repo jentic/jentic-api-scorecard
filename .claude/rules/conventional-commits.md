@@ -1,6 +1,6 @@
 Commit messages MUST follow Conventional Commits (https://www.conventionalcommits.org/en/v1.0.0/).
 
-*Enforced today only by a Claude PreToolUse hook (`.claude/hooks/commitlint-before-commit.py`) that validates `git commit -m` payloads before the command fires. The hook soft-no-ops until commitlint is installed at the repo root (`node_modules/.bin/commitlint`); plug it in once the npm workspaces root in `packages/` exists.*
+*Enforced via two paths sharing `.commitlintrc.json`: the Claude PreToolUse hook (`.claude/hooks/commitlint-before-commit.py`) validates `git commit -m` payloads before Claude fires them, and the husky `commit-msg` hook (`.husky/commit-msg`) validates human / CI commits via `npx commitlint -e`.*
 
 Format: `type(scope): description` — max 69 characters in the header.
 

@@ -47,6 +47,8 @@
     "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$npm_package_version ../../docker",
     "clean": "rimraf dist *.tsbuildinfo",
     "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$npm_package_version || true",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "typescript:check-types": "tsc --noEmit"
   },
   "dependencies": {
