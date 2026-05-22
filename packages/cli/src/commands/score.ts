@@ -52,7 +52,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`error: failed to bundle ${input}: ${message}\n`);
-      return ExitCode.GENERIC_ERROR;
+      return ExitCode.SPEC_FAILURE;
     }
 
     return execDocker({ args: containerArgs, stdinPayload: bundled, forwardJenticKey });
