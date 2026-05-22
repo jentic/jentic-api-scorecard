@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
+import { constants as osConstants } from 'node:os';
 
+import { ExitCode } from './exit-codes.js';
 import { cliVersion } from './version.js';
 
 export const IMAGE_NAME = 'ghcr.io/jentic/jentic-api-scorecard';
@@ -17,6 +19,8 @@ export interface DockerRunOptions {
 export interface DockerRunResult {
   exitCode: number;
 }
+
+const FORWARDED_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
 export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
   const dockerArgs: string[] = ['run', '--rm'];
@@ -41,24 +45,50 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       ],
     });
 
+    let settled = false;
+    const signalHandlers = new Map<NodeJS.Signals, () => void>();
+
+    const cleanup = (): void => {
+      for (const [sig, handler] of signalHandlers) {
+        process.off(sig, handler);
+      }
+      signalHandlers.clear();
+    };
+
+    const settle = (fn: () => void): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+
+    for (const sig of FORWARDED_SIGNALS) {
+      const handler = (): void => {
+        child.kill(sig);
+      };
+      signalHandlers.set(sig, handler);
+      process.on(sig, handler);
+    }
+
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {
         process.stderr.write(
           "error: 'docker' command not found.\n" +
             '  Install Docker: https://docs.docker.com/get-docker/\n',
         );
-        resolve({ exitCode: 4 });
+        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING }));
         return;
       }
-      reject(err);
+      settle(() => reject(err));
     });
 
     child.on('exit', (code, signal) => {
       if (signal !== null) {
-        resolve({ exitCode: 1 });
+        const signo = osConstants.signals[signal] ?? 0;
+        settle(() => resolve({ exitCode: 128 + signo }));
         return;
       }
-      resolve({ exitCode: code ?? 1 });
+      settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR }));
     });
 
     if (opts.stdinPayload !== undefined && child.stdin) {
