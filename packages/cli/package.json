@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@redocly/openapi-core": "^1.30.0",
+    "chalk": "^4.1.2",
     "commander": "^14.0.0"
   },
   "engines": {
