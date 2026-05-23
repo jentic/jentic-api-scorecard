@@ -1,6 +1,6 @@
 {
   "name": "@jentic/api-scorecard-cli",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "Score an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF).",
   "keywords": [
     "openapi",
@@ -20,7 +20,7 @@
     "access": "public",
     "registry": "https://registry.npmjs.org",
     "provenance": true,
-    "tag": "latest"
+    "tag": "alpha"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -42,11 +42,11 @@
     "README.md"
   ],
   "scripts": {
-    "build": "npm run build:typescript && npm run build:image",
+    "build": "npm run build:typescript",
     "build:typescript": "tsc -p tsconfig.json",
-    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$npm_package_version ../../docker",
     "clean": "rimraf dist *.tsbuildinfo",
-    "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$npm_package_version || true",
+    "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE . && copyfiles -u 2 ../../README.md .",
+    "postpack": "rimraf NOTICE LICENSE README.md",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "typescript:check-types": "tsc --noEmit"

@@ -3,6 +3,12 @@ name: Publish Docker Image
 on:
   push:
     branches: [main]
+  workflow_call:
+    inputs:
+      version:
+        description: Semver tag without v prefix (e.g. 1.0.0-alpha.1)
+        required: true
+        type: string
   workflow_dispatch:
 
 permissions:
@@ -14,10 +20,12 @@ concurrency:
 
 jobs:
   ci:
+    if: ${{ !inputs.version }}
     uses: ./.github/workflows/ci.yml
 
   publish:
     needs: [ci]
+    if: ${{ !cancelled() && (needs.ci.result == 'success' || needs.ci.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -47,6 +55,10 @@ jobs:
           context: ./docker
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/jentic/jentic-api-scorecard:unstable
+          tags: ghcr.io/jentic/jentic-api-scorecard:${{ inputs.version || 'unstable' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Smoke test Docker image
+        if: inputs.version
+        run: docker run --rm ghcr.io/jentic/jentic-api-scorecard:${{ inputs.version }} score --help

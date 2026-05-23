@@ -1,6 +1,6 @@
 {
   "name": "@jentic/api-scorecard-formatter-html",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "private": true,
   "description": "HTML formatter for Jentic API Scorecard results (stub).",
   "keywords": [
@@ -21,7 +21,7 @@
     "access": "public",
     "registry": "https://registry.npmjs.org",
     "provenance": true,
-    "tag": "latest"
+    "tag": "alpha"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -42,6 +42,8 @@
     "build": "npm run build:typescript",
     "build:typescript": "tsc -p tsconfig.json",
     "clean": "rimraf dist *.tsbuildinfo",
+    "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE .",
+    "postpack": "rimraf NOTICE LICENSE",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "typescript:check-types": "tsc --noEmit"

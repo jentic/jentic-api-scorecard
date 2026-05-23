@@ -7,6 +7,9 @@ dist/
 *.tsbuildinfo
 lerna-debug.log
 npm-debug.log*
+packages/*/LICENSE
+packages/*/NOTICE
+packages/cli/README.md
 !/.claude
 /.claude/settings.local.json
 /.claude/worktrees/*

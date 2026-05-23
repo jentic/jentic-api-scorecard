@@ -1,11 +1,23 @@
 {
-  "$schema": "node_modules/lerna/schemas/lerna-schema.json",
-  "version": "1.0.0",
+  "packages": ["packages/*"],
   "npmClient": "npm",
+  "version": "1.0.0-alpha.0",
+  "changelogPreset": "angular",
   "command": {
+    "bootstrap": {
+      "hoist": true
+    },
     "version": {
-      "conventionalCommits": false,
-      "message": "chore(release): publish %s"
+      "exact": true,
+      "allowBranch": ["main"],
+      "conventionalCommits": true,
+      "createRelease": "github",
+      "message": "chore(release): cut the %s release [skip ci]",
+      "ignoreChanges": ["**/test/**"]
+    },
+    "publish": {
+      "registry": "https://registry.npmjs.org"
     }
-  }
+  },
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json"
 }

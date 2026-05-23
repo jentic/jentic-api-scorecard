@@ -1,0 +1,74 @@
+name: Release monorepo packages
+on:
+  workflow_dispatch:
+
+env:
+  CPU_CORES: 2
+  HUSKY: 0
+
+jobs:
+  release:
+    name: Release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: npm-release
+      url: https://www.npmjs.com/org/jentic
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          registry-url: https://registry.npmjs.org
+      - name: Install monorepo dependencies
+        run: npm ci --engine-strict=false
+      - name: Build monorepo
+        run: npm run build
+      - name: Check TypeScript types
+        run: npm run typescript:check-types
+      - name: Version bump & GitHub release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          npx lerna version prerelease --preid alpha --no-private --yes --force-publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Mark release as latest
+        run: |
+          VERSION=$(node -p "require('./lerna.json').version")
+          gh release edit "v${VERSION}" --prerelease=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish monorepo npm packages
+        run: npx lerna publish from-package --no-private --yes --dist-tag alpha
+      - name: Extract released version
+        id: version
+        run: echo "value=$(node -p "require('./lerna.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Smoke test npm package
+        run: npx @jentic/api-scorecard-cli@alpha score --help
+      - name: Smoke test CLI version
+        run: |
+          VERSION=$(node -p "require('./lerna.json').version")
+          REPORTED=$(npx @jentic/api-scorecard-cli@alpha --version)
+          [ "$REPORTED" = "$VERSION" ] || (echo "Version mismatch: expected $VERSION, got $REPORTED" && exit 1)
+
+  publish-docker:
+    needs: [release]
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
