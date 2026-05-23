@@ -18,6 +18,7 @@ export interface DockerRunOptions {
 
 export interface DockerRunResult {
   exitCode: number;
+  stdout: string;
 }
 
 const FORWARDED_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
@@ -38,11 +39,12 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
   return new Promise((resolve, reject) => {
     const child = spawn('docker', dockerArgs, {
-      stdio: [opts.stdinPayload !== undefined ? 'pipe' : 'inherit', 'inherit', 'inherit'],
+      stdio: [opts.stdinPayload !== undefined ? 'pipe' : 'inherit', 'pipe', 'inherit'],
     });
 
     let settled = false;
     const signalHandlers = new Map<NodeJS.Signals, () => void>();
+    const stdoutChunks: Buffer[] = [];
 
     const cleanup = (): void => {
       for (const [sig, handler] of signalHandlers) {
@@ -66,25 +68,30 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       process.on(sig, handler);
     }
 
+    child.stdout!.on('data', (chunk: Buffer) => {
+      stdoutChunks.push(chunk);
+    });
+
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {
         process.stderr.write(
           "error: 'docker' command not found.\n" +
             '  Install Docker: https://docs.docker.com/get-docker/\n',
         );
-        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING }));
+        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING, stdout: '' }));
         return;
       }
       settle(() => reject(err));
     });
 
     child.on('exit', (code, signal) => {
+      const stdout = Buffer.concat(stdoutChunks).toString('utf8');
       if (signal !== null) {
         const signo = osConstants.signals[signal] ?? 0;
-        settle(() => resolve({ exitCode: 128 + signo }));
+        settle(() => resolve({ exitCode: 128 + signo, stdout }));
         return;
       }
-      settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR }));
+      settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR, stdout }));
     });
 
     if (opts.stdinPayload !== undefined && child.stdin) {
