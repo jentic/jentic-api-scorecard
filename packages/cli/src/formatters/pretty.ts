@@ -1,5 +1,7 @@
 import chalk from 'chalk';
 
+import { DEFAULT_DETAIL, DetailLevel } from '../detail.ts';
+import { Diagnostic, ScorecardResult } from '../result.ts';
 import { cliVersion } from '../version.ts';
 
 const BANNER = `     ██╗███████╗███╗   ██╗████████╗██╗ ██████╗
@@ -9,43 +11,7 @@ const BANNER = `     ██╗███████╗███╗   ██╗�
 ╚█████╔╝███████╗██║ ╚████║   ██║   ██║╚██████╗
  ╚════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝ ╚═════╝`;
 
-export interface Dimension {
-  kind: string;
-  name: string;
-  score: number;
-  grade: string;
-}
-
-export interface ScorecardSummary {
-  score: number;
-  level: string;
-  grade: string;
-  dimensions?: Dimension[];
-}
-
-export interface ApiMetadata {
-  name?: string;
-  apiDescriptionVersion?: string;
-  operationCount?: number;
-  schemaCount?: number;
-  tagCount?: number;
-  securitySchemeCount?: number;
-  securitySchemeTypes?: string[];
-}
-
-export interface EngineMetadata {
-  version?: string;
-}
-
-export interface Metadata {
-  engine?: EngineMetadata;
-}
-
-export interface ScorecardResult {
-  summary: ScorecardSummary;
-  apiMetadata?: ApiMetadata;
-  metadata?: Metadata;
-}
+export type { ScorecardResult } from '../result.ts';
 
 function gradeColor(grade: string): (s: string) => string {
   if (grade.startsWith('A') || grade.startsWith('B')) return chalk.green;
@@ -69,8 +35,40 @@ function scoreBar(score: number): string {
   return chalk.white('▄'.repeat(filled)) + chalk.blackBright('▄'.repeat(empty));
 }
 
-export function formatPretty(result: ScorecardResult, source: string): string {
-  const { summary, apiMetadata, metadata } = result;
+function signalScoreColor(score: number): (s: string) => string {
+  if (score >= 0.8) return chalk.green;
+  if (score >= 0.5) return chalk.yellow;
+  return chalk.red;
+}
+
+const SEVERITY_LABELS: Record<number, string> = {
+  1: 'error',
+  2: 'warning',
+  3: 'info',
+  4: 'hint',
+};
+
+function severityLabel(sev: number): string {
+  return SEVERITY_LABELS[sev] ?? `severity ${sev}`;
+}
+
+function severityColor(sev: number): (s: string) => string {
+  if (sev === 1) return chalk.red;
+  if (sev === 2) return chalk.yellow;
+  return chalk.dim;
+}
+
+export interface FormatPrettyOptions {
+  detail?: DetailLevel;
+}
+
+export function formatPretty(
+  result: ScorecardResult,
+  source: string,
+  options: FormatPrettyOptions = {},
+): string {
+  const detail = options.detail ?? DEFAULT_DETAIL;
+  const { summary, apiMetadata, metadata, details, diagnostics } = result;
   const lines: string[] = [];
 
   lines.push('');
@@ -102,15 +100,17 @@ export function formatPretty(result: ScorecardResult, source: string): string {
   }
 
   lines.push(`  ${chalk.dim('OpenAPI Document:')} ${source}`);
-  const finalScore = colorScore(summary.grade, summary.score.toFixed(2));
+  const finalScore = colorScore(summary.grade, Math.round(summary.score).toString());
   lines.push(`  Final score:      ${chalk.bold(finalScore)} ${chalk.dim('/ 100')}`);
   lines.push(
     `  Readiness:        ${chalk.bold(summary.level.toUpperCase())}  (${colorGrade(summary.grade)})`,
   );
 
-  if (summary.dimensions && summary.dimensions.length > 0) {
+  const showDimensions = detail !== DetailLevel.SUMMARY;
+
+  if (showDimensions && summary.dimensions && summary.dimensions.length > 0) {
     lines.push('');
-    lines.push(chalk.bold('  Dimensions'));
+    lines.push(`  ${chalk.bold.underline('Dimensions')}`);
     lines.push('');
 
     const kindWidth = Math.max(...summary.dimensions.map((d) => d.kind.length));
@@ -120,7 +120,7 @@ export function formatPretty(result: ScorecardResult, source: string): string {
       const kind = chalk.cyan(dim.kind.padEnd(kindWidth));
       const name = dim.name.padEnd(nameWidth);
       const bar = scoreBar(dim.score);
-      const score = dim.score.toFixed(2).padStart(6);
+      const score = Math.round(dim.score).toString().padStart(3);
       const grade = colorGrade(dim.grade.padEnd(2));
       lines.push(`    ${kind}  ${name}  ${bar}  ${score}  ${grade}`);
     }
@@ -150,12 +150,172 @@ export function formatPretty(result: ScorecardResult, source: string): string {
     }
   }
 
-  if (summary.dimensions && summary.dimensions.length > 0) {
-    lines.push('');
-    lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
-    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
+  if (detail === DetailLevel.SIGNALS || detail === DetailLevel.DIAGNOSTICS) {
+    appendSignals(lines, details);
   }
+
+  if (detail === DetailLevel.DIAGNOSTICS) {
+    appendDiagnostics(lines, diagnostics);
+  }
+
+  appendHint(lines, detail);
 
   lines.push('');
   return lines.join('\n');
+}
+
+function appendSignals(lines: string[], details: ScorecardResult['details']): void {
+  if (!details || details.length === 0) return;
+
+  lines.push('');
+  lines.push(`  ${chalk.bold.underline('Signals')}`);
+
+  const allSignals = details.flatMap((g) => (g.dimensions ?? []).flatMap((d) => d.signals ?? []));
+  if (allSignals.length === 0) return;
+  const nameWidth = Math.max(...allSignals.map((s) => s.name.length));
+
+  let firstDim = true;
+  for (const group of details) {
+    const groupDimensions = group.dimensions ?? [];
+    for (const dim of groupDimensions) {
+      const signals = dim.signals ?? [];
+      if (signals.length === 0) continue;
+
+      lines.push('');
+      if (!firstDim) lines.push('');
+      firstDim = false;
+      const stats: string[] = [];
+      if (dim.score !== undefined) stats.push(Math.round(dim.score).toString());
+      if (dim.grade) stats.push(colorGrade(dim.grade));
+      const trailer = stats.length > 0 ? `  (${stats.join(' / ')})` : '';
+      lines.push(`  ${chalk.cyan(dim.kind)}  ${chalk.bold(dim.name)}${trailer}`);
+
+      const indent = 4;
+      const termCols = process.stdout.columns ?? Number.POSITIVE_INFINITY;
+      const maxRowWidth = Math.max(0, termCols - indent);
+
+      const rows: string[] = [];
+      let widest = 0;
+      for (const signal of signals) {
+        const name = signal.name.padEnd(nameWidth);
+        const scoreNum = Math.round(signal.score * 100)
+          .toString()
+          .padStart(3);
+        const scoreText = `${scoreNum}%`;
+        const score = signalScoreColor(signal.score)(scoreText);
+        const fixedWidth = name.length + 2 + scoreText.length;
+
+        let descRaw = signal.description ?? '';
+        let descSegment = '';
+        if (descRaw) {
+          const descBudget = maxRowWidth - fixedWidth - 2;
+          if (descBudget <= 1) {
+            descRaw = '';
+          } else if (descRaw.length > descBudget) {
+            descRaw = descRaw.slice(0, descBudget - 1) + '…';
+          }
+          descSegment = descRaw ? `  ${chalk.dim(descRaw)}` : '';
+        }
+
+        const visible = fixedWidth + (descRaw ? 2 + descRaw.length : 0);
+        if (visible > widest) widest = visible;
+        rows.push(`    ${name}  ${score}${descSegment}`);
+      }
+
+      const rule = chalk.dim('─'.repeat(widest));
+      lines.push(`    ${rule}`);
+      lines.push(...rows);
+      lines.push(`    ${rule}`);
+    }
+  }
+}
+
+const DIAGNOSTIC_PREVIEW_LIMIT = 5;
+
+function appendDiagnostics(lines: string[], diagnostics: Diagnostic[] | undefined): void {
+  lines.push('');
+  if (!diagnostics || diagnostics.length === 0) {
+    lines.push(`  ${chalk.bold.underline('Diagnostics')}  ${chalk.dim('0')}`);
+    return;
+  }
+
+  const grouped = new Map<number, Diagnostic[]>();
+  for (const diag of diagnostics) {
+    const list = grouped.get(diag.severity) ?? [];
+    list.push(diag);
+    grouped.set(diag.severity, list);
+  }
+
+  lines.push(
+    `  ${chalk.bold.underline('Diagnostics')}  ${chalk.dim(diagnostics.length.toString())}`,
+  );
+
+  const pluralizableSeverities: Record<number, boolean> = { 1: true, 2: true, 4: true };
+  const order = [1, 2, 3, 4];
+
+  const tallyParts: string[] = [];
+  for (const sev of order) {
+    const items = grouped.get(sev);
+    if (!items?.length) continue;
+    const base = severityLabel(sev);
+    const label = pluralizableSeverities[sev] && items.length !== 1 ? `${base}s` : base;
+    tallyParts.push(severityColor(sev)(`${items.length} ${label}`));
+  }
+  if (tallyParts.length > 0) {
+    lines.push(`    ${tallyParts.join(chalk.dim('  ·  '))}`);
+  }
+
+  const indent = 4;
+  const termCols = process.stdout.columns ?? Number.POSITIVE_INFINITY;
+  const maxRowWidth = Math.max(0, termCols - indent);
+
+  for (const sev of order) {
+    const items = grouped.get(sev);
+    if (!items?.length) continue;
+
+    const shown = items.slice(0, DIAGNOSTIC_PREVIEW_LIMIT);
+    const codeWidth = Math.max(...shown.map((d) => (d.code ?? '').length));
+
+    lines.push('');
+    const base = severityLabel(sev);
+    const label = pluralizableSeverities[sev] && items.length !== 1 ? `${base}s` : base;
+    lines.push(`  ${severityColor(sev)(label)}  ${chalk.dim(`(${items.length})`)}`);
+
+    for (const diag of shown) {
+      const code = (diag.code ?? '').padEnd(codeWidth);
+      const fixed = code.length + 2;
+      const budget = maxRowWidth - fixed;
+      let message = diag.message;
+      if (budget > 1 && message.length > budget) {
+        message = message.slice(0, budget - 1) + '…';
+      }
+      lines.push(`    ${chalk.bold(code)}  ${chalk.dim(message)}`);
+    }
+
+    if (items.length > shown.length) {
+      lines.push(chalk.dim(`    … +${items.length - shown.length} more`));
+    }
+  }
+}
+
+function appendHint(lines: string[], detail: DetailLevel): void {
+  if (detail === DetailLevel.SUMMARY) {
+    lines.push('');
+    lines.push(chalk.dim('  Run with --detail dimensions for the dimension table.'));
+    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
+    return;
+  }
+
+  if (detail === DetailLevel.DIMENSIONS) {
+    lines.push('');
+    lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
+    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
+    return;
+  }
+
+  if (detail === DetailLevel.SIGNALS) {
+    lines.push('');
+    lines.push(chalk.dim('  Run with --detail diagnostics for validator-finding counts.'));
+    lines.push(chalk.dim('  Full evidence: --format json --detail diagnostics'));
+  }
 }

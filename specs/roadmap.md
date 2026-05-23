@@ -81,7 +81,7 @@ The other knobs the spec describes (`--detail`, `--format json`, `-o`, `--verbos
 - Wire it as the unconditional default — no `--format` flag yet (added in Phase 6).
 - Add a stderr spinner that auto-suppresses when stderr is not a TTY (per `docs/architecture.md` §5). The explicit `--quiet` override is deferred to Phase 9.
 
-## Phase 5 — `--detail <level>` filtering
+## Phase 5 — `--detail <level>` filtering ✅
 
 **Goal:** ship the graduated `--detail` hierarchy (`summary`, `dimensions` (default), `signals`, `diagnostics`) so users can choose how much of the engine result the CLI surfaces.
 **Depends on:** Phase 4

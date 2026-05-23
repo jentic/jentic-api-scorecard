@@ -1,13 +1,16 @@
 import { existsSync, statSync } from 'node:fs';
 
 import { bundleSpec } from '../bundle.ts';
+import { DEFAULT_DETAIL, DetailLevel, filterByDetail } from '../detail.ts';
 import { runDocker } from '../docker.ts';
 import { ExitCode } from '../exit-codes.ts';
-import { formatPretty, ScorecardResult } from '../formatters/pretty.ts';
+import { formatPretty } from '../formatters/pretty.ts';
+import { ScorecardResult } from '../result.ts';
 import { spin, done, clearSpinner } from '../spinner.ts';
 
 export interface ScoreOptions {
   withLlm?: boolean;
+  detail?: DetailLevel;
 }
 
 function isURL(input: string): boolean {
@@ -92,7 +95,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   done(`Scoring done in ${elapsed}s`);
 
-  const output = formatPretty(parsed, input);
+  const detail = options.detail ?? DEFAULT_DETAIL;
+  const filtered = filterByDetail(parsed, detail);
+  const output = formatPretty(filtered, input, { detail });
   process.stdout.write(output);
 
   return ExitCode.SUCCESS;
