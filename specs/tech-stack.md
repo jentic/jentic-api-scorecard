@@ -104,7 +104,7 @@ These exist in `docs/architecture.md` but **not on disk**. Future phases will la
 - **`.github/workflows/npm-publish.yml`** — publish npm packages on tag (Phase 4 of the roadmap).
 - **Renderer formats and CLI surface.** `--format` (pretty / json / markdown / html), `--detail`, `-o`, `--quiet`, `--verbose` are deferred to Phase 3+. The CLI streams engine-verbatim JSON today.
 - **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container (Phase 8).
-- **HTML renderer implementation.** `@jentic/api-scorecard-html` ships as a stub today (per the architecture doc); the actual renderer lands in Phase 9.
+- **HTML renderer implementation.** `@jentic/api-scorecard-renderer-html` ships as a stub today (per the architecture doc); the actual renderer lands in Phase 9.
 
 ## Open Questions / Uncertain Areas
 

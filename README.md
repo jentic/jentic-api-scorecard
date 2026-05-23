@@ -9,7 +9,7 @@ where your spec stands on the second question — scoring it against the
 across six dimensions and returning a single grade.
 
 The project ships in two pieces: the public Docker image `ghcr.io/jentic/jentic-api-scorecard`,
-and an `@jentic/api-scorecard` npm CLI that orchestrates the image. Both are tracked in this
+and an `@jentic/api-scorecard-cli` npm CLI that orchestrates the image. Both are tracked in this
 monorepo (`packages/cli/` for the CLI, `docker/` for the image). Per-phase progress lives in
 [`specs/roadmap.md`](specs/roadmap.md).
 
@@ -151,10 +151,10 @@ docker run --pull=always --rm ghcr.io/jentic/jentic-api-scorecard:unstable \
   | jq '.summary | {score, level, grade, dimensions: [.dimensions[] | {kind, name, score, grade}]}'
 ```
 
-The `@jentic/api-scorecard` npm CLI (in `packages/cli/`) wraps the image with a friendlier
+The `@jentic/api-scorecard-cli` npm CLI (in `packages/cli/`) wraps the image with a friendlier
 invocation and is built end-to-end against the published GHCR image. It currently streams the
 engine's verbatim JSON to stdout — pretty / Markdown rendering, `--detail` / `--format` / `-o` /
-`--quiet` / `--verbose`, and the `npx @jentic/api-scorecard` distribution itself land in later
+`--quiet` / `--verbose`, and the `npx @jentic/api-scorecard-cli` distribution itself land in later
 phases.
 
 ## License

@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is the Jentic API Scorecard?
 
-A zero-install CLI that scores an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF) and prints a Jentic API Readiness Scorecard. Distribution: an npm package (`@jentic/api-scorecard`) that orchestrates a public Docker image (`ghcr.io/jentic/jentic-api-scorecard`). The CLI fully abstracts image management; no backend service is in the loop. See `docs/architecture.md` — that document is the **single source of truth** for product, architecture, and decisions; do not duplicate its content here or in memory.
+A zero-install CLI that scores an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF) and prints a Jentic API Readiness Scorecard. Distribution: an npm package (`@jentic/api-scorecard-cli`) that orchestrates a public Docker image (`ghcr.io/jentic/jentic-api-scorecard`). The CLI fully abstracts image management; no backend service is in the loop. See `docs/architecture.md` — that document is the **single source of truth** for product, architecture, and decisions; do not duplicate its content here or in memory.
 
 ## Repository state today
 
 - **`docker/`** — Python 3.12 + uv runner image that wraps `jentic-apitools-cli` (the JAIRF scoring engine). This is the GHCR artifact (`ghcr.io/jentic/jentic-api-scorecard`).
 - **`packages/`** — Lerna fixed-version npm workspaces root (`package.json`, `lerna.json`, `tsconfig.base.json` at the repo root). Two packages:
-  - `packages/cli/` (`@jentic/api-scorecard`) — TypeScript CLI built with [commander](https://www.npmjs.com/package/commander). One subcommand: `score <input>` with `--with-llm`. Local files are bundled via `@redocly/openapi-core` and piped to the container's stdin; URLs are forwarded as `--url` so the container-side gate stays authoritative. The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` and forwards `JENTIC_API_KEY` via docker's `-e` passthrough. **Pretty / JSON / Markdown rendering and the full `--detail` / `--format` / `-o` / `--quiet` / `--verbose` surface are deferred to Phase 3** — today the CLI streams the engine's verbatim JSON to stdout.
-  - `packages/html-renderer/` (`@jentic/api-scorecard-html`) — typed `render(result): string` stub. Throws "not implemented" until Phase 9.
+  - `packages/cli/` (`@jentic/api-scorecard-cli`) — TypeScript CLI built with [commander](https://www.npmjs.com/package/commander). One subcommand: `score <input>` with `--with-llm`. Local files are bundled via `@redocly/openapi-core` and piped to the container's stdin; URLs are forwarded as `--url` so the container-side gate stays authoritative. The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` and forwards `JENTIC_API_KEY` via docker's `-e` passthrough. **Pretty / JSON / Markdown rendering and the full `--detail` / `--format` / `-o` / `--quiet` / `--verbose` surface are deferred to Phase 3** — today the CLI streams the engine's verbatim JSON to stdout.
+  - `packages/renderer-html/` (`@jentic/api-scorecard-renderer-html`) — typed `render(result): string` stub. Throws "not implemented" until Phase 9.
 - **`docs/architecture.md`** — the architecture document and the source of truth for every product/architectural claim.
 - **`specs/`** — the SDD constitution: `specs/mission.md`, `specs/tech-stack.md`, `specs/roadmap.md` (plus an empty `specs/lessons.md` placeholder that `/sdd-distill-lessons` will fill once retrospectives land). The constitution captures load-bearing invariants and points at `docs/architecture.md` for operational detail. Bootstrapped via `/sdd-create-constitution`; future phases append via `/sdd-new-phase` and materialize via `/sdd-new-spec`.
 
@@ -19,7 +19,7 @@ When you read this file and find a mismatch with what's on disk, update this fil
 
 ### Local dev loop (image)
 
-The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no env-var override (per `docs/architecture.md` §2 — image management is fully abstracted). For a published version, Docker resolves that to the GHCR image; while developing, **`npm run build`** does the right thing — for `@jentic/api-scorecard` that script orchestrates `build:typescript` (tsc) and `build:image` (docker build at the same canonical tag). Both subscripts live in `packages/cli/package.json` because the image-tag coupling is a CLI runtime concern, not a workspace-wide one. Docker's local cache wins over the registry for an exact `name:tag` match, so the CLI then runs against your local build with no flag, no env var, no mode switch. If you want to force-pull the published image instead, `docker rmi` the local tag.
+The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no env-var override (per `docs/architecture.md` §2 — image management is fully abstracted). For a published version, Docker resolves that to the GHCR image; while developing, **`npm run build`** does the right thing — for `@jentic/api-scorecard-cli` that script orchestrates `build:typescript` (tsc) and `build:image` (docker build at the same canonical tag). Both subscripts live in `packages/cli/package.json` because the image-tag coupling is a CLI runtime concern, not a workspace-wide one. Docker's local cache wins over the registry for an exact `name:tag` match, so the CLI then runs against your local build with no flag, no env var, no mode switch. If you want to force-pull the published image instead, `docker rmi` the local tag.
 
 ## Architecture
 
@@ -62,11 +62,11 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Task | Command |
 |---|---|
 | Install JS deps | `npm install` (run from repo root) |
-| Build all packages (CLI builds JS + image, html-renderer builds JS) | `npm run build` |
+| Build all packages (CLI builds JS + image, renderer-html builds JS) | `npm run build` |
 | Clean all packages' build output | `npm run clean` |
-| Build only the CLI's TypeScript | `npm run build:typescript -w @jentic/api-scorecard` |
-| Build only the CLI's image at the matching tag | `npm run build:image -w @jentic/api-scorecard` |
-| Remove the CLI's local image | `npm run clean:image -w @jentic/api-scorecard` |
+| Build only the CLI's TypeScript | `npm run build:typescript -w @jentic/api-scorecard-cli` |
+| Build only the CLI's image at the matching tag | `npm run build:image -w @jentic/api-scorecard-cli` |
+| Remove the CLI's local image | `npm run clean:image -w @jentic/api-scorecard-cli` |
 | Run Python tests | `cd docker && uv run poe test` |
 | Run a Python test subset | `cd docker && uv run poe test tests/test_gate.py` |
 | Python lint check | `cd docker && uv run poe lint` |

@@ -16,7 +16,7 @@ There is no `.worktreeinclude` file in this repo today. Nothing needs to be copi
 
 ### Docker image tag is the one collision risk
 
-`npm run build:image -w @jentic/api-scorecard` builds the local image at `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` (read from `packages/cli/package.json`). Two worktrees on the same `cli-version` will race for that tag — whichever finishes `docker build` last wins, and the other worktree's next `docker run` picks up the wrong sources.
+`npm run build:image -w @jentic/api-scorecard-cli` builds the local image at `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` (read from `packages/cli/package.json`). Two worktrees on the same `cli-version` will race for that tag — whichever finishes `docker build` last wins, and the other worktree's next `docker run` picks up the wrong sources.
 
 Mitigations, in order of preference:
 

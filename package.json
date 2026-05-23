@@ -2,7 +2,7 @@
   "name": "jentic-api-scorecard-monorepo",
   "private": true,
   "version": "1.0.0",
-  "description": "Workspace root for @jentic/api-scorecard.",
+  "description": "Workspace root for @jentic/api-scorecard-cli.",
   "license": "Apache-2.0",
   "author": "Jentic <hello@jentic.com>",
   "repository": {

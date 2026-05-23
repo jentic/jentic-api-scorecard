@@ -43,15 +43,15 @@ Currently every image is hand-built and hand-pushed; there's no recorded provena
 **Depends on:** Phase 1
 **Priority:** High
 
-The npm CLI is the user-facing UX (`npx @jentic/api-scorecard score …`) per `docs/architecture.md` §1. Until it ships, the public README has to point users at raw `docker run` invocations. This phase lands the minimum vertical slice that delivers the documented UX end-to-end (rough, but real).
+The npm CLI is the user-facing UX (`npx @jentic/api-scorecard-cli score …`) per `docs/architecture.md` §1. Until it ships, the public README has to point users at raw `docker run` invocations. This phase lands the minimum vertical slice that delivers the documented UX end-to-end (rough, but real).
 
 - Create the npm workspaces root: `package.json`, `lerna.json`, `tsconfig.base.json`. Fixed/locked Lerna versioning (`docs/architecture.md` §2).
-- Scaffold `packages/cli/` (`@jentic/api-scorecard`) with a single `score` subcommand that:
+- Scaffold `packages/cli/` (`@jentic/api-scorecard-cli`) with a single `score` subcommand that:
   - Reads `JENTIC_API_KEY` from env and forwards it via `-e JENTIC_API_KEY` to `docker run`.
   - Hard-codes the image tag matching its own npm version (CLI version = image tag invariant).
   - Pipes spec input through stdin (local file → bundle via `@redocly/openapi-core`; URL → forward `--url` to the container; gate enforcement stays container-side).
   - Streams container stdout to host stdout; prints engine errors on stderr.
-- Scaffold `packages/html-renderer/` (`@jentic/api-scorecard-html`) with the typed `render(result): string` stub only — no implementation yet.
+- Scaffold `packages/renderer-html/` (`@jentic/api-scorecard-renderer-html`) with the typed `render(result): string` stub only — no implementation yet.
 - README and `.claude/CLAUDE.md` repository-state sections are updated to reflect that `packages/` now exists.
 
 ## Phase 3 — Pretty / JSON / Markdown output + detail levels
@@ -72,15 +72,15 @@ Phase 2 lands a working CLI that streams engine JSON. This phase layers the rend
 
 ## Phase 4 — npm publish CI on tag (both packages)
 
-**Goal:** automate npm publishing so cutting a git tag also publishes `@jentic/api-scorecard` and `@jentic/api-scorecard-html` (Lerna fixed-version means both ship together).
+**Goal:** automate npm publishing so cutting a git tag also publishes `@jentic/api-scorecard-cli` and `@jentic/api-scorecard-renderer-html` (Lerna fixed-version means both ship together).
 **Depends on:** Phase 3
 **Priority:** High
 
 The CLI version = image tag invariant requires that the same git tag triggers both publishes. Manual npm publish is brittle and easy to mis-version.
 
 - Add `.github/workflows/npm-publish.yml` triggered on tag refs `v*`.
-- Run `npm publish` for `packages/cli` and `packages/html-renderer` with provenance enabled (`--provenance`).
-- Smoke-test post-publish: `npx @jentic/api-scorecard@<version> score --help` succeeds; the version string reported by `--version` matches the tag.
+- Run `npm publish` for `packages/cli` and `packages/renderer-html` with provenance enabled (`--provenance`).
+- Smoke-test post-publish: `npx @jentic/api-scorecard-cli@<version> score --help` succeeds; the version string reported by `--version` matches the tag.
 - Document the release ritual: branch → tag → both workflows fire → image and packages land together.
 
 ## Phase 5 — Husky + commit-msg hook for human commits ✅
@@ -137,11 +137,11 @@ The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md`
 
 ## Phase 9 — HTML renderer implementation
 
-**Goal:** `@jentic/api-scorecard-html`'s `render(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
+**Goal:** `@jentic/api-scorecard-renderer-html`'s `render(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
 **Depends on:** Phase 3 (so the input shape — engine-verbatim JSON minus `diagnostics` unless requested — is settled)
 **Priority:** Medium
 
-The HTML renderer is scaffolded in `packages/html-renderer/` after Phase 2 but ships a stub. This phase lands the actual rendering.
+The HTML renderer is scaffolded in `packages/renderer-html/` after Phase 2 but ships a stub. This phase lands the actual rendering.
 
 - Implement `render(result): string` returning self-contained HTML (no external CSS / JS dependencies).
 - Render headline, dimensions, optional per-signal breakdown when the input includes signals, optional diagnostics block when present.

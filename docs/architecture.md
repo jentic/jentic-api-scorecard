@@ -10,7 +10,7 @@ A zero-install CLI that scores an OpenAPI document against JAIRF and prints a Je
 During the MVP preview, key-required scoring works with `JENTIC_API_KEY=mvp-preview` (a documented public placeholder, not a secret — see §9). Real signup, real keys, and server-side validation land in a follow-up release.
 
 ```
-$ JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard score https://petstore3.swagger.io/api/v3/openapi.json
+$ JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://petstore3.swagger.io/api/v3/openapi.json
 # or with --format json -o report.json for machine output
 ⏳ Pulling ghcr.io/jentic/jentic-api-scorecard:1.0.0…
 ⏳ Scoring…
@@ -39,7 +39,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Topic | Decision |
 |---|---|
 | Repo layout | `packages/` (Lerna monorepo of npm deliverables — CLI today, HTML renderer next) + `docker/` (everything that goes into the public image: Dockerfile, uv-managed Python runner, build-time sample spec). Layout reflects *what we ship*, not *what languages we use*. |
-| Distribution | npm package `@jentic/api-scorecard` (CLI) + GHCR image `ghcr.io/jentic/jentic-api-scorecard` |
+| Distribution | npm package `@jentic/api-scorecard-cli` (CLI) + GHCR image `ghcr.io/jentic/jentic-api-scorecard` |
 | JS language | TypeScript across all packages; `tsc` → ESM |
 | Lerna versioning | Fixed/locked: every package shares one version |
 | Version coupling | CLI npm version = image tag. Engine (`jentic-apitools-cli`) versions independently and is pinned exactly inside each image. Pinning one CLI version reproduces the full stack. |
@@ -60,10 +60,10 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                                  user shell                                   │
 └──────────────────────────────────────────────┬───────────────────────────────┘
-                                               │ npx @jentic/api-scorecard …
+                                               │ npx @jentic/api-scorecard-cli …
                                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  @jentic/api-scorecard  (CLI, TypeScript, npm)                                │
+│  @jentic/api-scorecard-cli  (CLI, TypeScript, npm)                                │
 │                                                                               │
 │  score   ── input is path? ── yes ── Redocly bundle ────────────────────┐   │
 │            input is URL?  ── yes ── (no bundle)                          │   │
@@ -110,7 +110,7 @@ jentic-api-scorecard/
 ├── lerna.json                                (fixed versioning)
 ├── tsconfig.base.json                        (shared TS config for all packages)
 ├── packages/                                 (npm-distributed deliverables)
-│   ├── cli/                                  (@jentic/api-scorecard)
+│   ├── cli/                                  (@jentic/api-scorecard-cli)
 │   │   ├── package.json                      (bin: jentic-api-scorecard)
 │   │   ├── tsconfig.json
 │   │   └── src/
@@ -122,7 +122,7 @@ jentic-api-scorecard/
 │   │       ├── docker.ts                     (spawn('docker', …))
 │   │       ├── render.ts                     (pretty table + --format + --detail)
 │   │       └── spinner.ts                    (stderr phase spinner)
-│   └── html-renderer/                        (@jentic/api-scorecard-html — stub)
+│   └── renderer-html/                        (@jentic/api-scorecard-renderer-html — stub)
 │       ├── package.json
 │       └── src/index.ts                      (export render(result): string — TODO)
 ├── docker/                                   (image internals; not a deliverable on its own)
@@ -191,7 +191,7 @@ The CLI reads `JENTIC_API_KEY` from its environment and forwards it to the conta
 
 ```
 export JENTIC_API_KEY=mvp-preview
-npx @jentic/api-scorecard score ./openapi.yaml
+npx @jentic/api-scorecard-cli score ./openapi.yaml
 ```
 
 No `login` subcommand, no credentials file, no token persistence in MVP — those are post-MVP UX additions on top of an env-var foundation that already works.
@@ -321,13 +321,13 @@ stdout stays clean so `--format json | jq` works without filtering.
 ### Error UX examples
 
 ```
-$ npx @jentic/api-scorecard score ./local.yaml         # no key
+$ npx @jentic/api-scorecard-cli score ./local.yaml         # no key
 error: scoring local files requires a Jentic API key.
   Get one at https://jentic.com/signup, then:
     export JENTIC_API_KEY=...
 exit 2
 
-$ npx @jentic/api-scorecard score https://example.com/openapi.yaml   # no key
+$ npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml   # no key
 error: anonymous scoring is restricted to specs hosted at:
   https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/
   Browse available specs:
@@ -335,7 +335,7 @@ error: anonymous scoring is restricted to specs hosted at:
   Or sign up: https://jentic.com/signup
 exit 3
 
-$ npx @jentic/api-scorecard score ./openapi.yaml      # docker not in PATH
+$ npx @jentic/api-scorecard-cli score ./openapi.yaml      # docker not in PATH
 error: 'docker' command not found.
   Install Docker: https://docs.docker.com/get-docker/
 exit 4
@@ -363,7 +363,7 @@ ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
 End-to-end process chain for a single score:
 
 ```
-host:        npx @jentic/api-scorecard score ./openapi.yaml --format json
+host:        npx @jentic/api-scorecard-cli score ./openapi.yaml --format json
                └─ TS CLI: bundle, build docker argv, spawn:
 host:        docker run -i --rm
                -e JENTIC_API_KEY
@@ -595,16 +595,16 @@ The shape below was captured by running `jentic-apitools score https://petstore3
 **Coupling**: CLI npm version = GHCR image tag. The Python engine package (`jentic-apitools-cli`) versions independently upstream; each image build pins one specific engine version.
 
 `v1.0.0` (the first stable release):
-- npm `@jentic/api-scorecard@1.0.0` and `@jentic/api-scorecard-html@1.0.0` (Lerna fixed-version, both publish together).
+- npm `@jentic/api-scorecard-cli@1.0.0` and `@jentic/api-scorecard-renderer-html@1.0.0` (Lerna fixed-version, both publish together).
 - `ghcr.io/jentic/jentic-api-scorecard:1.0.0`.
 - `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-cli==<exact-version>` (e.g. `1.0.0a16`).
 
-The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard@1.0.0`) — that pulls `:1.0.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
+The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0`) — that pulls `:1.0.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
 
 When the engine releases an update we want to ship, we:
 1. Bump `jentic-apitools-cli` in `docker/pyproject.toml`.
 2. Cut a new CLI version (e.g. `1.0.1`).
-3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.1` containing the new engine, and publishes `@jentic/api-scorecard@1.0.1`.
+3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.1` containing the new engine, and publishes `@jentic/api-scorecard-cli@1.0.1`.
 
 **Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64).
 
@@ -624,7 +624,7 @@ A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC
 
 ## 10. Out of scope (Delivery 1)
 
-- HTML rendering wired into the CLI. The `@jentic/api-scorecard-html` package is scaffolded with a typed `render(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
+- HTML rendering wired into the CLI. The `@jentic/api-scorecard-renderer-html` package is scaffolded with a typed `render(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
 - Server-side calls to Jentic from the container or CLI: usage tracking, key validation, and rate limiting (beyond the static URL allowlist) all defer to a follow-up delivery.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.
@@ -639,33 +639,33 @@ A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC
 When the implementation lands, these acceptance checks validate the architecture end-to-end:
 
 **Anonymous / gate path:**
-- `npx @jentic/api-scorecard score <jentic-public-apis-url>` (no key) → success, scorecard printed.
-- `npx @jentic/api-scorecard score https://example.com/openapi.yaml` (no key) → exit 3 with allowlist-index hint.
-- `npx @jentic/api-scorecard score ./local.yaml` (no key) → exit 2 with signup hint.
+- `npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` (no key) → success, scorecard printed.
+- `npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml` (no key) → exit 3 with allowlist-index hint.
+- `npx @jentic/api-scorecard-cli score ./local.yaml` (no key) → exit 2 with signup hint.
 
 **MVP key scheme:**
-- `JENTIC_API_KEY=garbage npx @jentic/api-scorecard score ./local.yaml` → exit 2 with placeholder-key error message.
-- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard score ./local.yaml` → success; spinner shows `Bundling ./local.yaml…`.
+- `JENTIC_API_KEY=garbage npx @jentic/api-scorecard-cli score ./local.yaml` → exit 2 with placeholder-key error message.
+- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score ./local.yaml` → success; spinner shows `Bundling ./local.yaml…`.
 
 **Output formats and detail levels:**
-- `npx @jentic/api-scorecard score <input> --format json | jq .summary.score` → numeric, no chrome on stdout.
-- `npx @jentic/api-scorecard score <input> --json | jq .summary.score` → same (alias works).
-- `npx @jentic/api-scorecard score <input> --detail signals` → output includes all ~35 signals grouped by dimension.
-- `npx @jentic/api-scorecard score <input> --detail diagnostics` → output includes diagnostics grouped by source (`redocly-validator`, `spectral-validator`, `speclynx-validator`) and severity.
-- `npx @jentic/api-scorecard score <input> --detail summary` → only headline (score + grade + level), no dimension table.
-- `npx @jentic/api-scorecard score <input> --format json --detail signals` → JSON includes `details[].dimensions[].signals[]`.
-- `npx @jentic/api-scorecard score <input> --format json --detail diagnostics` → JSON includes `diagnostics` array.
-- `npx @jentic/api-scorecard score <input> --format json -o report.json` → writes to file, no stdout.
-- `npx @jentic/api-scorecard score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged.
+- `npx @jentic/api-scorecard-cli score <input> --format json | jq .summary.score` → numeric, no chrome on stdout.
+- `npx @jentic/api-scorecard-cli score <input> --json | jq .summary.score` → same (alias works).
+- `npx @jentic/api-scorecard-cli score <input> --detail signals` → output includes all ~35 signals grouped by dimension.
+- `npx @jentic/api-scorecard-cli score <input> --detail diagnostics` → output includes diagnostics grouped by source (`redocly-validator`, `spectral-validator`, `speclynx-validator`) and severity.
+- `npx @jentic/api-scorecard-cli score <input> --detail summary` → only headline (score + grade + level), no dimension table.
+- `npx @jentic/api-scorecard-cli score <input> --format json --detail signals` → JSON includes `details[].dimensions[].signals[]`.
+- `npx @jentic/api-scorecard-cli score <input> --format json --detail diagnostics` → JSON includes `diagnostics` array.
+- `npx @jentic/api-scorecard-cli score <input> --format json -o report.json` → writes to file, no stdout.
+- `npx @jentic/api-scorecard-cli score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged.
 
 **Bundle / LLM:**
-- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.
-- `npx @jentic/api-scorecard score <input> --with-llm` with no provider env vars set → exit 1 (or chosen code) with a clear error BEFORE any docker invocation.
+- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.
+- `npx @jentic/api-scorecard-cli score <input> --with-llm` with no provider env vars set → exit 1 (or chosen code) with a clear error BEFORE any docker invocation.
 
 **Container lifecycle:**
-- `docker rmi ghcr.io/jentic/jentic-api-scorecard:<v> && npx @jentic/api-scorecard score …` → spinner shows `Pulling…`, succeeds.
+- `docker rmi ghcr.io/jentic/jentic-api-scorecard:<v> && npx @jentic/api-scorecard-cli score …` → spinner shows `Pulling…`, succeeds.
 - `docker run -i --rm ghcr.io/jentic/jentic-api-scorecard:<v> score` (no `--url`, no piped stdin, attached to a TTY) → exits non-zero with a "no input" error, does NOT block on stdin.
 
 **Environment:**
-- `PATH= npx @jentic/api-scorecard score …` → exit 4 with install hint.
+- `PATH= npx @jentic/api-scorecard-cli score …` → exit 4 with install hint.
 - Container has no network beyond its required spec fetches (URL mode for the input + engine reaching crates.io / npmjs / etc. only at build time, not at run time).
