@@ -56,6 +56,8 @@ jobs:
       - name: Extract released version
         id: version
         run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
+      - name: Align latest dist-tag
+        run: npm dist-tag add @jentic/api-scorecard-cli@$(node -p 'require("./lerna.json").version') latest
 
   publish-docker:
     needs: [release]
