@@ -166,7 +166,7 @@ Architecture.md §5 describes `--with-llm` precisely. The container already acce
 - For local paths, `--bundle` is a no-op (bundling is always how local files are handled).
 - Update the input-dispatch table in the CLI's help output to match `docs/architecture.md` §5.
 
-## Phase 12 — Alpha channel publish CI
+## Phase 12 — Alpha channel publish CI ✅
 
 **Goal:** an explicit release process cuts alpha versions on demand — `npx @jentic/api-scorecard-cli@alpha score …` pulls the latest cut, which runs the matching `ghcr.io/jentic/jentic-api-scorecard:<version>` image. Each cut bundles whichever phases have merged since the last one. Only `@jentic/api-scorecard-cli` publishes in alpha; `@jentic/api-scorecard-formatter-html` stays `"private": true` until Phase 14 ships its real implementation.
 **Depends on:** Phase 4
