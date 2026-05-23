@@ -38,7 +38,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 
 | Topic | Decision |
 |---|---|
-| Repo layout | `packages/` (Lerna monorepo of npm deliverables — CLI today, HTML renderer next) + `docker/` (everything that goes into the public image: Dockerfile, uv-managed Python runner, build-time sample spec). Layout reflects *what we ship*, not *what languages we use*. |
+| Repo layout | `packages/` (Lerna monorepo of npm deliverables — CLI today, HTML formatter next) + `docker/` (everything that goes into the public image: Dockerfile, uv-managed Python runner, build-time sample spec). Layout reflects *what we ship*, not *what languages we use*. |
 | Distribution | npm package `@jentic/api-scorecard-cli` (CLI) + GHCR image `ghcr.io/jentic/jentic-api-scorecard` |
 | JS language | TypeScript across all packages; `tsc` → ESM |
 | Lerna versioning | Fixed/locked: every package shares one version |
@@ -52,7 +52,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider env vars (OpenAI / Anthropic / Gemini / AWS) to the container, which passes `--enable-llm-analysis` to the engine. |
 | Usage tracking | Out of scope for Delivery 1. No container-side calls to Jentic. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
-| Out of scope (MVP) | HTML rendering wired in (renderer package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence; rate limiting beyond URL allowlist. |
+| Out of scope (MVP) | HTML rendering wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence; rate limiting beyond URL allowlist. |
 
 ## 3. Component diagram
 
@@ -122,7 +122,7 @@ jentic-api-scorecard/
 │   │       ├── docker.ts                     (spawn('docker', …))
 │   │       ├── render.ts                     (pretty table + --format + --detail)
 │   │       └── spinner.ts                    (stderr phase spinner)
-│   └── renderer-html/                        (@jentic/api-scorecard-renderer-html — stub)
+│   └── formatter-html/                       (@jentic/api-scorecard-formatter-html — stub)
 │       ├── package.json
 │       └── src/index.ts                      (export render(result): string — TODO)
 ├── docker/                                   (image internals; not a deliverable on its own)
@@ -595,7 +595,7 @@ The shape below was captured by running `jentic-apitools score https://petstore3
 **Coupling**: CLI npm version = GHCR image tag. The Python engine package (`jentic-apitools-cli`) versions independently upstream; each image build pins one specific engine version.
 
 `v1.0.0` (the first stable release):
-- npm `@jentic/api-scorecard-cli@1.0.0` and `@jentic/api-scorecard-renderer-html@1.0.0` (Lerna fixed-version, both publish together).
+- npm `@jentic/api-scorecard-cli@1.0.0` and `@jentic/api-scorecard-formatter-html@1.0.0` (Lerna fixed-version, both publish together).
 - `ghcr.io/jentic/jentic-api-scorecard:1.0.0`.
 - `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-cli==<exact-version>` (e.g. `1.0.0a16`).
 
@@ -624,7 +624,7 @@ A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC
 
 ## 10. Out of scope (Delivery 1)
 
-- HTML rendering wired into the CLI. The `@jentic/api-scorecard-renderer-html` package is scaffolded with a typed `render(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
+- HTML rendering wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `render(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
 - Server-side calls to Jentic from the container or CLI: usage tracking, key validation, and rate limiting (beyond the static URL allowlist) all defer to a follow-up delivery.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.

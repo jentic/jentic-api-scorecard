@@ -1,6 +1,6 @@
-# @jentic/api-scorecard-renderer-html
+# @jentic/api-scorecard-formatter-html
 
-HTML renderer for [Jentic API Scorecard](https://github.com/jentic/jentic-api-scorecard) results.
+HTML formatter for [Jentic API Scorecard](https://github.com/jentic/jentic-api-scorecard) results.
 
 > **Status:** stub. `render(result)` throws "not implemented" until Phase 9 of the
 > [roadmap](https://github.com/jentic/jentic-api-scorecard/blob/main/specs/roadmap.md).

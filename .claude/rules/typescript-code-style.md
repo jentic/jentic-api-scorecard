@@ -15,7 +15,7 @@ A PostToolUse hook (`.claude/hooks/eslint-fix.sh`) runs `eslint --fix` on every 
 
 - **Imports are grouped and separated by blank lines.** `import/order` enforces two groups: `[builtin, external, internal]` then `[parent, sibling, index]`, with `newlines-between: 'always'`. The autofixer handles ordering; just run `lint:fix`.
 
-- **No deep relative imports across packages.** Within a package, `../foo.js` is fine. Reaching into another workspace package via relative paths is wrong — import the public entry instead (`@jentic/api-scorecard-renderer-html`). `import/no-extraneous-dependencies` blocks importing devDeps from non-test code.
+- **No deep relative imports across packages.** Within a package, `../foo.js` is fine. Reaching into another workspace package via relative paths is wrong — import the public entry instead (`@jentic/api-scorecard-formatter-html`). `import/no-extraneous-dependencies` blocks importing devDeps from non-test code.
 
 - **`_`-prefix for intentionally unused params and vars.** `@typescript-eslint/no-unused-vars` is `error` with `argsIgnorePattern: '^_'`, `varsIgnorePattern: '^_'`, `caughtErrorsIgnorePattern: '^_'`. Use `_result`, `_err` for "I have to declare it but I don't use it" cases. Don't disable the rule.
 

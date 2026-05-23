@@ -104,10 +104,10 @@ These exist in `docs/architecture.md` but **not on disk**. Future phases will la
 - **`.github/workflows/npm-publish.yml`** — publish npm packages on tag (Phase 4 of the roadmap).
 - **Renderer formats and CLI surface.** `--format` (pretty / json / markdown / html), `--detail`, `-o`, `--quiet`, `--verbose` are deferred to Phase 3+. The CLI streams engine-verbatim JSON today.
 - **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container (Phase 8).
-- **HTML renderer implementation.** `@jentic/api-scorecard-renderer-html` ships as a stub today (per the architecture doc); the actual renderer lands in Phase 9.
+- **HTML formatter implementation.** `@jentic/api-scorecard-formatter-html` ships as a stub today (per the architecture doc); the actual formatter lands in Phase 9.
 
 ## Open Questions / Uncertain Areas
 
 - **`docker/uv.lock` re-pin cadence.** No documented schedule for refreshing the lock. Currently bound to the engine pin; we re-lock when bumping `jentic-apitools-cli`.
-- **Engine signal stability.** `jentic-apitools-cli` is `1.0.0a16` (alpha). Signal names and metadata shapes may change in breaking ways before 1.0; the renderer (when it lands) needs to tolerate unknown / missing keys per `docs/architecture.md` §7.
+- **Engine signal stability.** `jentic-apitools-cli` is `1.0.0a16` (alpha). Signal names and metadata shapes may change in breaking ways before 1.0; the formatter (when it lands) needs to tolerate unknown / missing keys per `docs/architecture.md` §7.
 - **LLM provider selection logic.** Architecture.md §5 says the engine "picks a provider" when multiple LLM keys are forwarded. The selection algorithm is not documented here; defer to upstream engine docs.

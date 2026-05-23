@@ -1,7 +1,7 @@
 {
-  "name": "@jentic/api-scorecard-renderer-html",
+  "name": "@jentic/api-scorecard-formatter-html",
   "version": "1.0.0",
-  "description": "HTML renderer for Jentic API Scorecard results (stub).",
+  "description": "HTML formatter for Jentic API Scorecard results (stub).",
   "keywords": [
     "openapi",
     "jentic",
@@ -14,7 +14,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jentic/jentic-api-scorecard.git",
-    "directory": "packages/renderer-html"
+    "directory": "packages/formatter-html"
   },
   "publishConfig": {
     "access": "public",

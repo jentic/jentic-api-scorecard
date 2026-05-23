@@ -12,7 +12,7 @@ confidence: medium
 
 Phases are intentionally small — each one must be a **shippable, independently reviewable, and testable slice of work**.
 
-The starting point is the current repository state: the `docker/` runner ships, but no CI, no npm CLI, no real auth, and no HTML renderer exist. Reference design lives in `docs/architecture.md`; this roadmap sequences how we close the gap.
+The starting point is the current repository state: the `docker/` runner ships, but no CI, no npm CLI, no real auth, and no HTML formatter exist. Reference design lives in `docs/architecture.md`; this roadmap sequences how we close the gap.
 
 **Priority values:** `High`, `Medium–High` (en-dash, U+2013), `Medium`. `(blocker)` is reserved for phases that fix a current trust/security gap making the system unsafe for its **today** use; forward-looking production work uses normal priority and states the rationale in the phase body. `(blocker)` implies a release gate for today's bar; other levels express relative queue position.
 
@@ -51,7 +51,7 @@ The npm CLI is the user-facing UX (`npx @jentic/api-scorecard-cli score …`) pe
   - Hard-codes the image tag matching its own npm version (CLI version = image tag invariant).
   - Pipes spec input through stdin (local file → bundle via `@redocly/openapi-core`; URL → forward `--url` to the container; gate enforcement stays container-side).
   - Streams container stdout to host stdout; prints engine errors on stderr.
-- Scaffold `packages/renderer-html/` (`@jentic/api-scorecard-renderer-html`) with the typed `render(result): string` stub only — no implementation yet.
+- Scaffold `packages/formatter-html/` (`@jentic/api-scorecard-formatter-html`) with the typed `render(result): string` stub only — no implementation yet.
 - README and `.claude/CLAUDE.md` repository-state sections are updated to reflect that `packages/` now exists.
 
 ## Phase 3 — Pretty / JSON / Markdown output + detail levels
@@ -72,14 +72,14 @@ Phase 2 lands a working CLI that streams engine JSON. This phase layers the rend
 
 ## Phase 4 — npm publish CI on tag (both packages)
 
-**Goal:** automate npm publishing so cutting a git tag also publishes `@jentic/api-scorecard-cli` and `@jentic/api-scorecard-renderer-html` (Lerna fixed-version means both ship together).
+**Goal:** automate npm publishing so cutting a git tag also publishes `@jentic/api-scorecard-cli` and `@jentic/api-scorecard-formatter-html` (Lerna fixed-version means both ship together).
 **Depends on:** Phase 3
 **Priority:** High
 
 The CLI version = image tag invariant requires that the same git tag triggers both publishes. Manual npm publish is brittle and easy to mis-version.
 
 - Add `.github/workflows/npm-publish.yml` triggered on tag refs `v*`.
-- Run `npm publish` for `packages/cli` and `packages/renderer-html` with provenance enabled (`--provenance`).
+- Run `npm publish` for `packages/cli` and `packages/formatter-html` with provenance enabled (`--provenance`).
 - Smoke-test post-publish: `npx @jentic/api-scorecard-cli@<version> score --help` succeeds; the version string reported by `--version` matches the tag.
 - Document the release ritual: branch → tag → both workflows fire → image and packages land together.
 
@@ -135,18 +135,18 @@ The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md`
 - Bump the engine pin if needed and rebuild the image (CLI version bump rides along).
 - Update `docs/architecture.md` §9 to mark the MVP scheme as superseded.
 
-## Phase 9 — HTML renderer implementation
+## Phase 9 — HTML formatter implementation
 
-**Goal:** `@jentic/api-scorecard-renderer-html`'s `render(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
+**Goal:** `@jentic/api-scorecard-formatter-html`'s `render(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
 **Depends on:** Phase 3 (so the input shape — engine-verbatim JSON minus `diagnostics` unless requested — is settled)
 **Priority:** Medium
 
-The HTML renderer is scaffolded in `packages/renderer-html/` after Phase 2 but ships a stub. This phase lands the actual rendering.
+The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but ships a stub. This phase lands the actual rendering.
 
 - Implement `render(result): string` returning self-contained HTML (no external CSS / JS dependencies).
 - Render headline, dimensions, optional per-signal breakdown when the input includes signals, optional diagnostics block when present.
-- Add a CLI flag `--format html` (and `-o report.html`) wiring the renderer in.
-- Snapshot-test the renderer against a representative result JSON.
+- Add a CLI flag `--format html` (and `-o report.html`) wiring the formatter in.
+- Snapshot-test the formatter against a representative result JSON.
 
 ## Phase 10 — `--min-score N` for CI gating
 
