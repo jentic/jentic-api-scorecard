@@ -104,6 +104,7 @@ Phase 4 dropped engine-verbatim JSON from the npm CLI's default output. This pha
 - Add `--format <pretty|json>` to `packages/cli/`. Default stays `pretty`.
 - Implement the `json` formatter inside `packages/cli/src/formatters/`: pretty-printed engine JSON, filtered by `--detail`. No key renames, no restructuring (per `docs/architecture.md` §7).
 - When `--format json` is set and stdout is a TTY, still emit JSON to stdout — JSON is the documented machine-readable channel and users may want to pipe it.
+- Reintroduce the `--format json --detail diagnostics` footer hint in the pretty formatter's `appendHint()` (removed in Phase 5 because the flag did not yet exist).
 
 ## Phase 7 — `--verbose` / `-v` stderr logging
 
