@@ -64,18 +64,6 @@ That's it. The CLI pulls the scoring engine automatically on first run.
 ![CLI score output](https://github.com/jentic/jentic-api-scorecard/raw/main/assets/cli-screenshot.png)
 
 
-## What you get
-
-A human-readable scorecard covering six dimensions:
-
-| Dimension | What it measures |
-| --------- | ---------------- |
-| **Foundational Compliance (FC)** | Structural validity and conformance to OpenAPI itself |
-| **Developer Experience & Jentic Compatibility (DXJ)** | Documentation quality and downstream tooling compatibility |
-| **AI-Readiness & Agent Experience (ARAX)** | Semantic clarity and the context an LLM needs to reason about each operation |
-| **Agent Usability (AU)** | Predictable, safe multi-step orchestration |
-| **Security (SEC)** | Declared auth schemes and trust boundaries |
-| **AI Discoverability (AID)** | How easily an AI system can find and parse the OpenAPI document |
 
 ## Control output depth
 

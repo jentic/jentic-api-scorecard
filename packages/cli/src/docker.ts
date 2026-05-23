@@ -21,7 +21,7 @@ export function imageExists(ref: string): Promise<boolean> {
 export function pullImage(ref: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn('docker', ['pull', ref], {
-      stdio: ['ignore', 'ignore', 'inherit'],
+      stdio: 'ignore',
     });
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {

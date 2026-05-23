@@ -45,10 +45,10 @@ jobs:
           npx lerna version prerelease --preid alpha --no-private --yes --force-publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Mark release as latest
+      - name: Mark release as prerelease
         run: |
           VERSION=$(node -p "require('./lerna.json').version")
-          gh release edit "v${VERSION}" --prerelease=false --latest
+          gh release edit "v${VERSION}" --prerelease --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish monorepo npm packages
