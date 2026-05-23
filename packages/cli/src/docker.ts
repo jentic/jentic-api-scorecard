@@ -68,9 +68,11 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       process.on(sig, handler);
     }
 
-    child.stdout!.on('data', (chunk: Buffer) => {
-      stdoutChunks.push(chunk);
-    });
+    if (child.stdout) {
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdoutChunks.push(chunk);
+      });
+    }
 
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {

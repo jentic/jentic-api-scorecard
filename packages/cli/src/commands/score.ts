@@ -82,6 +82,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     parsed = JSON.parse(result.stdout) as ScorecardResult;
   } catch {
     clearSpinner();
+    process.stderr.write(
+      'warning: engine output was not valid JSON; passing through raw output.\n',
+    );
     process.stdout.write(result.stdout);
     return ExitCode.SUCCESS;
   }

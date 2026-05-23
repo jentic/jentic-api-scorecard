@@ -47,17 +47,18 @@ export interface ScorecardResult {
   metadata?: Metadata;
 }
 
-function colorGrade(grade: string): string {
-  if (grade.startsWith('A')) return chalk.green(grade);
-  if (grade.startsWith('B')) return chalk.green(grade);
-  if (grade.startsWith('C')) return chalk.yellow(grade);
-  return chalk.red(grade);
+function gradeColor(grade: string): (s: string) => string {
+  if (grade.startsWith('A') || grade.startsWith('B')) return chalk.green;
+  if (grade.startsWith('C')) return chalk.yellow;
+  return chalk.red;
 }
 
-function colorScore(score: number, formatted: string): string {
-  if (score >= 80) return chalk.green(formatted);
-  if (score >= 60) return chalk.yellow(formatted);
-  return chalk.red(formatted);
+function colorGrade(grade: string): string {
+  return gradeColor(grade)(grade);
+}
+
+function colorScore(grade: string, formatted: string): string {
+  return gradeColor(grade)(formatted);
 }
 
 const BAR_WIDTH = 20;
@@ -101,7 +102,7 @@ export function formatPretty(result: ScorecardResult, source: string): string {
   }
 
   lines.push(`  ${chalk.dim('OpenAPI Document:')} ${source}`);
-  const finalScore = colorScore(summary.score, summary.score.toFixed(2));
+  const finalScore = colorScore(summary.grade, summary.score.toFixed(2));
   lines.push(`  Final score:      ${chalk.bold(finalScore)} ${chalk.dim('/ 100')}`);
   lines.push(
     `  Readiness:        ${chalk.bold(summary.level.toUpperCase())}  (${colorGrade(summary.grade)})`,
@@ -147,6 +148,12 @@ export function formatPretty(result: ScorecardResult, source: string): string {
       lines.push('');
       lines.push(`  ${stats.join(chalk.dim('  ·  '))}`);
     }
+  }
+
+  if (summary.dimensions && summary.dimensions.length > 0) {
+    lines.push('');
+    lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
+    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
   }
 
   lines.push('');

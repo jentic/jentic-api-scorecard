@@ -1,5 +1,6 @@
 import ora, { type Ora } from 'ora';
 
+// Single process-wide spinner — concurrent score invocations would interleave.
 let spinner: Ora | null = null;
 
 export function spin(message: string): void {
