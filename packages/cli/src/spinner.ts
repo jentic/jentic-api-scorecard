@@ -1,36 +1,27 @@
-import { WriteStream } from 'node:tty';
+import ora, { type Ora } from 'ora';
 
-const isTTY = process.stderr instanceof WriteStream && process.stderr.isTTY;
-
-let currentLine = '';
-
-function clearLine(): void {
-  if (isTTY) {
-    process.stderr.write('\r\x1b[K');
-  }
-}
+let spinner: Ora | null = null;
 
 export function spin(message: string): void {
-  if (!isTTY) return;
-  clearLine();
-  currentLine = message;
-  process.stderr.write(currentLine);
+  if (spinner) {
+    spinner.text = message;
+    return;
+  }
+  spinner = ora({ text: message, stream: process.stderr }).start();
 }
 
 export function done(message: string): void {
-  if (!isTTY) return;
-  clearLine();
-  currentLine = '';
+  if (spinner) {
+    spinner.succeed(message);
+    spinner = null;
+    return;
+  }
   process.stderr.write(`${message}\n`);
 }
 
-export function hasSpinner(): boolean {
-  return isTTY;
-}
-
 export function clearSpinner(): void {
-  if (currentLine) {
-    clearLine();
-    currentLine = '';
+  if (spinner) {
+    spinner.stop();
+    spinner = null;
   }
 }
