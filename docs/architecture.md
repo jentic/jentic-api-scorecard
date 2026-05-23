@@ -44,6 +44,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Lerna versioning | Fixed/locked: every package shares one version |
 | Version coupling | CLI npm version = image tag. Engine (`jentic-apitools-cli`) versions independently and is pinned exactly inside each image. Pinning one CLI version reproduces the full stack. |
 | Image flow | CLI fully abstracts image management. It pulls `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` automatically. No user-facing image flags. |
+| Tagging | Exact-version GHCR tags only (e.g. `:1.0.0-alpha.3`). The CLI consumes only exact tags, so no floating `:alpha` / `:latest` is published. The one floating tag is `:unstable`, which rolls on every green `main` for direct `docker run` users. |
 | Docker mode | Shell out to `docker` CLI via `child_process.spawn`. No `dockerode`. |
 | Input dispatch | Local path → CLI bundles via Redocly → pipes to container stdin. URL → CLI passes `--url` to container, engine fetches directly. URL + `--bundle` → CLI fetches and bundles host-side, pipes via stdin (escape hatch for internal/auth-gated URLs). |
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
@@ -139,7 +140,7 @@ jentic-api-scorecard/
 └── .github/workflows/
     ├── ci.yml                                (lint + test on PRs; also callable via workflow_call)
     ├── docker-publish.yml                    (build + push :unstable to GHCR on main; gated on ci.yml)
-    └── release.yml                           (versioned image + npm publish on tag — future)
+    └── alpha-publish.yml                     (alpha-tagged image + npm publish on v*-alpha.* tag — future)
 ```
 
 A few layout notes worth calling out:
@@ -595,21 +596,23 @@ The shape below was captured by running `jentic-apitools score https://petstore3
 
 **Coupling**: CLI npm version = GHCR image tag. The Python engine package (`jentic-apitools-cli`) versions independently upstream; each image build pins one specific engine version.
 
-`v1.0.0` (the first stable release):
-- npm `@jentic/api-scorecard-cli@1.0.0` and `@jentic/api-scorecard-formatter-html@1.0.0` (Lerna fixed-version, both publish together).
-- `ghcr.io/jentic/jentic-api-scorecard:1.0.0`.
+**Channels**: today the project ships only an **alpha channel**. The first stable release (`@latest` npm dist-tag) is deferred until the flag surface settles and real auth replaces `mvp-preview` (§9). Until then, `@jentic/api-scorecard-cli@alpha` is the discovery entry point:
+
+- The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …).
+- npm `@jentic/api-scorecard-cli@1.0.0-alpha.<N>` publishes under the `alpha` dist-tag. `@jentic/api-scorecard-formatter-html` is `"private": true` and does not publish on alpha cuts; it joins the channel once its real implementation ships.
+- `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N>` — the exact alpha tag the CLI of that version consumes. No floating `:alpha` is published; the CLI never asks for one.
 - `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-cli==<exact-version>` (e.g. `1.0.0a16`).
 
-The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0`) — that pulls `:1.0.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
+The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0-alpha.3`) — that pulls `:1.0.0-alpha.3`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
 
 When the engine releases an update we want to ship, we:
 1. Bump `jentic-apitools-cli` in `docker/pyproject.toml`.
-2. Cut a new CLI version (e.g. `1.0.1`).
-3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.1` containing the new engine, and publishes `@jentic/api-scorecard-cli@1.0.1`.
+2. Cut a new CLI version (e.g. `1.0.0-alpha.<N+1>`).
+3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N+1>` containing the new engine, and publishes `@jentic/api-scorecard-cli@1.0.0-alpha.<N+1>` under the `alpha` dist-tag.
 
-**Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64).
+**Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64). Merging to `main` does **not** publish a CLI version or an alpha tag — it makes the change available to the next alpha cut.
 
-**Release pipeline** (CI, future): pushing a git tag `v<version>` will trigger a Docker image build + push to GHCR with `:<version>` and `:latest`, and npm publish for both packages.
+**Release pipeline** (CI): pushing a git tag `v1.0.0-alpha.<N>` triggers an image build + push to GHCR with the exact `:1.0.0-alpha.<N>` tag (no floating `:alpha`/`:latest`) and an `npm publish --tag alpha --provenance` for `packages/cli`. `packages/formatter-html` is skipped automatically while it remains `"private": true`. The stable pipeline (`@latest` dist-tag, `:latest` not used) lands when the project cuts its first stable release.
 
 **Breaking changes**: the CLI does not introduce its own schema version. The result JSON is the engine's verbatim output, and the engine versions its scorecard format independently via `metadata.version` (e.g. `"1.0.27"`). Consumers tracking schema changes should key off `metadata.version` from the engine, not anything CLI-introduced. If we need to break the result shape on our side (we shouldn't — see §7), we'd announce it via the CLI's release notes, not via an envelope key we don't actually emit.
 

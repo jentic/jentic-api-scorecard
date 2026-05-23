@@ -166,18 +166,25 @@ Architecture.md §5 describes `--with-llm` precisely. The container already acce
 - For local paths, `--bundle` is a no-op (bundling is always how local files are handled).
 - Update the input-dispatch table in the CLI's help output to match `docs/architecture.md` §5.
 
-## Phase 12 — npm publish CI on tag (both packages)
+## Phase 12 — Alpha channel publish CI
 
-**Goal:** automate npm publishing so cutting a git tag also publishes `@jentic/api-scorecard-cli` and `@jentic/api-scorecard-formatter-html` (Lerna fixed-version means both ship together).
+**Goal:** an explicit release process cuts alpha versions on demand — `npx @jentic/api-scorecard-cli@alpha score …` pulls the latest cut, which runs the matching `ghcr.io/jentic/jentic-api-scorecard:<version>` image. Each cut bundles whichever phases have merged since the last one. Only `@jentic/api-scorecard-cli` publishes in alpha; `@jentic/api-scorecard-formatter-html` stays `"private": true` until Phase 14 ships its real implementation.
 **Depends on:** Phase 4
 **Priority:** High
 
-The CLI version = image tag invariant requires that the same git tag triggers both publishes. Manual npm publish is brittle and easy to mis-version.
+The roadmap is structured so each phase is independently shippable; an alpha channel makes shipped phases reach users without waiting for a stable cut. Stable release (`@latest` npm dist-tag, real-auth onboarding) is deferred until the flag surface settles and Phase 13's real-auth cutover lands — alpha is the only published channel until then, and the README says so.
 
-- Add `.github/workflows/npm-publish.yml` triggered on tag refs `v*`.
-- Run `npm publish` for `packages/cli` and `packages/formatter-html` with provenance enabled (`--provenance`).
-- Smoke-test post-publish: `npx @jentic/api-scorecard-cli@<version> score --help` succeeds; the version string reported by `--version` matches the tag.
-- Document the release ritual: branch → tag → both workflows fire → image and packages land together.
+Releases are **explicit, not automatic**. Merging to `main` does not publish — it makes the change available to the next alpha cut. The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …). The release ritual: bump version on a release branch, tag (`v1.0.0-alpha.<N>`), let CI publish. This keeps the project in control of when an alpha goes out and what's in it; intermediate-merge users can still test against the `:unstable` image from Phase 1.
+
+The CLI version = image tag invariant (`docs/architecture.md` §2) holds in alpha exactly as in stable: each cut publishes the npm prerelease version and builds the matching docker image at that same exact tag. Because the CLI only ever consumes exact-version tags, there is no floating `:alpha` or `:latest` on the docker side — the floating-tag audience is direct `docker run` users, who are already served by Phase 1's `:unstable` rolling-main tag. The npm `@alpha` dist-tag is the public discovery entry point so users don't have to track current alpha version numbers.
+
+- Add `.github/workflows/alpha-publish.yml` triggered on tag refs matching `v*-alpha.*`. Gate on `.github/workflows/ci.yml` via `workflow_call` (`needs: ci`).
+- Both packages stay at the same prerelease version via Lerna fixed-version (so the version bump on tag covers both); the tag carries the version.
+- Build and push `ghcr.io/jentic/jentic-api-scorecard:<version>` (the exact alpha version, no floating tag).
+- Run `npm publish --tag alpha --provenance` for `packages/cli`. `packages/formatter-html` is `"private": true` and skipped automatically by `npm publish`; it begins publishing once Phase 14 lifts the flag.
+- Smoke-test post-publish: `npx @jentic/api-scorecard-cli@alpha score --help` succeeds; the version reported by `--version` matches the published version; `docker run --rm ghcr.io/jentic/jentic-api-scorecard:<version> score --help` succeeds.
+- Document the alpha release ritual: release branch → version bump → tag (`v1.0.0-alpha.<N>`) → workflow fires → image and packages land together.
+- Update `docs/architecture.md` §2 to document the alpha channel and the no-floating-docker-tag invariant. README adds the alpha disclaimer that flag surface is in flux until stable (`--format`, `--quiet`, `--verbose` arrive across Phases 6–9).
 
 ## Phase 13 — Real auth: replace `mvp-preview` with an HTTP validator
 
@@ -205,6 +212,7 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 - React (or Preact via `preact/compat` if bundle size becomes uncomfortable) is acceptable here because the toolchain is fully encapsulated in this package — the CLI imports the built `format(result): string` and pays no JSX/bundler weight. This is the load-bearing reason this formatter is a separate package while `pretty` / `json` / `markdown` live inside `packages/cli/src/formatters/`.
 - Render headline, dimensions, optional per-signal breakdown when the input includes signals, optional diagnostics block when present. Use virtualized rendering (e.g. `react-window`) for long lists so `--detail diagnostics` outputs at the high end (10K+ rows, ~100MB HTML) don't freeze the browser.
 - Add a CLI flag `--format html` to `packages/cli/`. Behavior when `-o` is not set: error if stdout is a TTY (refuse to dump HTML into the terminal); stream to stdout if stdout is a pipe (so `score … --format html > scorecard.html` works).
+- Lift `"private": true` from `packages/formatter-html/package.json` so the package starts publishing on the same alpha cuts as the CLI.
 - Snapshot-test the formatter against a representative result JSON.
 
 ## Later Phases (Not Yet Planned)
