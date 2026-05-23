@@ -51,7 +51,7 @@ The npm CLI is the user-facing UX (`npx @jentic/api-scorecard-cli score …`) pe
   - Hard-codes the image tag matching its own npm version (CLI version = image tag invariant).
   - Pipes spec input through stdin (local file → bundle via `@redocly/openapi-core`; URL → forward `--url` to the container; gate enforcement stays container-side).
   - Streams container stdout to host stdout; prints engine errors on stderr.
-- Scaffold `packages/formatter-html/` (`@jentic/api-scorecard-formatter-html`) with the typed `render(result): string` stub only — no implementation yet.
+- Scaffold `packages/formatter-html/` (`@jentic/api-scorecard-formatter-html`) with the typed `format(result): string` stub only — no implementation yet.
 - README and `.claude/CLAUDE.md` repository-state sections are updated to reflect that `packages/` now exists.
 
 ## Phase 3 — Pretty / JSON / Markdown output + detail levels
@@ -137,15 +137,16 @@ The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md`
 
 ## Phase 9 — HTML formatter implementation
 
-**Goal:** `@jentic/api-scorecard-formatter-html`'s `render(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
+**Goal:** `@jentic/api-scorecard-formatter-html`'s `format(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
 **Depends on:** Phase 3 (so the input shape — engine-verbatim JSON minus `diagnostics` unless requested — is settled)
 **Priority:** Medium
 
 The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but ships a stub. This phase lands the actual rendering.
 
-- Implement `render(result): string` returning self-contained HTML (no external CSS / JS dependencies).
-- Render headline, dimensions, optional per-signal breakdown when the input includes signals, optional diagnostics block when present.
-- Add a CLI flag `--format html` (and `-o report.html`) wiring the formatter in.
+- Implement `format(result): string` returning a single self-contained HTML document. The output is an interactive React SPA with the bundle (JS + CSS) inlined into `<script>` and `<style>` blocks — no external CDN, no sibling files, works offline. The result JSON is injected as `window.__SCORECARD__` before the bundle's `<script>` so the SPA reads it on mount with no fetch.
+- React (or Preact via `preact/compat` if bundle size becomes uncomfortable) is acceptable here because the toolchain is fully encapsulated in this package — the CLI imports the built `format(result): string` and pays no JSX/bundler weight. This is the load-bearing reason this formatter is a separate package while `pretty` / `json` / `markdown` live inside `packages/cli/src/format/`.
+- Render headline, dimensions, optional per-signal breakdown when the input includes signals, optional diagnostics block when present. Use virtualized rendering (e.g. `react-window`) for long lists so `--detail diagnostics` outputs at the high end (10K+ rows, ~100MB HTML) don't freeze the browser.
+- Add a CLI flag `--format html` to `packages/cli/`. Behavior when `-o` is not set: error if stdout is a TTY (refuse to dump HTML into the terminal); stream to stdout if stdout is a pipe (so `score … --format html > scorecard.html` works).
 - Snapshot-test the formatter against a representative result JSON.
 
 ## Phase 10 — `--min-score N` for CI gating

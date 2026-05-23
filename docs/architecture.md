@@ -120,11 +120,11 @@ jentic-api-scorecard/
 │   │       ├── auth.ts                       (read JENTIC_API_KEY env)
 │   │       ├── bundle.ts                     (@redocly/openapi-core)
 │   │       ├── docker.ts                     (spawn('docker', …))
-│   │       ├── render.ts                     (pretty table + --format + --detail)
+│   │       ├── format/                       (pretty / json / markdown formatters; --format + --detail)
 │   │       └── spinner.ts                    (stderr phase spinner)
 │   └── formatter-html/                       (@jentic/api-scorecard-formatter-html — stub)
 │       ├── package.json
-│       └── src/index.ts                      (export render(result): string — TODO)
+│       └── src/index.ts                      (export format(result): string — TODO)
 ├── docker/                                   (image internals; not a deliverable on its own)
 │   ├── Dockerfile                            (python:3.12-slim + Node 24, uv install)
 │   ├── .dockerignore
@@ -147,6 +147,7 @@ A few layout notes worth calling out:
 - `packages/` and `docker/` are siblings at the repo root. Lerna's workspace globs are `packages/*`; the Dockerfile is built with `docker build ./docker`. Neither tree depends on the other at build time — they only compose at runtime when the host CLI invokes the container.
 - The Python code under `docker/src/jentic_scorecard_runner/` is *image-internal* — it's never published to PyPI, never imported from anywhere outside the image. Treating it as part of the docker artifact (rather than a peer "Python project") avoids the false impression that Python is a parallel deliverable to JS.
 - `tsconfig.base.json` and `lerna.json` live at the repo root because Lerna and TypeScript expect monorepo metadata to be top-level. There's no `javascript/` wrapper because there's no symmetric `python/` to balance against — JS is the only language we publish.
+- **`pretty`, `json`, and `markdown` formatters live inside `packages/cli/src/format/`** because they're plain TS string-projections of the engine result with no toolchain weight. **`formatter-html` is a separate package** because its Phase 9 implementation is an interactive React SPA (single self-contained HTML, bundle inlined into `<script>` and `<style>` blocks) — pulling React + a bundler into `packages/cli/` would burden every `pretty`/`json` user with weight they never use. The decision rule: a formatter gets its own package iff its build/runtime toolchain materially exceeds the CLI's; otherwise it lives in the CLI. From the CLI's perspective all four formatters share the same role (`format(result): string`); the package boundary is an infrastructure choice, not a role distinction, which is why the package is named `formatter-html` (role) rather than `renderer-html` (implementation).
 
 ## 5. CLI specification
 
@@ -158,7 +159,7 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 
 | Flag | Default | Behavior |
 |---|---|---|
-| `--format <fmt>` / `-f` | `pretty` | Output encoding. Values: `pretty` (human-readable table), `json` (machine-readable JSON), `markdown` (Markdown report). `pretty` is the default for interactive use; `json` is the default when stdout is not a TTY (piped/redirected). |
+| `--format <fmt>` / `-f` | `pretty` | Output encoding. Values: `pretty` (human-readable table), `json` (machine-readable JSON), `markdown` (Markdown report), `html` (single self-contained HTML; from Phase 9). `pretty` is the default for interactive use; `json` is the default when stdout is not a TTY (piped/redirected). `html` has a distinct TTY rule because its payload is binary-ish and large: it errors when stdout is a TTY without `-o`, and streams to stdout only when stdout is a pipe (`score … --format html > scorecard.html`). |
 | `--json` | — | Convenience alias for `--format json`. Kept for discoverability and ergonomics in simple CLIs, but `--format` is the canonical flag. |
 | `--detail <level>` / `-d` | `dimensions` | Controls payload depth — how much of the scoring result is included in output. Values form a graduated hierarchy: `summary` (score + grade + level only), `dimensions` (+ dimension table), `signals` (+ per-signal breakdown), `diagnostics` (+ raw diagnostics array). Each level includes everything below it. Applies uniformly to all formats (pretty, json, markdown). |
 | `--verbose` / `-v` | off | Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
@@ -624,7 +625,7 @@ A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC
 
 ## 10. Out of scope (Delivery 1)
 
-- HTML rendering wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `render(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
+- HTML rendering wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
 - Server-side calls to Jentic from the container or CLI: usage tracking, key validation, and rate limiting (beyond the static URL allowlist) all defer to a follow-up delivery.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.

@@ -1,5 +1,5 @@
 export type ScorecardResult = Record<string, unknown>;
 
-export function render(_result: ScorecardResult): string {
-  throw new Error('@jentic/api-scorecard-formatter-html: render() is not implemented yet.');
+export function format(_result: ScorecardResult): string {
+  throw new Error('@jentic/api-scorecard-formatter-html: format() is not implemented yet.');
 }
