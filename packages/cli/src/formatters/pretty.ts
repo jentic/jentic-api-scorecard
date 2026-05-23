@@ -149,12 +149,6 @@ export function formatPretty(result: ScorecardResult, source: string): string {
     }
   }
 
-  if (summary.dimensions && summary.dimensions.length > 0) {
-    lines.push('');
-    lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
-    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
-  }
-
   lines.push('');
   return lines.join('\n');
 }

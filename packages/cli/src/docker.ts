@@ -84,7 +84,7 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       settle(() => reject(err));
     });
 
-    child.on('exit', (code, signal) => {
+    child.on('close', (code, signal) => {
       const stdout = Buffer.concat(stdoutChunks).toString('utf8');
       if (signal !== null) {
         const signo = osConstants.signals[signal] ?? 0;
