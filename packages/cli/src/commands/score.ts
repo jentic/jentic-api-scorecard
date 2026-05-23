@@ -87,7 +87,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  done(`Done in ${elapsed}s`);
+  done(`Scoring done in ${elapsed}s`);
 
   const output = formatPretty(parsed, input);
   process.stdout.write(output);
