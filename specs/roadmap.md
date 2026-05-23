@@ -173,7 +173,7 @@ Architecture.md §5 describes `--with-llm` precisely. The container already acce
 **Priority:** High
 
 The roadmap is structured so each phase is independently shippable; an alpha channel makes shipped phases reach users without waiting for a stable cut. Stable release (`@latest` npm dist-tag, real-auth onboarding) is deferred until the flag surface settles and Phase 13's real-auth cutover lands — alpha is the only published channel until then, and the README says so.
-
+so 
 Releases are **explicit, not automatic**. Merging to `main` does not publish — it makes the change available to the next alpha cut. The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …). The release ritual: bump version on a release branch, tag (`v1.0.0-alpha.<N>`), let CI publish. This keeps the project in control of when an alpha goes out and what's in it; intermediate-merge users can still test against the `:unstable` image from Phase 1.
 
 The CLI version = image tag invariant (`docs/architecture.md` §2) holds in alpha exactly as in stable: each cut publishes the npm prerelease version and builds the matching docker image at that same exact tag. Because the CLI only ever consumes exact-version tags, there is no floating `:alpha` or `:latest` on the docker side — the floating-tag audience is direct `docker run` users, who are already served by Phase 1's `:unstable` rolling-main tag. The npm `@alpha` dist-tag is the public discovery entry point so users don't have to track current alpha version numbers.
