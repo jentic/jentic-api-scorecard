@@ -24,4 +24,5 @@ npx @jentic/api-scorecard-cli score \
 
 ## License
 
-Apache 2.0. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).
+[Apache 2.0](https://github.com/jentic/jentic-api-scorecard/blob/main/LICENSE). See also
+[`NOTICE`](https://github.com/jentic/jentic-api-scorecard/blob/main/NOTICE).
