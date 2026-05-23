@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 
 import { bundleSpec } from '../bundle.ts';
 import { DEFAULT_DETAIL, DetailLevel, filterByDetail } from '../detail.ts';
-import { runDocker } from '../docker.ts';
+import { imageExists, imageRef, pullImage, runDocker } from '../docker.ts';
 import { ExitCode } from '../exit-codes.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { ScorecardResult } from '../result.ts';
@@ -54,6 +54,20 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       `error: input '${input}' is neither an https:// URL nor an existing file.\n`,
     );
     return ExitCode.GENERIC_ERROR;
+  }
+
+  const ref = imageRef();
+  const present = await imageExists(ref);
+  if (!present) {
+    spin(`Pulling ${ref}…`);
+    const pullExit = await pullImage(ref);
+    if (pullExit !== 0) {
+      clearSpinner();
+      process.stderr.write(`error: failed to pull image ${ref}\n`);
+      return pullExit === ExitCode.DOCKER_MISSING
+        ? ExitCode.DOCKER_MISSING
+        : ExitCode.GENERIC_ERROR;
+    }
   }
 
   spin(`Scoring…`);

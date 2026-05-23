@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { constants as osConstants } from 'node:os';
 
 import { ExitCode } from './exit-codes.ts';
@@ -8,6 +8,32 @@ export const IMAGE_NAME = 'ghcr.io/jentic/jentic-api-scorecard';
 
 export function imageRef(): string {
   return `${IMAGE_NAME}:${cliVersion}`;
+}
+
+export function imageExists(ref: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile('docker', ['image', 'inspect', ref], (err) => {
+      resolve(err === null);
+    });
+  });
+}
+
+export function pullImage(ref: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('docker', ['pull', ref], {
+      stdio: ['ignore', 'ignore', 'inherit'],
+    });
+    child.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'ENOENT') {
+        resolve(ExitCode.DOCKER_MISSING);
+        return;
+      }
+      reject(err);
+    });
+    child.on('close', (code) => {
+      resolve(code ?? ExitCode.GENERIC_ERROR);
+    });
+  });
 }
 
 export interface DockerRunOptions {
