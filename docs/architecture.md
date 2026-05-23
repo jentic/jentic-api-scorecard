@@ -159,9 +159,9 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 
 | Flag | Default | Behavior |
 |---|---|---|
-| `--format <fmt>` / `-f` | `pretty` | Output encoding. Values: `pretty` (human-readable table), `json` (machine-readable JSON), `markdown` (Markdown report), `html` (single self-contained HTML; from Phase 9). `pretty` is the default for interactive use; `json` is the default when stdout is not a TTY (piped/redirected). `html` has a distinct TTY rule because its payload is binary-ish and large: it errors when stdout is a TTY without `-o`, and streams to stdout only when stdout is a pipe (`score … --format html > scorecard.html`). |
+| `--format <fmt>` / `-f` | `pretty` | Output encoding. Values: `pretty` (human-readable table), `json` (machine-readable JSON), `markdown` (Markdown report), `html` (single self-contained HTML; post-MVP). `pretty` is the default for interactive use; `json` is the default when stdout is not a TTY (piped/redirected). `html` has a distinct TTY rule because its payload is unreadable in a terminal and may be very large: it errors when stdout is a TTY without `-o`, and streams to stdout only when stdout is a pipe (`score … --format html > scorecard.html`). |
 | `--json` | — | Convenience alias for `--format json`. Kept for discoverability and ergonomics in simple CLIs, but `--format` is the canonical flag. |
-| `--detail <level>` / `-d` | `dimensions` | Controls payload depth — how much of the scoring result is included in output. Values form a graduated hierarchy: `summary` (score + grade + level only), `dimensions` (+ dimension table), `signals` (+ per-signal breakdown), `diagnostics` (+ raw diagnostics array). Each level includes everything below it. Applies uniformly to all formats (pretty, json, markdown). |
+| `--detail <level>` / `-d` | `dimensions` | Controls payload depth — how much of the scoring result is included in output. Values form a graduated hierarchy: `summary` (score + grade + level only), `dimensions` (+ dimension table), `signals` (+ per-signal breakdown), `diagnostics` (+ raw diagnostics array). Each level includes everything below it. Applies uniformly to all formats (pretty, json, markdown, html). |
 | `--verbose` / `-v` | off | Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
 | `--quiet` / `-q` | off | Suppress stderr spinner. Engine warnings still pass through stderr (they're a small, bounded signal). Pretty/JSON stdout unchanged. The spinner ALSO auto-suppresses when stderr is not a TTY (CI logs, redirected stderr) — `--quiet` is the explicit override for interactive shells. |
 | `--output` / `-o` `<file>` | stdout | Write report output to `<file>` instead of stdout. Useful for CI artifacts, Windows scripts, and future HTML/Markdown outputs where shell redirection is awkward. When set, spinner still goes to stderr. |
@@ -251,12 +251,12 @@ Detail levels form a strict hierarchy — each level includes everything from th
 
 #### Detail × format matrix
 
-| Detail | `pretty` | `json` | `markdown` |
-|---|---|---|---|
-| `summary` | headline only (~3 lines) | `{ metadata, apiMetadata, summary }` minus `dimensions` (~200 B) | score line only |
-| `dimensions` | headline + dimension table (~12 lines) | `{ metadata, apiMetadata, summary }` with `dimensions` (~1 KB) | summary + dimension Markdown table (~30 lines) |
-| `signals` | + per-signal expansion (~80–150 lines) | + `details[].dimensions[].signals[]` (~5 KB) | + signal list per dimension (~80–120 lines) |
-| `diagnostics` | + diagnostics grouped by source/severity (~150–500 lines) | + `diagnostics[]` array (~50–500 KB) | + diagnostics as Markdown list (~100–300 lines) |
+| Detail | `pretty` | `json` | `markdown` | `html` (post-MVP) |
+|---|---|---|---|---|
+| `summary` | headline only (~3 lines) | `{ metadata, apiMetadata, summary }` minus `dimensions` (~200 B) | score line only | self-contained HTML, headline only |
+| `dimensions` | headline + dimension table (~12 lines) | `{ metadata, apiMetadata, summary }` with `dimensions` (~1 KB) | summary + dimension Markdown table (~30 lines) | + dimension panel |
+| `signals` | + per-signal expansion (~80–150 lines) | + `details[].dimensions[].signals[]` (~5 KB) | + signal list per dimension (~80–120 lines) | + per-signal breakdown |
+| `diagnostics` | + diagnostics grouped by source/severity (~150–500 lines) | + `diagnostics[]` array (~50–500 KB) | + diagnostics as Markdown list (~100–300 lines) | + diagnostics panel (virtualized for large counts) |
 
 The dimension layout matches `summary.dimensions[]` directly (`kind`, `name`, `score`, `grade`). JAIRF weights are not surfaced in the engine's `summary` payload, so the pretty renderer does not show them — if we want a weight column post-MVP, we hard-code the JAIRF-spec weights in the renderer rather than asking the engine for them.
 
