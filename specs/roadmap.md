@@ -67,7 +67,7 @@ Today only the Claude PreToolUse hook checks `git commit` payloads. Direct `git 
 - Add `.husky/pre-commit` running `lint-staged` (ruff for Python files in `docker/`; eslint for TS files in `packages/`).
 - The Claude PreToolUse hook continues to soft-no-op until `node_modules/.bin/commitlint` exists; once Phase 3 ships, the hook activates.
 
-## Phase 4 — Pretty formatter (default human-readable output)
+## Phase 4 — Pretty formatter (default human-readable output) ✅
 
 **Goal:** ship the human-readable scorecard so the default `npx … score` shows the headline + dimension table that matches the sample output in `docs/architecture.md` §1, replacing today's engine-verbatim JSON default.
 **Depends on:** Phase 2
