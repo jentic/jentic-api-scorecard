@@ -26,6 +26,11 @@ export interface ScorecardSummary {
 export interface ApiMetadata {
   name?: string;
   apiDescriptionVersion?: string;
+  operationCount?: number;
+  schemaCount?: number;
+  tagCount?: number;
+  securitySchemeCount?: number;
+  securitySchemeTypes?: string[];
 }
 
 export interface EngineMetadata {
@@ -47,6 +52,12 @@ function colorGrade(grade: string): string {
   if (grade.startsWith('B')) return chalk.green(grade);
   if (grade.startsWith('C')) return chalk.yellow(grade);
   return chalk.red(grade);
+}
+
+function colorScore(score: number, formatted: string): string {
+  if (score >= 80) return chalk.green(formatted);
+  if (score >= 60) return chalk.yellow(formatted);
+  return chalk.red(formatted);
 }
 
 const BAR_WIDTH = 20;
@@ -90,8 +101,34 @@ export function formatPretty(result: ScorecardResult, source: string): string {
   }
 
   lines.push(`  ${chalk.dim('OpenAPI Document:')} ${source}`);
-  lines.push(`  Final score:      ${summary.score.toFixed(2)} ${chalk.dim('/ 100')}`);
-  lines.push(`  Readiness:        ${chalk.bold(summary.level)}  (${colorGrade(summary.grade)})`);
+  const finalScore = colorScore(summary.score, summary.score.toFixed(2));
+  lines.push(`  Final score:      ${chalk.bold(finalScore)} ${chalk.dim('/ 100')}`);
+  lines.push(
+    `  Readiness:        ${chalk.bold(summary.level.toUpperCase())}  (${colorGrade(summary.grade)})`,
+  );
+
+  if (apiMetadata) {
+    const stats: string[] = [];
+    if (apiMetadata.operationCount !== undefined) {
+      stats.push(`${chalk.bold(apiMetadata.operationCount)} operations`);
+    }
+    if (apiMetadata.schemaCount !== undefined) {
+      stats.push(`${chalk.bold(apiMetadata.schemaCount)} schemas`);
+    }
+    if (apiMetadata.tagCount !== undefined) {
+      stats.push(`${chalk.bold(apiMetadata.tagCount)} tags`);
+    }
+    if (apiMetadata.securitySchemeCount !== undefined) {
+      stats.push(`${chalk.bold(apiMetadata.securitySchemeCount)} security schemes`);
+    }
+    if (apiMetadata.securitySchemeTypes && apiMetadata.securitySchemeTypes.length > 0) {
+      stats.push(`${chalk.bold(apiMetadata.securitySchemeTypes.length)} security types`);
+    }
+    if (stats.length > 0) {
+      lines.push('');
+      lines.push(chalk.dim(`  ${stats.join('  ·  ')}`));
+    }
+  }
 
   if (summary.dimensions && summary.dimensions.length > 0) {
     lines.push('');
