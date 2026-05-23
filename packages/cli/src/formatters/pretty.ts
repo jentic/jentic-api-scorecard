@@ -107,29 +107,6 @@ export function formatPretty(result: ScorecardResult, source: string): string {
     `  Readiness:        ${chalk.bold(summary.level.toUpperCase())}  (${colorGrade(summary.grade)})`,
   );
 
-  if (apiMetadata) {
-    const stats: string[] = [];
-    if (apiMetadata.operationCount !== undefined) {
-      stats.push(`${chalk.bold(apiMetadata.operationCount)} operations`);
-    }
-    if (apiMetadata.schemaCount !== undefined) {
-      stats.push(`${chalk.bold(apiMetadata.schemaCount)} schemas`);
-    }
-    if (apiMetadata.tagCount !== undefined) {
-      stats.push(`${chalk.bold(apiMetadata.tagCount)} tags`);
-    }
-    if (apiMetadata.securitySchemeCount !== undefined) {
-      stats.push(`${chalk.bold(apiMetadata.securitySchemeCount)} security schemes`);
-    }
-    if (apiMetadata.securitySchemeTypes && apiMetadata.securitySchemeTypes.length > 0) {
-      stats.push(`${chalk.bold(apiMetadata.securitySchemeTypes.length)} security types`);
-    }
-    if (stats.length > 0) {
-      lines.push('');
-      lines.push(chalk.dim(`  ${stats.join('  ·  ')}`));
-    }
-  }
-
   if (summary.dimensions && summary.dimensions.length > 0) {
     lines.push('');
     lines.push(chalk.bold('  Dimensions'));
@@ -146,7 +123,33 @@ export function formatPretty(result: ScorecardResult, source: string): string {
       const grade = colorGrade(dim.grade.padEnd(2));
       lines.push(`    ${kind}  ${name}  ${bar}  ${score}  ${grade}`);
     }
+  }
 
+  if (apiMetadata) {
+    const stat = (n: number, label: string): string => `${chalk.bold(n)} ${chalk.dim(label)}`;
+    const stats: string[] = [];
+    if (apiMetadata.operationCount !== undefined) {
+      stats.push(stat(apiMetadata.operationCount, 'operations'));
+    }
+    if (apiMetadata.schemaCount !== undefined) {
+      stats.push(stat(apiMetadata.schemaCount, 'schemas'));
+    }
+    if (apiMetadata.tagCount !== undefined) {
+      stats.push(stat(apiMetadata.tagCount, 'tags'));
+    }
+    if (apiMetadata.securitySchemeCount !== undefined) {
+      stats.push(stat(apiMetadata.securitySchemeCount, 'security schemes'));
+    }
+    if (apiMetadata.securitySchemeTypes && apiMetadata.securitySchemeTypes.length > 0) {
+      stats.push(stat(apiMetadata.securitySchemeTypes.length, 'security types'));
+    }
+    if (stats.length > 0) {
+      lines.push('');
+      lines.push(`  ${stats.join(chalk.dim('  ·  '))}`);
+    }
+  }
+
+  if (summary.dimensions && summary.dimensions.length > 0) {
     lines.push('');
     lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
     lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
