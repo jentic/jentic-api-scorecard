@@ -55,7 +55,7 @@ jobs:
         run: npx lerna publish from-package --no-private --yes --dist-tag alpha
       - name: Extract released version
         id: version
-        run: echo "value=$(node -p "require('./lerna.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
       - name: Smoke test npm package
         run: npx @jentic/api-scorecard-cli@alpha score --help
       - name: Smoke test CLI version

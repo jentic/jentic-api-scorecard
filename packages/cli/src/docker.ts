@@ -18,20 +18,31 @@ export function imageExists(ref: string): Promise<boolean> {
   });
 }
 
-export function pullImage(ref: string): Promise<number> {
-  return new Promise((resolve, reject) => {
+export interface PullResult {
+  exitCode: number;
+  stderr: string;
+}
+
+export function pullImage(ref: string): Promise<PullResult> {
+  return new Promise((resolve) => {
     const child = spawn('docker', ['pull', ref], {
-      stdio: 'ignore',
+      stdio: ['ignore', 'ignore', 'pipe'],
     });
+    const stderrChunks: Buffer[] = [];
+    if (child.stderr) {
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderrChunks.push(chunk);
+      });
+    }
     child.on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'ENOENT') {
-        resolve(ExitCode.DOCKER_MISSING);
-        return;
-      }
-      reject(err);
+      const exitCode = err.code === 'ENOENT' ? ExitCode.DOCKER_MISSING : ExitCode.GENERIC_ERROR;
+      resolve({ exitCode, stderr: err.message });
     });
     child.on('close', (code) => {
-      resolve(code ?? ExitCode.GENERIC_ERROR);
+      resolve({
+        exitCode: code ?? ExitCode.GENERIC_ERROR,
+        stderr: Buffer.concat(stderrChunks).toString('utf8'),
+      });
     });
   });
 }

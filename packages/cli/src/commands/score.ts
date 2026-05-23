@@ -60,11 +60,14 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const present = await imageExists(ref);
   if (!present) {
     spin(`Pulling ${ref}…`);
-    const pullExit = await pullImage(ref);
-    if (pullExit !== 0) {
+    const pullResult = await pullImage(ref);
+    if (pullResult.exitCode !== 0) {
       clearSpinner();
       process.stderr.write(`error: failed to pull image ${ref}\n`);
-      return pullExit === ExitCode.DOCKER_MISSING
+      if (pullResult.stderr) {
+        process.stderr.write(pullResult.stderr);
+      }
+      return pullResult.exitCode === ExitCode.DOCKER_MISSING
         ? ExitCode.DOCKER_MISSING
         : ExitCode.GENERIC_ERROR;
     }
