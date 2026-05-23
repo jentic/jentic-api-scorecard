@@ -45,18 +45,19 @@ def check_gate(url: str | None) -> ExitCode:
         return _fail(
             ExitCode.AUTH_INVALID_KEY,
             "error: scoring from stdin requires a Jentic API key.\n"
-            "  Get one at https://jentic.com/signup, then:\n"
-            "    export JENTIC_API_KEY=...",
+            "  Set the MVP preview key, then retry:\n"
+            "    export JENTIC_API_KEY=mvp-preview",
         )
 
     if not _ALLOWLIST_PATTERN.match(url):
         return _fail(
             ExitCode.GATE_REJECTED,
-            "error: anonymous scoring is restricted to specs hosted at:\n"
+            "error: anonymous scoring is restricted to OpenAPI documents hosted at:\n"
             "  https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/\n"
-            "  Browse available specs:\n"
+            "  Browse available documents:\n"
             "    https://github.com/jentic/jentic-public-apis/tree/main/apis/openapi\n"
-            "  Or sign up: https://jentic.com/signup",
+            "  Or set the MVP preview key:\n"
+            "    export JENTIC_API_KEY=mvp-preview",
         )
 
     return ExitCode.SUCCESS
