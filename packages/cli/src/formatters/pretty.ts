@@ -35,6 +35,8 @@ function scoreBar(score: number): string {
   return chalk.white('▄'.repeat(filled)) + chalk.blackBright('▄'.repeat(empty));
 }
 
+// Signal scores are [0, 1] with no engine-emitted grade, so we band by raw
+// threshold rather than reusing gradeColor (which keys off a grade letter).
 function signalScoreColor(score: number): (s: string) => string {
   if (score >= 0.8) return chalk.green;
   if (score >= 0.5) return chalk.yellow;
@@ -315,7 +317,9 @@ function appendHint(lines: string[], detail: DetailLevel): void {
 
   if (detail === DetailLevel.SIGNALS) {
     lines.push('');
-    lines.push(chalk.dim('  Run with --detail diagnostics for validator-finding counts.'));
+    lines.push(
+      chalk.dim('  Run with --detail diagnostics for severity counts and a preview of findings.'),
+    );
     lines.push(chalk.dim('  Full evidence: --format json --detail diagnostics'));
   }
 }
