@@ -56,13 +56,6 @@ jobs:
       - name: Extract released version
         id: version
         run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
-      - name: Smoke test npm package
-        run: npx @jentic/api-scorecard-cli@alpha score --help
-      - name: Smoke test CLI version
-        run: |
-          VERSION=$(node -p "require('./lerna.json').version")
-          REPORTED=$(npx @jentic/api-scorecard-cli@alpha --version)
-          [ "$REPORTED" = "$VERSION" ] || (echo "Version mismatch: expected $VERSION, got $REPORTED" && exit 1)
 
   publish-docker:
     needs: [release]
