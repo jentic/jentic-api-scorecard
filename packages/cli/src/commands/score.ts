@@ -37,7 +37,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   if (isURL(input)) {
     containerArgs.push('--url', input);
   } else if (isExistingFile(input)) {
-    spin(`⏳ Bundling ${input}…`);
+    spin(`Bundling ${input}…`);
     try {
       stdinPayload = await bundleSpec(input);
     } catch (err) {
@@ -53,7 +53,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     return ExitCode.GENERIC_ERROR;
   }
 
-  spin(`⏳ Scoring…`);
+  spin(`Scoring…`);
 
   let result;
   try {
@@ -87,7 +87,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  done(`✓ done in ${elapsed}s`);
+  done(`Done in ${elapsed}s`);
 
   const output = formatPretty(parsed, input);
   process.stdout.write(output);
