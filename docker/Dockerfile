@@ -34,9 +34,9 @@ COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 COPY src/ ./src/
-ENV PYTHONPATH=/app/src
-ENV HOME=/home/runner
-ENV NPM_CONFIG_CACHE=/var/cache/npm
+ENV PYTHONPATH=/app/src \
+    HOME=/home/runner \
+    NPM_CONFIG_CACHE=/var/cache/npm
 
 USER runner
 
