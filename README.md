@@ -102,10 +102,11 @@ shipped, and operate without runtime dependencies on us.
 
 ### Auditable end to end
 
-Apache 2.0, hosted in this repo. The scoring runner, the CLI wrapper, the
-GitHub Actions release pipeline — all of it is here on GitHub. Read the code
-that's about to grade your specs before you adopt it; nothing about how the
-score is produced is proprietary or vendored as an opaque binary.
+Every component in the scoring stack — runner, CLI, release pipeline, and
+engine — is Apache 2.0 licensed and source-readable. No proprietary blobs,
+no closed-source shims. Read the code that's about to grade your specs
+before you adopt it; audit any line, redistribute under the license terms,
+fork if you ever need to.
 
 ### Signed for regulated environments
 
@@ -136,7 +137,7 @@ hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
 CLI version, image tag, and engine version are locked one-to-one. Pinning
 `@jentic/api-scorecard-cli@<version>` resolves to a specific image tag, which
 in turn pins an exact engine release and exact validator versions. Last
-month's score is reproducible from last month's pin, byte for byte.
+month's score is reproducible from last month's pin.
 
 ## Status
 

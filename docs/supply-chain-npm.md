@@ -19,8 +19,7 @@ attestations bound to the tarball's SHA-256 digest:
 | **npm provenance** | `https://slsa.dev/provenance/v1` | npm registry record + GitHub attestations API | Where and how the tarball was built (workflow ref, commit SHA, builder identity). |
 | **SPDX SBOM** | `https://spdx.dev/Document/v2.3` | GitHub attestations API | The runtime dependency closure of the published tarball, in [SPDX 2.3](https://spdx.github.io/spdx-spec/v2.3/) form. |
 
-Both attestations are present from `1.0.0-alpha.11` onward; earlier alphas
-have provenance only.
+Both attestations ship with every release.
 
 ## Why this matters
 

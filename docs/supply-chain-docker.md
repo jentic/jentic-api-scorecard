@@ -204,12 +204,12 @@ Gate a deployment on per-platform verification:
     PLATFORM_DIGEST=$(docker buildx imagetools inspect "$INDEX" --raw \
       | jq -r '.manifests[] | select(.platform.architecture == "amd64" and .platform.os == "linux") | .digest')
 
-    gh attestation verify oci://"${INDEX%:*}@${PLATFORM_DIGEST}" \
+    gh attestation verify "oci://${INDEX%:*}@${PLATFORM_DIGEST}" \
       --owner jentic \
       --signer-workflow jentic/jentic-api-scorecard/.github/workflows/docker-publish.yml \
       --predicate-type https://spdx.dev/Document/v2.3
 
-    gh attestation verify "oci://$INDEX" \
+    gh attestation verify "oci://${INDEX}" \
       --owner jentic \
       --signer-workflow jentic/jentic-api-scorecard/.github/workflows/docker-publish.yml
   env:
