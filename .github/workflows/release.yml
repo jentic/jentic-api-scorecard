@@ -7,19 +7,19 @@ env:
   HUSKY: 0
 
 jobs:
-  release:
-    name: Release
+  # Step 1: bump version, tag, create GitHub release, push to main.
+  # No artifacts shipped yet — that happens in publish-docker and
+  # release-publish below. Keeping the version bump and "latest"
+  # flag here matches the previous workflow's behavior.
+  release-prepare:
+    name: Prepare release (version bump)
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment:
-      name: npm-release
-      url: https://www.npmjs.com/package/@jentic/api-scorecard-cli
     outputs:
       version: ${{ steps.version.outputs.value }}
+      sha: ${{ steps.version.outputs.sha }}
     permissions:
       contents: write
-      id-token: write
-      attestations: write
 
     steps:
       - name: Checkout
@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24.10.0
-          registry-url: https://registry.npmjs.org
       - name: Install monorepo dependencies
         run: npm ci --engine-strict=false
       - name: Build monorepo
@@ -52,9 +51,64 @@ jobs:
           gh release edit "v${VERSION}" --prerelease=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract released version
+      - name: Extract released version and bump SHA
         id: version
-        run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo "value=$(node -p 'require("./lerna.json").version')"
+            echo "sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+  # Step 2: build and push the multi-arch GHCR image at the
+  # exact tag the CLI will resolve to. Runs BEFORE npm publish so
+  # the matching image is on GHCR by the time the npm tarball
+  # becomes resolvable. If this fails, no npm publish happens —
+  # consumers never see a CLI version they can install but not run.
+  publish-docker:
+    needs: [release-prepare]
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.release-prepare.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+  # Step 3: publish to npm and attest the registry-served tarball.
+  # Runs only after the image is live, so `npx @jentic/...@<v>` is
+  # never resolvable before `docker run ghcr.io/...:<v>` is.
+  release-publish:
+    name: Publish to npm
+    needs: [release-prepare, publish-docker]
+    runs-on: ubuntu-latest
+    environment:
+      name: npm-release
+      url: https://www.npmjs.com/package/@jentic/api-scorecard-cli
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      # Pin to the bump SHA produced by release-prepare so this job
+      # publishes deterministically against the post-bump tree, not
+      # whatever main looks like at the time it runs.
+      - name: Checkout bump commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-prepare.outputs.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          registry-url: https://registry.npmjs.org
+      - name: Install monorepo dependencies
+        run: npm ci --engine-strict=false
+      - name: Build monorepo
+        run: npm run build
       - name: Publish monorepo npm packages
         run: npx lerna publish from-package --no-private --yes --dist-tag alpha
       # We attest the registry-served tarball, not a locally-repacked one.
@@ -90,7 +144,7 @@ jobs:
               --output "./artifacts/jentic-api-scorecard-cli-${VERSION}.tgz" \
               "https://registry.npmjs.org/@jentic/api-scorecard-cli/-/api-scorecard-cli-${VERSION}.tgz"
         env:
-          VERSION: ${{ steps.version.outputs.value }}
+          VERSION: ${{ needs.release-prepare.outputs.version }}
       - name: Generate SPDX SBOM for CLI
         run: |
           mkdir -p ./artifacts/sbom-staging
@@ -103,16 +157,5 @@ jobs:
       - name: Attest SBOM
         uses: actions/attest@v4
         with:
-          subject-path: ./artifacts/jentic-api-scorecard-cli-${{ steps.version.outputs.value }}.tgz
+          subject-path: ./artifacts/jentic-api-scorecard-cli-${{ needs.release-prepare.outputs.version }}.tgz
           sbom-path: ./artifacts/cli.sbom.spdx.json
-
-  publish-docker:
-    needs: [release]
-    uses: ./.github/workflows/docker-publish.yml
-    with:
-      version: ${{ needs.release.outputs.version }}
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
