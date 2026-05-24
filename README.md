@@ -95,25 +95,60 @@ export JENTIC_API_KEY=mvp-preview
 This is a documented public placeholder for the alpha preview — not a secret. Real key issuance
 arrives in a future release.
 
-## Verifying releases
+## Supply-chain attestations
 
-`@jentic/api-scorecard-cli` alpha tarballs ship with two Sigstore-signed attestations:
-npm provenance (where and how the tarball was built) and an SPDX 2.3 SBOM (the runtime
-dependency closure). Both are present from `1.0.0-alpha.7` onward; earlier alphas carry only
-provenance. Verify with the GitHub CLI:
+Each `@jentic/api-scorecard-cli` alpha release ships with two independent
+[Sigstore](https://www.sigstore.dev/)-signed attestations bound to the published tarball's
+SHA-256 digest. Both are produced inside the GitHub Actions release workflow (no human
+keyholder, no long-lived secrets) and are verifiable with the [GitHub CLI](https://cli.github.com/)
+≥ 2.49.
+
+| Attestation | Predicate type | What it claims | Where it lives |
+|---|---|---|---|
+| **npm provenance** | `https://slsa.dev/provenance/v1` | Where and how the tarball was built (workflow run, commit SHA, builder identity) | npm registry record + GitHub attestations index |
+| **SPDX SBOM** | `https://spdx.dev/Document/v2.3` | The runtime dependency closure of the published tarball, in [SPDX 2.3](https://spdx.github.io/spdx-spec/v2.3/) form | GitHub attestations index |
+
+Both attestations are present from **`1.0.0-alpha.11`** onward; earlier alphas have provenance
+only (the SBOM attestation pipeline reached parity with the registry-served bytes in alpha.11).
+
+### Verify a release
 
 ```bash
+# 1. Download the published tarball
 npm pack @jentic/api-scorecard-cli@alpha
 
-# Verify provenance (gh's default predicate)
+# 2. Verify the npm provenance (gh's default predicate type)
 gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic
 
-# Verify the SBOM (non-default predicate, must be requested explicitly)
+# 3. Verify the SPDX SBOM (non-default predicate type, must be requested explicitly)
 gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic \
   --predicate-type https://spdx.dev/Document/v2.3
 ```
 
-Each successful run reports `Loaded digest sha256:…` and lists the matching attestation.
+Each successful run reports `Loaded digest sha256:…` and lists the matched attestation.
+
+### Download the SBOM
+
+`gh attestation verify` proves authenticity but doesn't print the SPDX document itself. The
+SBOM is embedded as the `predicate` of the verified in-toto statement; extract it with
+`--format json` and pipe through `jq`:
+
+```bash
+gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic \
+  --predicate-type https://spdx.dev/Document/v2.3 \
+  --format json \
+  | jq '.[0].verificationResult.statement.predicate' \
+  > sbom.spdx.json
+```
+
+`sbom.spdx.json` is a complete SPDX 2.3 document — the document root carries the published
+package's purl (`pkg:npm/@jentic/api-scorecard-cli@<version>`) and the `packages` array
+enumerates every runtime dependency with its exact resolved version. Feed it directly to any
+SPDX-aware tool ([Trivy](https://trivy.dev/), [Grype](https://github.com/anchore/grype),
+[OSV-Scanner](https://github.com/google/osv-scanner)).
+
+Tying download to verification is deliberate: the recipe above succeeds only if the signature
+checks out, so you never end up with bytes that didn't pass the trust check.
 
 ## Status
 
