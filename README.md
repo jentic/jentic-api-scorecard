@@ -127,8 +127,9 @@ verifies an artifact end-to-end before you install it:
 The image is a closed system at scoring time: every Python wheel, Node.js
 binary, and validator tarball it needs is baked in at build time. Scoring does
 not call PyPI, npmjs, a Jentic backend, or any external service. Local-file
-inputs and bundled-URL inputs run fully offline; URL inputs make exactly one
-outbound request — fetching the OpenAPI document itself. Multi-arch images
+inputs and bundled-URL inputs run fully offline; URL inputs reach the network
+only to fetch the OpenAPI document and resolve any external `$ref`s it points
+at. Multi-arch images
 (linux/amd64 + linux/arm64) ship from the same release, so the same guarantees
 hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
 
