@@ -179,3 +179,18 @@ jobs:
           subject-digest: ${{ steps.platforms.outputs.arm64 }}
           sbom-path: ./image.sbom.arm64.spdx.json
           push-to-registry: true
+
+      # `:unstable` rolls on every green push to main, so the previous index
+      # loses its tag and (if its bytes differ) its per-platform children
+      # become orphan. Walk every current real tag's manifest list, build a
+      # keep-set of reachable digests, and delete anything else. Best-effort:
+      # the script always exits 0 so a transient packages-API hiccup never
+      # fails the publish job — survivors are cleaned up on the next push.
+      - name: Prune orphan GHCR versions
+        if: inputs.version == ''
+        run: bash .github/scripts/docker-prune-unstable-orphans.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG: jentic
+          PACKAGE: jentic-api-scorecard
+          IMAGE_REPO: jentic/jentic-api-scorecard
