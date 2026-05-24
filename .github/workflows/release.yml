@@ -19,6 +19,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      attestations: write
 
     steps:
       - name: Checkout
@@ -56,6 +57,27 @@ jobs:
       - name: Extract released version
         id: version
         run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
+      # `npm pack` is deterministic, so the local tarball is byte-identical
+      # (and SHA-256-identical) to the one lerna just pushed to the registry.
+      # We pack again only to get the bytes on disk for `actions/attest@v4`.
+      - name: Pack CLI tarball locally
+        run: |
+          mkdir -p ./artifacts
+          npm pack -w @jentic/api-scorecard-cli --pack-destination ./artifacts/
+      - name: Generate SPDX SBOM for CLI
+        run: |
+          mkdir -p ./artifacts/sbom-staging
+          cp packages/cli/package.json ./artifacts/sbom-staging/
+          (cd ./artifacts/sbom-staging \
+            && npm install --omit=dev --no-audit --no-fund --ignore-scripts \
+            && npm sbom --sbom-format=spdx --sbom-type=application --omit=dev \
+              > ../cli.sbom.spdx.json)
+          jq empty ./artifacts/cli.sbom.spdx.json
+      - name: Attest SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ./artifacts/jentic-api-scorecard-cli-${{ steps.version.outputs.value }}.tgz
+          sbom-path: ./artifacts/cli.sbom.spdx.json
 
   publish-docker:
     needs: [release]

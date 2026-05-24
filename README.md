@@ -95,6 +95,26 @@ export JENTIC_API_KEY=mvp-preview
 This is a documented public placeholder for the alpha preview — not a secret. Real key issuance
 arrives in a future release.
 
+## Verifying releases
+
+`@jentic/api-scorecard-cli` alpha tarballs ship with two Sigstore-signed attestations:
+npm provenance (where and how the tarball was built) and an SPDX 2.3 SBOM (the runtime
+dependency closure). Both are present from `1.0.0-alpha.7` onward; earlier alphas carry only
+provenance. Verify with the GitHub CLI:
+
+```bash
+npm pack @jentic/api-scorecard-cli@alpha
+
+# Verify provenance (gh's default predicate)
+gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic
+
+# Verify the SBOM (non-default predicate, must be requested explicitly)
+gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic \
+  --predicate-type https://spdx.dev/Document/v2.3
+```
+
+Each successful run reports `Loaded digest sha256:…` and lists the matching attestation.
+
 ## Status
 
 This project is in **alpha**. Track progress in
