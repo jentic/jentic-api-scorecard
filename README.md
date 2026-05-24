@@ -97,20 +97,23 @@ arrives in a future release.
 
 ## Enterprise-ready by default
 
-Built for teams where security, compliance, and operational independence are
-non-negotiable.
+For teams that need to know exactly what's running, verify exactly what was
+shipped, and operate without runtime dependencies on us.
 
 ### Full Code Transparency
 
-Apache 2.0, full source on GitHub. Every line of the scoring runner, the CLI,
-and the release pipeline is open for audits, compliance reviews, and internal
-assessments. No black-box concerns, no blind trust required.
+Apache 2.0, hosted in this repo. The scoring runner, the CLI wrapper, the
+GitHub Actions release pipeline — all of it is here on GitHub. Read the code
+that's about to grade your specs before you adopt it; nothing about how the
+score is produced is proprietary or vendored as an opaque binary.
 
-### Verifiable Releases
+### Built for Regulated Supply Chains
 
-Every npm tarball and every GHCR image ships with [Sigstore](https://www.sigstore.dev/)-signed
-SLSA provenance and SPDX SBOMs, produced by a fully OIDC-driven pipeline with no
-long-lived secrets. Verify with one command before installing.
+Every npm tarball and every GHCR image is signed by [Sigstore](https://www.sigstore.dev/)
+with SLSA provenance and an SPDX SBOM. Signing happens inside an OIDC-driven
+GitHub Actions workflow with no long-lived publishing secrets — there is no
+`NPM_TOKEN`, no PAT, and no human keyholder in the release chain. One command
+verifies an artifact end-to-end before you install it:
 
 - **[npm package supply chain →](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/supply-chain-npm.md)** —
   npm provenance, SPDX SBOM, trusted publishing, and the `gh attestation verify` recipes.
@@ -120,19 +123,20 @@ long-lived secrets. Verify with one command before installing.
 
 ### Deploy Anywhere, Depend on Nothing
 
-No database, no message queue, no external service in the loop. A single
-stateless Docker image (linux/amd64 + linux/arm64) bakes every Python wheel,
-Node.js binary, and validator tarball into the build — scoring runs without
-phoning PyPI, npmjs, or any Jentic backend. Local-file and bundled-URL modes
-work fully offline; URL mode needs network only to fetch the OpenAPI document
-itself.
+The image is a closed system at scoring time: every Python wheel, Node.js
+binary, and validator tarball it needs is baked in at build time. Scoring does
+not call PyPI, npmjs, a Jentic backend, or any external service. Local-file
+inputs and bundled-URL inputs run fully offline; URL inputs make exactly one
+outbound request — fetching the OpenAPI document itself. Multi-arch images
+(linux/amd64 + linux/arm64) ship from the same release, so the same guarantees
+hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
 
-### Reproducible Pinning
+### Reproduce Yesterday's Score Today
 
-CLI npm version, GHCR image tag, and the underlying scoring engine version are
-locked together: pinning `@jentic/api-scorecard-cli@<version>` reproduces the
-full stack — same image, same engine, same validator versions — so yesterday's
-score is bit-for-bit reproducible today.
+CLI version, image tag, and engine version are locked one-to-one. Pinning
+`@jentic/api-scorecard-cli@<version>` resolves to a specific image tag, which
+in turn pins an exact engine release and exact validator versions. Last
+month's score is reproducible from last month's pin, byte for byte.
 
 ## Status
 
