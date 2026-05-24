@@ -22,6 +22,12 @@ COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
+RUN groupadd --gid 10001 runner && \
+    useradd --uid 10001 --gid 10001 --home-dir /home/runner \
+            --create-home --shell /usr/sbin/nologin runner && \
+    mkdir -p /var/cache/npm && \
+    chown runner:runner /var/cache/npm
+
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
@@ -29,10 +35,13 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src
+ENV HOME=/home/runner
+ENV NPM_CONFIG_CACHE=/var/cache/npm
+
+USER runner
 
 # Warm npm cache: run a real score so npx-invoked validators get cached
-ENV NPM_CONFIG_CACHE=/var/cache/npm
-COPY .build/sample.yaml /tmp/sample.yaml
+COPY --chown=runner:runner .build/sample.yaml /tmp/sample.yaml
 RUN jentic-apitools score /tmp/sample.yaml --format json --quiet > /dev/null && \
     rm /tmp/sample.yaml
 
