@@ -20,9 +20,8 @@ LABEL maintainer="vladimir@jentic.com" \
 COPY --from=node:24-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
-    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
-
-RUN groupadd --gid 10001 runner && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    groupadd --gid 10001 runner && \
     useradd --uid 10001 --gid 10001 --home-dir /home/runner \
             --create-home --shell /usr/sbin/nologin runner && \
     mkdir -p /var/cache/npm && \
