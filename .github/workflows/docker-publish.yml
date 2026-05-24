@@ -90,19 +90,27 @@ jobs:
       # manifest digests out of build-push-action's metadata and generate +
       # attest one SBOM per platform so consumers verifying against either
       # platform digest get an SBOM that matches the bytes they pulled.
+      # build-push-action's metadata exposes only the index digest, not the
+      # per-platform child manifests. Fetch the index from the registry and
+      # extract amd64/arm64 manifest digests with jq. `imagetools inspect
+      # --raw` prints the manifest JSON to stdout without pulling layers.
       - name: Resolve per-platform digests
         id: platforms
         run: |
-          metadata='${{ steps.build.outputs.metadata }}'
-          amd64_digest=$(echo "$metadata" | jq -r '."containerimage.descriptor".manifests[]? // empty | select(.platform.architecture == "amd64") | .digest' | head -n1)
-          arm64_digest=$(echo "$metadata" | jq -r '."containerimage.descriptor".manifests[]? // empty | select(.platform.architecture == "arm64") | .digest' | head -n1)
+          set -euo pipefail
+          index_ref="${IMAGE_NAME}@${INDEX_DIGEST}"
+          index_json=$(docker buildx imagetools inspect "$index_ref" --raw)
+          amd64_digest=$(echo "$index_json" | jq -r '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest' | head -n1)
+          arm64_digest=$(echo "$index_json" | jq -r '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .digest' | head -n1)
           if [ -z "$amd64_digest" ] || [ -z "$arm64_digest" ]; then
-            echo "::error::Failed to resolve per-platform digests from build metadata"
-            echo "$metadata"
+            echo "::error::Failed to resolve per-platform digests from index manifest"
+            echo "$index_json"
             exit 1
           fi
           echo "amd64=$amd64_digest" >> "$GITHUB_OUTPUT"
           echo "arm64=$arm64_digest" >> "$GITHUB_OUTPUT"
+        env:
+          INDEX_DIGEST: ${{ steps.build.outputs.digest }}
 
       - name: Generate SPDX SBOM (amd64)
         uses: anchore/sbom-action@v0
