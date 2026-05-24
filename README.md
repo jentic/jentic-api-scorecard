@@ -98,15 +98,41 @@ arrives in a future release.
 ## Enterprise-ready by default
 
 Built for teams where security, compliance, and operational independence are
-non-negotiable. Every release ships with cryptographically verifiable provenance
-and SBOMs — for both the npm CLI and the GHCR container image — produced by a
-fully OIDC-driven pipeline with no long-lived secrets.
+non-negotiable.
+
+### Full Code Transparency
+
+Apache 2.0, full source on GitHub. Every line of the scoring runner, the CLI,
+and the release pipeline is open for audits, compliance reviews, and internal
+assessments. No black-box concerns, no blind trust required.
+
+### Verifiable Releases
+
+Every npm tarball and every GHCR image ships with [Sigstore](https://www.sigstore.dev/)-signed
+SLSA provenance and SPDX SBOMs, produced by a fully OIDC-driven pipeline with no
+long-lived secrets. Verify with one command before installing.
 
 - **[npm package supply chain →](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/supply-chain-npm.md)** —
   npm provenance, SPDX SBOM, trusted publishing, and the `gh attestation verify` recipes.
 - **[Docker image supply chain →](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/supply-chain-docker.md)** —
   per-platform SBOMs, dual-store attestations (BuildKit OCI referrers + Sigstore), and
   verification via either `docker buildx imagetools inspect` or `gh attestation verify`.
+
+### Deploy Anywhere, Depend on Nothing
+
+No database, no message queue, no external service in the loop. A single
+stateless Docker image (linux/amd64 + linux/arm64) bakes every Python wheel,
+Node.js binary, and validator tarball into the build — scoring runs without
+phoning PyPI, npmjs, or any Jentic backend. Local-file and bundled-URL modes
+work fully offline; URL mode needs network only to fetch the OpenAPI document
+itself.
+
+### Reproducible Pinning
+
+CLI npm version, GHCR image tag, and the underlying scoring engine version are
+locked together: pinning `@jentic/api-scorecard-cli@<version>` reproduces the
+full stack — same image, same engine, same validator versions — so yesterday's
+score is bit-for-bit reproducible today.
 
 ## Status
 
