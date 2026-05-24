@@ -52,14 +52,14 @@ jobs:
           gh release edit "v${VERSION}" --prerelease=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish monorepo npm packages
-        run: npx lerna publish from-package --no-private --yes --dist-tag alpha
       - name: Extract released version
         id: version
         run: echo "value=$(node -p 'require("./lerna.json").version')" >> "$GITHUB_OUTPUT"
-      # `npm pack` is deterministic, so the local tarball is byte-identical
-      # (and SHA-256-identical) to the one lerna just pushed to the registry.
-      # We pack again only to get the bytes on disk for `actions/attest@v4`.
+      # Pack BEFORE `lerna publish` so the bytes we attest are the bytes
+      # lerna will publish: both calls invoke `npm-packlist` against the
+      # same source tree with normalized mtimes, so the tarballs are
+      # byte-identical (matching SHA-256). Packing AFTER publish picks up
+      # state lerna leaves behind on disk and produces a different digest.
       - name: Pack CLI tarball locally
         run: |
           mkdir -p ./artifacts
@@ -78,6 +78,8 @@ jobs:
         with:
           subject-path: ./artifacts/jentic-api-scorecard-cli-${{ steps.version.outputs.value }}.tgz
           sbom-path: ./artifacts/cli.sbom.spdx.json
+      - name: Publish monorepo npm packages
+        run: npx lerna publish from-package --no-private --yes --dist-tag alpha
 
   publish-docker:
     needs: [release]
