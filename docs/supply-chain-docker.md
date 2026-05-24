@@ -11,9 +11,12 @@ architectural context, see [architecture.md §8](./architecture.md#8-versioning-
 
 ## What is published
 
-Every image push (versioned releases like `:1.0.0-alpha.13` and the
-rolling `:unstable` tag) ships **two stores of attestation** for **each
-of two platforms** — amd64 and arm64.
+**Versioned releases only.** Every versioned image push (e.g. `:1.0.0-alpha.13`)
+ships **two stores of attestation** for **each of two platforms** — amd64 and
+arm64. The rolling `:unstable` tag, which mutates on every push to `main`,
+ships **without attestations** by design — pinning a Sigstore signature to a
+moving tag produces verifications that don't compose. Use a versioned tag for
+any environment that runs supply-chain verification.
 
 | Store | Provenance | SBOM | Verified with |
 |---|---|---|---|
@@ -126,12 +129,12 @@ the per-platform child digest for the SBOM matching your runtime arch.
 
 ```bash
 # Provenance: bound to the manifest list (index)
-gh attestation verify oci://ghcr.io/jentic/jentic-api-scorecard:unstable \
+gh attestation verify oci://ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13 \
   --owner jentic
 
 # SBOM: bound to the per-platform child manifest
 # Look up the child digest for your arch first
-INDEX=ghcr.io/jentic/jentic-api-scorecard:unstable
+INDEX=ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13
 ARM64_DIGEST=$(docker buildx imagetools inspect "$INDEX" --raw \
   | jq -r '.manifests[] | select(.platform.architecture == "arm64" and .platform.os == "linux") | .digest')
 
@@ -143,7 +146,7 @@ gh attestation verify oci://ghcr.io/jentic/jentic-api-scorecard@"$ARM64_DIGEST" 
 For stricter verification, pin the signer workflow:
 
 ```bash
-gh attestation verify oci://ghcr.io/jentic/jentic-api-scorecard:unstable \
+gh attestation verify oci://ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13 \
   --owner jentic \
   --signer-workflow jentic/jentic-api-scorecard/.github/workflows/docker-publish.yml
 ```
@@ -155,13 +158,13 @@ The OCI referrer attestations are attached as additional manifests with
 
 ```bash
 # Show the full referrer set
-docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:unstable \
+docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13 \
   --format '{{json .Manifest}}'
 
 # Pull a specific referrer's content
-docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:unstable \
+docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13 \
   --format '{{json .SBOM}}' | jq .
-docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:unstable \
+docker buildx imagetools inspect ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13 \
   --format '{{json .Provenance}}' | jq .
 ```
 
@@ -174,7 +177,7 @@ To save the SPDX document for downstream SCA tooling:
 
 ```bash
 # Via Sigstore — one platform at a time
-INDEX=ghcr.io/jentic/jentic-api-scorecard:unstable
+INDEX=ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.13
 AMD64_DIGEST=$(docker buildx imagetools inspect "$INDEX" --raw \
   | jq -r '.manifests[] | select(.platform.architecture == "amd64" and .platform.os == "linux") | .digest')
 

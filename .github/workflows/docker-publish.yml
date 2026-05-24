@@ -59,12 +59,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # `sbom: true` and `provenance: mode=max` attach in-toto SBOM and SLSA
-      # provenance to the OCI manifest as referrer artifacts (verified via
-      # `docker buildx imagetools inspect`). The post-push attestation steps
-      # below also publish Sigstore-signed equivalents to GitHub's attestation
-      # store (verified via `gh attestation verify`). Both stores are populated
-      # so consumers can use either verification flow.
+      # For versioned releases, `sbom: true` and `provenance: mode=max`
+      # attach in-toto SBOM and SLSA provenance to the OCI manifest as
+      # referrer artifacts (verified via `docker buildx imagetools inspect`).
+      # The post-push attestation steps below also publish Sigstore-signed
+      # equivalents to GitHub's attestation store (verified via
+      # `gh attestation verify`). Both stores are populated so consumers
+      # can use either verification flow.
+      #
+      # `:unstable` rolls on every green push to main, so attesting specific
+      # bytes to a tag whose content changes without notice produces
+      # signatures that don't compose. Skip both BuildKit and post-push
+      # attestations for unstable builds — see issue #42.
       - name: Build and push
         id: build
         uses: docker/build-push-action@v7
@@ -84,8 +90,8 @@ jobs:
             index:org.opencontainers.image.licenses=Apache-2.0
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          sbom: true
-          provenance: mode=max
+          sbom: ${{ inputs.version != '' }}
+          provenance: ${{ inputs.version != '' && 'mode=max' || 'false' }}
 
       # Smoke test runs immediately after push so a Sigstore/Fulcio/Rekor
       # outage downstream cannot mask a broken image. amd64 only (runner
@@ -94,6 +100,12 @@ jobs:
       - name: Smoke test Docker image
         run: docker run --rm ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} score --help
 
+      # Per-platform SBOMs and attestations only run for versioned releases.
+      # The `:unstable` tag rolls on every green push to main, so attesting
+      # specific bytes there produces signatures that don't compose — the
+      # tag's content changes without notice. Versioned tags (`:1.0.0-alpha.<n>`)
+      # are immutable and worth signing.
+      #
       # Per-platform SBOMs: scanning the manifest-list digest with syft on
       # an amd64 runner only ever produces an amd64 SBOM. Loop the child
       # manifest digests out of build-push-action's metadata and generate +
@@ -105,6 +117,7 @@ jobs:
       # --raw` prints the manifest JSON to stdout without pulling layers.
       - name: Resolve per-platform digests
         id: platforms
+        if: inputs.version != ''
         run: |
           set -euo pipefail
           index_ref="${IMAGE_NAME}@${INDEX_DIGEST}"
@@ -122,6 +135,7 @@ jobs:
           INDEX_DIGEST: ${{ steps.build.outputs.digest }}
 
       - name: Generate SPDX SBOM (amd64)
+        if: inputs.version != ''
         uses: anchore/sbom-action@v0
         with:
           image: ${{ env.IMAGE_NAME }}@${{ steps.platforms.outputs.amd64 }}
@@ -131,6 +145,7 @@ jobs:
           upload-release-assets: false
 
       - name: Generate SPDX SBOM (arm64)
+        if: inputs.version != ''
         uses: anchore/sbom-action@v0
         with:
           image: ${{ env.IMAGE_NAME }}@${{ steps.platforms.outputs.arm64 }}
@@ -140,6 +155,7 @@ jobs:
           upload-release-assets: false
 
       - name: Attest build provenance (index)
+        if: inputs.version != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.IMAGE_NAME }}
@@ -147,6 +163,7 @@ jobs:
           push-to-registry: true
 
       - name: Attest SBOM (amd64)
+        if: inputs.version != ''
         uses: actions/attest@v4
         with:
           subject-name: ${{ env.IMAGE_NAME }}
@@ -155,6 +172,7 @@ jobs:
           push-to-registry: true
 
       - name: Attest SBOM (arm64)
+        if: inputs.version != ''
         uses: actions/attest@v4
         with:
           subject-name: ${{ env.IMAGE_NAME }}
