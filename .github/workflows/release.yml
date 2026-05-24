@@ -62,14 +62,15 @@ jobs:
       # its internal pack, so the bytes the registry serves can't be
       # reproduced by `npm pack -w` against unmutated source. Pulling the
       # published tarball back guarantees the attestation digest matches
-      # what consumers actually download. The retries cover npm's
-      # registry CDN propagation lag (typically a few seconds).
+      # what consumers actually download. The retry budget (8 attempts,
+      # 30s spacing = ~4min total) covers npm's registry CDN propagation
+      # lag, which has been observed to exceed 30s on alpha.9.
       - name: Download published CLI tarball from registry
         uses: nick-fields/retry@v3
         with:
-          max_attempts: 5
-          retry_wait_seconds: 6
-          timeout_minutes: 2
+          max_attempts: 8
+          retry_wait_seconds: 30
+          timeout_minutes: 5
           retry_on: error
           command: |
             mkdir -p ./artifacts
