@@ -66,21 +66,27 @@ jobs:
       #
       # We curl the tarball URL directly instead of `npm pack <pkg>@<ver>`
       # because npm's package-metadata CDN (the JSON document at /<pkg>)
-      # propagates separately and slowly — observed >5min lag on alpha.9
-      # and alpha.10. The tarball CDN at /<pkg>/-/<pkg>-<ver>.tgz is
-      # available within ~1s of publish (alpha.10 evidence:
-      # `last-modified: 12:12:26 GMT`, `npm publish` ACK at 12:12:25).
-      # Retry covers the rare case of a missed CDN write.
+      # propagates separately and slowly. The tarball CDN at
+      # /<pkg>/-/<pkg>-<ver>.tgz is *usually* available within ~1s of
+      # publish (alpha.10: tarball last-modified 12:12:26, publish ACK
+      # 12:12:25), but propagation can stall for 10+ minutes when npm's
+      # anti-abuse path is engaged — observed on alpha.12 where the
+      # tarball blob 404'd for >10 min after a successful `lerna publish`
+      # while the metadata document had already propagated. Budget the
+      # retry loop for the worst case so a healthy publish is never
+      # short-circuited by a slow CDN write.
       - name: Download published CLI tarball from registry
         uses: nick-fields/retry@v3
         with:
-          max_attempts: 5
-          retry_wait_seconds: 6
-          timeout_minutes: 2
+          max_attempts: 60
+          retry_wait_seconds: 30
+          timeout_minutes: 35
           retry_on: error
           command: |
             mkdir -p ./artifacts
             curl --fail --silent --show-error --location \
+              --header "Cache-Control: no-cache" \
+              --header "Pragma: no-cache" \
               --output "./artifacts/jentic-api-scorecard-cli-${VERSION}.tgz" \
               "https://registry.npmjs.org/@jentic/api-scorecard-cli/-/api-scorecard-cli-${VERSION}.tgz"
         env:
