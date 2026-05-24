@@ -98,7 +98,7 @@ arrives in a future release.
 ## Enterprise-ready by default
 
 For teams that need to know exactly what's running, verify exactly what was
-shipped, and operate without runtime dependencies on us.
+shipped, and run without a runtime dependency on Jentic.
 
 ### Auditable end to end
 
