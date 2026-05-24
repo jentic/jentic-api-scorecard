@@ -102,11 +102,11 @@ non-negotiable. Every release ships with cryptographically verifiable provenance
 and SBOMs — for both the npm CLI and the GHCR container image — produced by a
 fully OIDC-driven pipeline with no long-lived secrets.
 
-- **[npm package supply chain →](docs/supply-chain-npm.md)** — npm provenance, SPDX SBOM,
-  trusted publishing, and the `gh attestation verify` recipes.
-- **[Docker image supply chain →](docs/supply-chain-docker.md)** — per-platform SBOMs,
-  dual-store attestations (BuildKit OCI referrers + Sigstore), and verification
-  via either `docker buildx imagetools inspect` or `gh attestation verify`.
+- **[npm package supply chain →](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/supply-chain-npm.md)** —
+  npm provenance, SPDX SBOM, trusted publishing, and the `gh attestation verify` recipes.
+- **[Docker image supply chain →](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/supply-chain-docker.md)** —
+  per-platform SBOMs, dual-store attestations (BuildKit OCI referrers + Sigstore), and
+  verification via either `docker buildx imagetools inspect` or `gh attestation verify`.
 
 ## Status
 
