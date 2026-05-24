@@ -1,5 +1,12 @@
 FROM python:3.12-slim
 
+LABEL maintainer="vladimir@jentic.com" \
+      org.opencontainers.image.authors="vladimir@jentic.com" \
+      org.opencontainers.image.url="https://github.com/jentic/jentic-api-scorecard" \
+      org.opencontainers.image.source="https://github.com/jentic/jentic-api-scorecard" \
+      org.opencontainers.image.description="Jentic API Scorecard Docker image" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 COPY --from=node:24-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
