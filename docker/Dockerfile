@@ -31,10 +31,9 @@ RUN groupadd --gid 10001 runner && \
 WORKDIR /app
 
 COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
-
 COPY src/ ./src/
-ENV PYTHONPATH=/app/src \
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
     HOME=/home/runner \
     NPM_CONFIG_CACHE=/var/cache/npm
 
