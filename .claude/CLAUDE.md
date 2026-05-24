@@ -53,7 +53,7 @@ The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The placeholder 
 
 ### Image build (`docker/Dockerfile`)
 
-Multi-stage `python:3.12-slim` + `node:24-slim` (engine spawns Redocly / Spectral / Speclynx via `npx`). `uv sync --frozen --no-dev --no-install-project` installs the engine. The build runs a real score against `docker/.build/sample.yaml` to warm the npm cache so the first user-facing run doesn't pay validator-download cost. Entrypoint: `uv run python -m jentic_scorecard_runner`.
+Multi-stage `python:3.12-slim` + `node:24-slim` (engine spawns Redocly / Spectral / Speclynx via `npx`). The builder stage runs `uv sync --frozen --no-dev --no-install-project` to materialize `/app/.venv`; the runtime stage copies the venv and prepends `/app/.venv/bin` to `PATH`, so uv is not present in the final image. The build runs a real score against `docker/.build/sample.yaml` to warm the npm cache so the first user-facing run doesn't pay validator-download cost. Entrypoint: `python -m jentic_scorecard_runner`.
 
 ## Common commands
 

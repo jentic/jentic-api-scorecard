@@ -28,8 +28,8 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Runtime (host) | Docker | `docker/Dockerfile`; `ghcr.io/jentic/jentic-api-scorecard` is the deliverable |
 | Runtime (in image) | Python 3.12 + Node 24 LTS | `docker/Dockerfile:1, 3-6` (Node copied from `node:24-slim` for engine's `npx` dispatch) |
 | Scoring engine | `jentic-apitools-cli` (PyPI) | `docker/pyproject.toml:7` (pinned exactly); shells out to `npx`-launched Redocly / Spectral / Speclynx validators |
-| Dependency manager | uv | `docker/uv.lock`; `docker/Dockerfile:9` pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
-| Build / packaging | Docker multi-stage | `docker/Dockerfile`; build-time `npx` cache warming via `docker/.build/sample.yaml` (`docker/Dockerfile:20-24`) |
+| Dependency manager | uv (build-time only) | `docker/uv.lock`; `docker/Dockerfile` builder stage pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
+| Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via `docker/.build/sample.yaml` |
 | Test framework | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
 | Lint / format (Python) | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
 | Lint / format (JS/TS) | ESLint 9 (flat config) + Prettier 3 | `eslint.config.js`, `.prettierrc` at repo root; `eslint-plugin-import-x`, `typescript-eslint`, `eslint-plugin-prettier` recommended |
@@ -40,8 +40,8 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 ## Key Libraries and Frameworks
 
 - **`jentic-apitools-cli`** — the JAIRF scoring engine. Invoked as `jentic-apitools score <target> --format json --include-diagnostics --quiet [--enable-llm-analysis]`. Pinned exactly in `docker/pyproject.toml`; reproducibility is "pin one CLI version → pin one image tag → pin one engine version" (see `docs/architecture.md` §8).
-- **uv** — fast Python resolver/installer; lockfile (`docker/uv.lock`) is the source of truth for dependency versions. `uv sync --frozen --no-dev --no-install-project` runs at image build time. `[tool.uv]` declares `package = false` because the runner is image-internal, never published to PyPI.
-- **Docker (multi-stage build)** — base `python:3.12-slim`; binaries copied from `node:24-slim` and `ghcr.io/astral-sh/uv:0.8.5`. `ENTRYPOINT ["uv", "run", "python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
+- **uv** — fast Python resolver/installer; lockfile (`docker/uv.lock`) is the source of truth for dependency versions. `uv sync --frozen --no-dev --no-install-project` runs in the Dockerfile's builder stage only — uv is not present in the runtime image. `[tool.uv]` declares `package = false` because the runner is image-internal, never published to PyPI.
+- **Docker (multi-stage build)** — builder stage on `python:3.12-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.12-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
 
 ## Data and Storage
 
