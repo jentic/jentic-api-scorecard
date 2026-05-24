@@ -62,19 +62,27 @@ jobs:
       # its internal pack, so the bytes the registry serves can't be
       # reproduced by `npm pack -w` against unmutated source. Pulling the
       # published tarball back guarantees the attestation digest matches
-      # what consumers actually download. The retry budget (8 attempts,
-      # 30s spacing = ~4min total) covers npm's registry CDN propagation
-      # lag, which has been observed to exceed 30s on alpha.9.
+      # what consumers actually download.
+      #
+      # We curl the tarball URL directly instead of `npm pack <pkg>@<ver>`
+      # because npm's package-metadata CDN (the JSON document at /<pkg>)
+      # propagates separately and slowly — observed >5min lag on alpha.9
+      # and alpha.10. The tarball CDN at /<pkg>/-/<pkg>-<ver>.tgz is
+      # available within ~1s of publish (alpha.10 evidence:
+      # `last-modified: 12:12:26 GMT`, `npm publish` ACK at 12:12:25).
+      # Retry covers the rare case of a missed CDN write.
       - name: Download published CLI tarball from registry
         uses: nick-fields/retry@v3
         with:
-          max_attempts: 8
-          retry_wait_seconds: 30
-          timeout_minutes: 5
+          max_attempts: 5
+          retry_wait_seconds: 6
+          timeout_minutes: 2
           retry_on: error
           command: |
             mkdir -p ./artifacts
-            npm pack "@jentic/api-scorecard-cli@${VERSION}" --pack-destination ./artifacts/
+            curl --fail --silent --show-error --location \
+              --output "./artifacts/jentic-api-scorecard-cli-${VERSION}.tgz" \
+              "https://registry.npmjs.org/@jentic/api-scorecard-cli/-/api-scorecard-cli-${VERSION}.tgz"
         env:
           VERSION: ${{ steps.version.outputs.value }}
       - name: Generate SPDX SBOM for CLI
