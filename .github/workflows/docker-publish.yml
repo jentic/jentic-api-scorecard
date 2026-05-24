@@ -10,6 +10,11 @@ on:
         required: true
         type: string
   workflow_dispatch:
+    inputs:
+      version:
+        description: Semver tag without v prefix (e.g. 1.0.0-alpha.1). Leave blank to publish unstable.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -31,6 +36,11 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE_NAME: ghcr.io/jentic/jentic-api-scorecard
+      IMAGE_TAG: ${{ inputs.version || 'unstable' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -49,16 +59,88 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      # `sbom: true` and `provenance: mode=max` attach in-toto SBOM and SLSA
+      # provenance to the OCI manifest as referrer artifacts (verified via
+      # `docker buildx imagetools inspect`). The post-push attestation steps
+      # below also publish Sigstore-signed equivalents to GitHub's attestation
+      # store (verified via `gh attestation verify`). Both stores are populated
+      # so consumers can use either verification flow.
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: ./docker
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/jentic/jentic-api-scorecard:${{ inputs.version || 'unstable' }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          sbom: true
+          provenance: mode=max
 
+      # Smoke test runs immediately after push so a Sigstore/Fulcio/Rekor
+      # outage downstream cannot mask a broken image. amd64 only (runner
+      # native); arm64 coverage falls under the per-platform attestation
+      # loop and CI's image-build smoke.
       - name: Smoke test Docker image
-        if: inputs.version
-        run: docker run --rm ghcr.io/jentic/jentic-api-scorecard:${{ inputs.version }} score --help
+        run: docker run --rm ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} score --help
+
+      # Per-platform SBOMs: scanning the manifest-list digest with syft on
+      # an amd64 runner only ever produces an amd64 SBOM. Loop the child
+      # manifest digests out of build-push-action's metadata and generate +
+      # attest one SBOM per platform so consumers verifying against either
+      # platform digest get an SBOM that matches the bytes they pulled.
+      - name: Resolve per-platform digests
+        id: platforms
+        run: |
+          metadata='${{ steps.build.outputs.metadata }}'
+          amd64_digest=$(echo "$metadata" | jq -r '."containerimage.descriptor".manifests[]? // empty | select(.platform.architecture == "amd64") | .digest' | head -n1)
+          arm64_digest=$(echo "$metadata" | jq -r '."containerimage.descriptor".manifests[]? // empty | select(.platform.architecture == "arm64") | .digest' | head -n1)
+          if [ -z "$amd64_digest" ] || [ -z "$arm64_digest" ]; then
+            echo "::error::Failed to resolve per-platform digests from build metadata"
+            echo "$metadata"
+            exit 1
+          fi
+          echo "amd64=$amd64_digest" >> "$GITHUB_OUTPUT"
+          echo "arm64=$arm64_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SPDX SBOM (amd64)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}@${{ steps.platforms.outputs.amd64 }}
+          format: spdx-json
+          output-file: ./image.sbom.amd64.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Generate SPDX SBOM (arm64)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.IMAGE_NAME }}@${{ steps.platforms.outputs.arm64 }}
+          format: spdx-json
+          output-file: ./image.sbom.arm64.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest build provenance (index)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest SBOM (amd64)
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.platforms.outputs.amd64 }}
+          sbom-path: ./image.sbom.amd64.spdx.json
+          push-to-registry: true
+
+      - name: Attest SBOM (arm64)
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.platforms.outputs.arm64 }}
+          sbom-path: ./image.sbom.arm64.spdx.json
+          push-to-registry: true
