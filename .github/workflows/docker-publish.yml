@@ -73,6 +73,15 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          # Annotate the multi-arch manifest index. Dockerfile LABELs only
+          # land on per-platform image configs, so GHCR's package UI (which
+          # reads from the index) shows "No description" without these.
+          annotations: |
+            index:org.opencontainers.image.authors=vladimir@jentic.com
+            index:org.opencontainers.image.url=https://github.com/jentic/jentic-api-scorecard
+            index:org.opencontainers.image.source=https://github.com/jentic/jentic-api-scorecard
+            index:org.opencontainers.image.description=Jentic API Scorecard Docker image
+            index:org.opencontainers.image.licenses=Apache-2.0
           cache-from: type=gha
           cache-to: type=gha,mode=max
           sbom: true
