@@ -42,7 +42,7 @@ env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u GEMINI_API_KEY \
     --with-llm
 ```
 
-Exits `1` (`GENERIC_ERROR`). Stderr contains a guidance string that names at minimum `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `AWS_ACCESS_KEY_ID`, `OPENAI_API_URL`, and `LLM_PROVIDER`. **No `docker run` is invoked** — verifiable by running the same command in a shell where `docker` is not on `PATH`; the exit code must remain `1` (env-scan failure), not `4` (docker missing).
+Exits `1` (`GENERIC_ERROR`). Stderr contains a guidance string that names at minimum `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `AWS_ACCESS_KEY_ID`, `OPENAI_API_URL`, `LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, and `LLM_LIGHT_MODEL` — the full non-Bedrock export contract, since omitting any of the last three drops the run into the engine's Bedrock defaults. **No `docker run` is invoked** — verifiable by running the same command in a shell where `docker` is not on `PATH`; the exit code must remain `1` (env-scan failure), not `4` (docker missing).
 
 ### 5. Cloud-credential path no longer fails fast
 
@@ -70,12 +70,15 @@ grep -F "Bring your own LLM" docs/architecture.md
 grep -F "OPENAI_API_URL" docs/architecture.md
 grep -F "Ollama" docs/architecture.md
 grep -F "host-gateway" docs/architecture.md
+grep -F "LLM_LIGHT_MODEL" docs/architecture.md
+grep -F "Without \`LLM_LIGHT_MODEL\` the engine falls back to a Bedrock model ID" docs/architecture.md
 ```
 
-All four exit 0. The first asserts the new subsection heading anchor exists; the next three lock down the load-bearing recipe + mechanism keywords. `docs/architecture.md` §5 contains a "Bring your own LLM" subsection that:
+All six exit 0. The first asserts the new subsection heading anchor exists; the next three lock down the load-bearing recipe + mechanism keywords; the last two enforce the canonical sentence that keeps non-Bedrock users out of the silent-failure trap. `docs/architecture.md` §5 contains a "Bring your own LLM" subsection that:
 
 - Names the cloud-provider env-var allowlist.
-- Names the local-endpoint env vars (`LLM_PROVIDER`, `OPENAI_API_URL`, `OPENAI_API_KEY` placeholder, `LLM_MODEL`).
+- Names the local-endpoint env vars (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `OPENAI_API_URL`, `OPENAI_API_KEY` placeholder, `LLM_MODEL`, `LLM_LIGHT_MODEL`).
+- Includes the canonical phrasing *"Without `LLM_LIGHT_MODEL` the engine falls back to a Bedrock model ID and the run will fail for non-Bedrock providers."*
 - Documents the host-network mechanism (`--add-host=host.docker.internal:host-gateway` injected when a host-loopback URL is detected).
 - Repeats the security note that credentials are visible to anyone with access to the docker daemon during the run.
 
