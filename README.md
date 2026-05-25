@@ -83,6 +83,18 @@ npx @jentic/api-scorecard-cli@alpha score --detail signals ./openapi.yaml
 npx @jentic/api-scorecard-cli@alpha score --detail diagnostics ./openapi.yaml
 ```
 
+## LLM analysis
+
+Add `--with-llm` to unlock LLM-backed signals (deeper semantic reasoning about each operation).
+Requires an LLM provider — cloud (OpenAI / Anthropic / Gemini / AWS Bedrock) or a local
+OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, …). See
+[Bring your own LLM](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/architecture.md#bring-your-own-llm)
+for the full export contract.
+
+```bash
+JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+```
+
 ## Anonymous vs keyed access
 
 OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis)

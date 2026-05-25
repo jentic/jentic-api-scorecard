@@ -50,7 +50,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
 | Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. MVP scaffolds the auth pipeline by checking against a documented public placeholder (`mvp-preview`); real validation lands in a follow-up. No login subcommand or creds file in MVP. |
 | Engine | [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) on PyPI. Image bundles Python 3.12 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
-| LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider env vars (OpenAI / Anthropic / Gemini / AWS) to the container, which passes `--enable-llm-analysis` to the engine. |
+| LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
 | Usage tracking | Out of scope for Delivery 1. No container-side calls to Jentic. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
 | Out of scope (MVP) | HTML formatter wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence; rate limiting beyond URL allowlist. |
@@ -166,7 +166,7 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 | `--verbose` / `-v` | off | Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
 | `--quiet` / `-q` | off | Suppress stderr spinner. Engine warnings still pass through stderr (they're a small, bounded signal). Pretty/JSON stdout unchanged. The spinner ALSO auto-suppresses when stderr is not a TTY (CI logs, redirected stderr) — `--quiet` is the explicit override for interactive shells. |
 | `--output` / `-o` `<file>` | stdout | Write report output to `<file>` instead of stdout. Useful for CI artifacts, Windows scripts, and future HTML/Markdown outputs where shell redirection is awkward. When set, spinner still goes to stderr. |
-| `--with-llm` | off | Enable LLM-backed analysis in the engine (`jentic-apitools score --enable-llm-analysis`). Requires at least one supported provider env var set in the CLI's environment (e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, or `AWS_*`); CLI errors if none are present. CLI forwards every provider env var that IS set to the container via `-e <NAME>` (passthrough form). |
+| `--with-llm` | off | Enable LLM-backed analysis in the engine (`jentic-apitools score --enable-llm-analysis`). Requires at least one supported provider credential (cloud) or `LLM_PROVIDER=OPENAI` + `OPENAI_API_URL` (local endpoint); CLI exits `1` with guidance if none are present. Forwards all detected credentials and routing variables to the container via `-e <NAME>` (passthrough form). See §5 "Bring your own LLM" for the full env-var contract. |
 | `--bundle` | off | Force CLI-side bundling. For URL inputs, the CLI fetches the URL on the host and Redocly-bundles it before piping bundled JSON to the container via stdin — use this for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Implies key-required, since the anonymous allowlist does not apply once the source URL stops reaching the container. For local paths the flag is a no-op: bundling is always how local files are handled. Safe to leave on in scripts where `$INPUT` could be either type. **Note**: `--bundle` follows HTTP redirects from any URL the user types — this is the user's host doing the fetching, so this is not SSRF-relevant in the usual sense, but typing arbitrary URLs into a tool that fetches them is the user's responsibility. |
 
 ### Input dispatch
@@ -216,16 +216,53 @@ When real auth ships, the only changes inside the container are: replace the sta
 
 ### LLM provider keys (only when `--with-llm` is set)
 
-When `score` is invoked with `--with-llm`, the CLI scans its own environment for known provider keys and forwards each that is present to the container using docker's passthrough form (`-e NAME` with no value, which copies the value from the CLI's environment at run time):
+When `score` is invoked with `--with-llm`, the CLI scans its own environment for known provider credentials and routing variables, then forwards each that is present to the container using docker's passthrough form (`-e NAME` with no value, which copies the value from the CLI's environment at run time).
+
+**Cloud credentials** (at least one must be present for a cloud recipe):
 
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
 - `GEMINI_API_KEY`
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_REGION` (Bedrock — `AWS_SESSION_TOKEN` is required when using temporary credentials, e.g. from `aws sts assume-role` or AWS SSO)
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK` (Bedrock — `AWS_SESSION_TOKEN` is required when using temporary credentials, e.g. from `aws sts assume-role` or AWS SSO)
 
-If `--with-llm` is set but none of these are present, the CLI exits with a clear error before invoking docker. Without `--with-llm`, the CLI never forwards LLM keys, even if they are set on the host. The container treats `--enable-llm-analysis` as off unless the CLI explicitly turns it on (see §6).
+**Routing variables** (forwarded when present; required for non-Bedrock providers):
+
+- `LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `LLM_MAX_TOKENS`
+- `OPENAI_API_URL`, `ANTHROPIC_API_URL`, `GEMINI_API_URL`
+
+If `--with-llm` is set but no usable provider is detected (no credential present, and `LLM_PROVIDER=OPENAI` + `OPENAI_API_URL` not set together), the CLI exits `1` (`GENERIC_ERROR`) before invoking docker, with a guidance message covering both cloud and local recipes. Without `--with-llm`, the CLI never forwards LLM keys or routing variables, even if they are set on the host. The container treats `--enable-llm-analysis` as off unless the CLI explicitly turns it on (see §6).
 
 **Note on key visibility**: provider keys passed via `-e <NAME>` show up in `docker inspect <container-id>` for the duration of the run. This is standard Docker behavior on every host that uses Docker — it's not a CLI-introduced exposure. Anyone with access to the user's Docker daemon already had that level of access. We do NOT log keys in spinner output, error messages, or telemetry.
+
+#### Bring your own LLM
+
+The upstream engine supports both cloud LLM providers and OpenAI-compatible local endpoints (Ollama, LM Studio, llama.cpp, vLLM, …). The CLI's job is to detect configuration and forward it — the engine handles provider selection.
+
+**Cloud recipe** — export one credential plus routing variables:
+
+```bash
+export OPENAI_API_KEY=<key>        # or ANTHROPIC_API_KEY / GEMINI_API_KEY / AWS_ACCESS_KEY_ID
+export LLM_PROVIDER=OPENAI          # must match the credential
+export LIGHT_LLM_PROVIDER=OPENAI    # lightweight model provider
+export LLM_LIGHT_MODEL=gpt-4o-mini  # lightweight model ID
+```
+
+Without `LLM_LIGHT_MODEL` the engine falls back to a Bedrock model ID and the run will fail for non-Bedrock providers. The engine defaults `LLM_PROVIDER=BEDROCK`, `LIGHT_LLM_PROVIDER=BEDROCK`, and `LLM_LIGHT_MODEL=global.anthropic.claude-haiku-4-5-20251001-v1:0` — all three are Bedrock-shaped, so non-Bedrock users must override the full triple.
+
+**Local recipe** — OpenAI-compatible endpoint (e.g. Ollama):
+
+```bash
+export LLM_PROVIDER=OPENAI
+export LIGHT_LLM_PROVIDER=OPENAI
+export OPENAI_API_URL=http://localhost:11434/v1/chat/completions
+export OPENAI_API_KEY=ollama          # any non-empty value
+export LLM_MODEL=llama3.1:8b
+export LLM_LIGHT_MODEL=llama3.1:8b
+```
+
+**Host-network reachability**: when the CLI detects a forwarded `*_API_URL` whose hostname is `localhost`, `127.0.0.1`, `0.0.0.0`, or `host.docker.internal`, it appends `--add-host=host.docker.internal:host-gateway` to the `docker run` invocation. On Linux Docker ≥ 20.10 this resolves `host.docker.internal` to the host gateway; on macOS / Windows Docker Desktop the hostname already exists, so the flag is harmlessly idempotent. The same `npx … score --with-llm` command works on all three platforms with no per-OS user instructions.
+
+**Security note**: credentials forwarded via `docker run -e` are visible to anyone with access to the user's Docker daemon for the duration of the run (`docker inspect` exposes them). This is standard Docker behavior, not a CLI-introduced exposure.
 
 ### Output specification
 
@@ -447,7 +484,7 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 | `--url <url>` arg | URL mode. Forwarded to engine; engine fetches + resolves `$ref`s. |
 | stdin | Local mode and bundled-URL mode. Bundled spec JSON. |
 | `JENTIC_API_KEY` env | Auth. Absence triggers anonymous gating. |
-| LLM provider env vars | When `--with-llm` is set: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `AWS_*`. Forwarded by the host CLI; container reads whichever are present and lets the engine pick a provider. |
+| LLM provider env vars | When `--with-llm` is set: credentials (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, `AWS_REGION`, `AWS_BEARER_TOKEN_BEDROCK`) and routing (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `LLM_MAX_TOKENS`, `OPENAI_API_URL`, `ANTHROPIC_API_URL`, `GEMINI_API_URL`). Forwarded by the host CLI; container reads whichever are present and lets the engine pick a provider. |
 
 ### Behavior
 
@@ -668,7 +705,7 @@ When the implementation lands, these acceptance checks validate the architecture
 
 **Bundle / LLM:**
 - `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.
-- `npx @jentic/api-scorecard-cli score <input> --with-llm` with no provider env vars set → exit 1 (or chosen code) with a clear error BEFORE any docker invocation.
+- `npx @jentic/api-scorecard-cli score <input> --with-llm` with no provider env vars set → exits `1` (`GENERIC_ERROR`) with a guidance message covering cloud and local recipes, BEFORE any docker invocation.
 
 **Container lifecycle:**
 - `docker rmi ghcr.io/jentic/jentic-api-scorecard:<v> && npx @jentic/api-scorecard-cli score …` → spinner shows `Pulling…`, succeeds.

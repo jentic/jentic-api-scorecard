@@ -141,7 +141,7 @@ Phase 4 already auto-suppresses the spinner when stderr is not a TTY (the common
 - Add `--quiet` to `packages/cli/`. When set, no spinner is rendered regardless of TTY detection.
 - Independent of `--verbose` (Phase 7): `--quiet` does not silence verbose / error logs, only the progress spinner.
 
-## Phase 10 — `--with-llm` plumbing end-to-end
+## Phase 10 — `--with-llm` plumbing end-to-end ✅
 
 **Goal:** the CLI detects available LLM provider configuration — cloud-provider credentials *or* a local OpenAI-compatible endpoint — errors fast if `--with-llm` is set without a usable provider, and forwards detected configuration into the container.
 **Depends on:** Phase 4
