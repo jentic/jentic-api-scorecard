@@ -19,7 +19,7 @@ When you read this file and find a mismatch with what's on disk, update this fil
 
 ### Local dev loop (image)
 
-The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no env-var override (per `docs/architecture.md` §2 — image management is fully abstracted). For a published version, Docker resolves that to the GHCR image; while developing, **`npm run build`** does the right thing — for `@jentic/api-scorecard-cli` that script orchestrates `build:typescript` (tsc) and `build:image` (docker build at the same canonical tag). Both subscripts live in `packages/cli/package.json` because the image-tag coupling is a CLI runtime concern, not a workspace-wide one. Docker's local cache wins over the registry for an exact `name:tag` match, so the CLI then runs against your local build with no flag, no env var, no mode switch. If you want to force-pull the published image instead, `docker rmi` the local tag.
+The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no env-var override (per `docs/architecture.md` §2 — image management is fully abstracted). For a published version, Docker resolves that to the GHCR image; while developing, run **`npm run build`** (TypeScript) and **`npm run build:image`** (docker build at the canonical tag) from the repo root. Both scripts live at the npm root: `build` delegates via `lerna run build` to per-package `tsc`; `build:image` is a single `docker build -t … ./docker` invocation that reads the version from `packages/cli/package.json` so the tag tracks the CLI release. Docker's local cache wins over the registry for an exact `name:tag` match, so the CLI then runs against your local build with no flag, no env var, no mode switch. If you want to force-pull the published image instead, `npm run clean:image` (also a root script) removes the local tag.
 
 ## Architecture
 
@@ -65,8 +65,8 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Build all packages (CLI builds JS + image, formatter-html builds JS) | `npm run build` |
 | Clean all packages' build output | `npm run clean` |
 | Build only the CLI's TypeScript | `npm run build:typescript -w @jentic/api-scorecard-cli` |
-| Build only the CLI's image at the matching tag | `npm run build:image -w @jentic/api-scorecard-cli` |
-| Remove the CLI's local image | `npm run clean:image -w @jentic/api-scorecard-cli` |
+| Build only the CLI's image at the matching tag | `npm run build:image` |
+| Remove the CLI's local image | `npm run clean:image` |
 | Run Python tests | `cd docker && uv run poe test` |
 | Run a Python test subset | `cd docker && uv run poe test tests/test_gate.py` |
 | Run JS/TS tests | `npm test` (delegates via `lerna run test`) |

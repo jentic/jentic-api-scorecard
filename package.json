@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "build:image": "npm run build:image -w @jentic/api-scorecard-cli",
+    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") ./docker",
     "clean": "lerna run clean",
     "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") || true",
     "test": "lerna run test",

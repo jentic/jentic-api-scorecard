@@ -44,16 +44,15 @@
     "README.md"
   ],
   "scripts": {
-    "build": "npm run build:typescript && npm run build:image",
+    "build": "npm run build:typescript",
     "build:typescript": "tsc -p tsconfig.json",
-    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./package.json').version\") ../../docker",
     "clean": "rimraf dist *.tsbuildinfo",
     "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE . && copyfiles -u 2 ../../README.md .",
     "postpack": "rimraf NOTICE LICENSE README.md",
     "lint": "eslint src test",
     "lint:fix": "eslint src test --fix",
     "test": "mocha",
-    "test:e2e": "npm run build && mocha --no-config --node-option import=tsx --timeout 120000 'test/e2e/**/*.e2e.test.ts'",
+    "test:e2e": "npm run build && (cd ../.. && npm run build:image) && mocha --no-config --node-option import=tsx --timeout 120000 'test/e2e/**/*.e2e.test.ts'",
     "typescript:check-types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json"
   },
   "dependencies": {
