@@ -131,8 +131,9 @@ together when using a non-Bedrock provider.
 3. Detected variables are forwarded to the container via Docker's `-e NAME` passthrough (the value
    is never on the command line or in logs).
 4. For local endpoints pointing at `localhost` / `127.0.0.1` / `0.0.0.0`, the CLI automatically
-   adds `--add-host=host.docker.internal:host-gateway` so the container can reach your host
-   machine. This works on Linux, macOS, and Windows with no extra configuration.
+   configures Docker networking so the container can reach your host machine — `--network host`
+   on Linux, `--add-host=host.docker.internal:host-gateway` on macOS / Windows. This works on
+   all three platforms with no extra configuration.
 5. Inside the container, the engine reads the forwarded variables and routes LLM calls to the
    configured provider.
 

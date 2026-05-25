@@ -260,7 +260,7 @@ export LLM_MODEL=llama3.1:8b
 export LLM_LIGHT_MODEL=llama3.1:8b
 ```
 
-**Host-network reachability**: when the CLI detects a forwarded `*_API_URL` whose hostname is `localhost`, `127.0.0.1`, `0.0.0.0`, or `host.docker.internal`, it appends `--add-host=host.docker.internal:host-gateway` to the `docker run` invocation. On Linux Docker ≥ 20.10 this resolves `host.docker.internal` to the host gateway; on macOS / Windows Docker Desktop the hostname already exists, so the flag is harmlessly idempotent. The same `npx … score --with-llm` command works on all three platforms with no per-OS user instructions.
+**Host-network reachability**: when the CLI detects a forwarded `*_API_URL` whose hostname is `localhost`, `127.0.0.1`, `0.0.0.0`, or `host.docker.internal`, it applies platform-specific Docker networking so the container can reach the host machine. On Linux the CLI adds `--network host` (container shares the host network stack, so `localhost` just works). On macOS / Windows Docker Desktop the CLI adds `--add-host=host.docker.internal:host-gateway` (Docker Desktop already provides `host.docker.internal` natively; the flag is harmlessly idempotent). The same `npx … score --with-llm` command works on all three platforms with no per-OS user instructions.
 
 **Security note**: credentials forwarded via `docker run -e` are visible to anyone with access to the user's Docker daemon for the duration of the run (`docker inspect` exposes them). This is standard Docker behavior, not a CLI-introduced exposure.
 

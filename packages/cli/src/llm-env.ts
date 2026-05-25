@@ -22,7 +22,7 @@ export const LLM_ROUTING_ENV_VARS: string[] = [
 
 export interface LlmEnvDetection {
   forwardEnvVars: string[];
-  addHostFlag: boolean;
+  needsHostNetwork: boolean;
   hasUsableProvider: boolean;
 }
 
@@ -49,7 +49,7 @@ const API_URL_SUFFIX = '_API_URL';
 
 export function detectLlmEnv(env: NodeJS.ProcessEnv): LlmEnvDetection {
   const forwardEnvVars: string[] = [];
-  let addHostFlag = false;
+  let needsHostNetwork = false;
 
   for (const name of CLOUD_CREDENTIAL_ENV_VARS) {
     if (isPresent(env, name)) {
@@ -63,7 +63,7 @@ export function detectLlmEnv(env: NodeJS.ProcessEnv): LlmEnvDetection {
       if (name.endsWith(API_URL_SUFFIX)) {
         const val = env[name]!;
         if (isHostLoopbackUrl(val)) {
-          addHostFlag = true;
+          needsHostNetwork = true;
         }
       }
     }
@@ -74,5 +74,5 @@ export function detectLlmEnv(env: NodeJS.ProcessEnv): LlmEnvDetection {
 
   const hasUsableProvider = hasCloudCredential || hasLocalEndpoint;
 
-  return { forwardEnvVars, addHostFlag, hasUsableProvider };
+  return { forwardEnvVars, needsHostNetwork, hasUsableProvider };
 }

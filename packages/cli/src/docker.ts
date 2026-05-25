@@ -1,5 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
-import { constants as osConstants } from 'node:os';
+import { constants as osConstants, platform } from 'node:os';
 
 import { ExitCode } from './exit-codes.ts';
 import { cliVersion } from './version.ts';
@@ -52,7 +52,7 @@ export interface DockerRunOptions {
   stdinPayload?: string;
   forwardJenticKey: boolean;
   forwardEnvVars: string[];
-  addHostFlag: boolean;
+  needsHostNetwork: boolean;
 }
 
 export interface DockerRunResult {
@@ -77,8 +77,12 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
     dockerArgs.push('-e', name);
   }
 
-  if (opts.addHostFlag) {
-    dockerArgs.push('--add-host=host.docker.internal:host-gateway');
+  if (opts.needsHostNetwork) {
+    if (platform() === 'linux') {
+      dockerArgs.push('--network', 'host');
+    } else {
+      dockerArgs.push('--add-host=host.docker.internal:host-gateway');
+    }
   }
 
   dockerArgs.push(imageRef());

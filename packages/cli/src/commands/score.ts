@@ -36,7 +36,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const forwardJenticKey = apiKey !== undefined && apiKey !== '';
 
   let forwardEnvVars: string[] = [];
-  let addHostFlag = false;
+  let needsHostNetwork = false;
 
   if (options.withLlm) {
     const detection = detectLlmEnv(process.env);
@@ -64,7 +64,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       return ExitCode.GENERIC_ERROR;
     }
     forwardEnvVars = detection.forwardEnvVars;
-    addHostFlag = detection.addHostFlag;
+    needsHostNetwork = detection.needsHostNetwork;
   }
 
   let stdinPayload: string | undefined;
@@ -115,7 +115,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       stdinPayload,
       forwardJenticKey,
       forwardEnvVars,
-      addHostFlag,
+      needsHostNetwork,
     });
   } catch (err) {
     clearSpinner();
