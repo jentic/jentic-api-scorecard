@@ -80,9 +80,11 @@ describe('score command — e2e against docker', function () {
   });
 
   it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
+    // RFC 6761 reserves .test as never-resolvable, so even if the gate were
+    // bypassed the engine could not fetch the URL.
     const env = { ...process.env };
     delete env['JENTIC_API_KEY'];
-    const result = spawnSync('node', [CLI_BIN, 'score', 'https://example.com/openapi.yaml'], {
+    const result = spawnSync('node', [CLI_BIN, 'score', 'https://invalid.test/openapi.yaml'], {
       env,
       encoding: 'utf8',
       timeout: E2E_TIMEOUT_MS,

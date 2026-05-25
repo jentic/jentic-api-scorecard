@@ -20,6 +20,10 @@ function strip(s: string): string {
   return s.replace(/\x1B\[[0-9;]*m/g, '');
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 describe('formatPretty', function () {
   before(function () {
     chalk.level = 0;
@@ -70,7 +74,7 @@ describe('formatPretty', function () {
       ];
       for (const d of dims) {
         const lineRegex = new RegExp(
-          `${d.kind}\\s+${d.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\s+[▄ ]+\\s+\\d+\\s+${d.grade.replace('+', '\\+')}`,
+          `${escapeRegex(d.kind)}\\s+${escapeRegex(d.name)}\\s+[▄ ]+\\s+\\d+\\s+${escapeRegex(d.grade)}`,
         );
         expect(output).to.match(lineRegex);
       }
