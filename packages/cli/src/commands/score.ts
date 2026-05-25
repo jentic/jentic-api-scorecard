@@ -46,7 +46,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
         `error: --with-llm requires an LLM provider but none was detected.\n` +
           `\n` +
           `Cloud recipe (set one credential + routing variables):\n` +
-          `  export OPENAI_API_KEY=<key>        # or ANTHROPIC_API_KEY, GEMINI_API_KEY, AWS_ACCESS_KEY_ID\n` +
+          `  export OPENAI_API_KEY=<key>        # or ANTHROPIC_API_KEY, GEMINI_API_KEY, or AWS key pair\n` +
           `  export LLM_PROVIDER=OPENAI          # match the credential\n` +
           `  export LIGHT_LLM_PROVIDER=OPENAI    # lightweight model provider\n` +
           `  export LLM_LIGHT_MODEL=<model>      # e.g. gpt-4o-mini\n` +

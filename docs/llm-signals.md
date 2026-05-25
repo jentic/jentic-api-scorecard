@@ -151,19 +151,22 @@ tokens per run with Claude Haiku. Local models (Ollama, vLLM) cost nothing per c
 1. The CLI scans your environment for credentials and routing variables.
 2. If `--with-llm` is set and no usable provider is found, the CLI exits immediately with a
    guidance message — no Docker container is started, no network calls are made.
-3. Detected variables are forwarded to the container via Docker's `-e NAME` passthrough (the value
-   is never on the command line or in logs).
+3. Credentials (API keys, AWS secrets) are forwarded via Docker's `-e NAME` passthrough — values
+   never appear on the command line or in logs. Endpoint URLs (`*_API_URL`) may be rewritten for
+   container reachability and passed as `-e NAME=value` (URLs are not secrets).
 4. For local endpoints pointing at `localhost` / `127.0.0.1` / `0.0.0.0`, the CLI automatically
    configures Docker networking so the container can reach your host machine — `--network host`
-   on Linux, `--add-host=host.docker.internal:host-gateway` on macOS / Windows. This works on
-   all three platforms with no extra configuration.
+   on Linux (localhost just works), `--add-host` + URL rewrite to `host.docker.internal` on
+   macOS / Windows. This works on all three platforms with no extra configuration.
 5. Inside the container, the engine reads the forwarded variables and routes LLM calls to the
    configured provider.
 
 ## Security notes
 
-- Credentials are forwarded using Docker's passthrough form (`-e NAME` without `=value`). They
-  never appear in process argument lists, spinner output, error messages, or logs.
+- Credentials (API keys, AWS secrets) are forwarded using Docker's passthrough form (`-e NAME`
+  without `=value`). They never appear in process argument lists, spinner output, error messages,
+  or logs. Endpoint URLs may be rewritten for container reachability and passed as `-e NAME=value`
+  — URLs are not secrets, but avoid embedding credentials in custom endpoint URLs.
 - For the duration of the scoring run, forwarded credentials are visible via
   `docker inspect <container-id>`. This is standard Docker behavior — anyone with access to your
   Docker daemon already has this level of access.

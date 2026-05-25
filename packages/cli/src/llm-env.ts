@@ -35,35 +35,41 @@ function isPresent(env: NodeJS.ProcessEnv, name: string): boolean {
   return val !== undefined && val !== '';
 }
 
-function isHostLoopbackUrl(value: string): boolean {
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+}
+
+function needsDockerHostRewrite(value: string): boolean {
   try {
     const url = new URL(value);
-    return (
-      url.hostname === 'localhost' ||
-      url.hostname === '127.0.0.1' ||
-      url.hostname === '0.0.0.0' ||
-      url.hostname === 'host.docker.internal'
-    );
+    return isLoopbackHostname(url.hostname) || url.hostname === 'host.docker.internal';
   } catch {
     return false;
   }
 }
 
-function rewriteLoopbackUrl(value: string): string {
+function rewriteUrlForContainer(value: string): string {
   try {
     const url = new URL(value);
-    if (
-      url.hostname === 'localhost' ||
-      url.hostname === '127.0.0.1' ||
-      url.hostname === '0.0.0.0'
-    ) {
-      url.hostname = 'host.docker.internal';
-      return url.toString();
+    if (platform() === 'linux') {
+      if (url.hostname === 'host.docker.internal') {
+        url.hostname = 'localhost';
+      }
+    } else {
+      if (isLoopbackHostname(url.hostname)) {
+        url.hostname = 'host.docker.internal';
+      }
     }
-    return value;
+    return url.toString();
   } catch {
     return value;
   }
+}
+
+function hasAwsCredentials(env: NodeJS.ProcessEnv): boolean {
+  const hasKeyPair = isPresent(env, 'AWS_ACCESS_KEY_ID') && isPresent(env, 'AWS_SECRET_ACCESS_KEY');
+  const hasBearer = isPresent(env, 'AWS_BEARER_TOKEN_BEDROCK');
+  return hasKeyPair || hasBearer;
 }
 
 const API_URL_SUFFIX = '_API_URL';
@@ -84,17 +90,21 @@ export function detectLlmEnv(env: NodeJS.ProcessEnv): LlmEnvDetection {
       forwardEnvVars.push(name);
       if (name.endsWith(API_URL_SUFFIX)) {
         const val = env[name]!;
-        if (isHostLoopbackUrl(val)) {
+        if (needsDockerHostRewrite(val)) {
           needsHostNetwork = true;
-          if (platform() !== 'linux') {
-            forwardEnvOverrides.set(name, rewriteLoopbackUrl(val));
+          const rewritten = rewriteUrlForContainer(val);
+          if (rewritten !== val) {
+            forwardEnvOverrides.set(name, rewritten);
           }
         }
       }
     }
   }
 
-  const hasCloudCredential = CLOUD_PROVIDER_KEYS.some((name) => isPresent(env, name));
+  const hasNonAwsKey = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'].some((name) =>
+    isPresent(env, name),
+  );
+  const hasCloudCredential = hasNonAwsKey || hasAwsCredentials(env);
   const hasLocalEndpoint =
     env['LLM_PROVIDER'] === 'OPENAI' &&
     isPresent(env, 'OPENAI_API_URL') &&
