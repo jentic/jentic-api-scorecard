@@ -51,6 +51,8 @@ export interface DockerRunOptions {
   args: string[];
   stdinPayload?: string;
   forwardJenticKey: boolean;
+  forwardEnvVars: string[];
+  addHostFlag: boolean;
 }
 
 export interface DockerRunResult {
@@ -69,6 +71,14 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
   if (opts.forwardJenticKey) {
     dockerArgs.push('-e', 'JENTIC_API_KEY');
+  }
+
+  for (const name of opts.forwardEnvVars) {
+    dockerArgs.push('-e', name);
+  }
+
+  if (opts.addHostFlag) {
+    dockerArgs.push('--add-host=host.docker.internal:host-gateway');
   }
 
   dockerArgs.push(imageRef());

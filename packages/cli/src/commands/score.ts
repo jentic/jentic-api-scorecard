@@ -81,6 +81,8 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       args: containerArgs,
       stdinPayload,
       forwardJenticKey,
+      forwardEnvVars: [],
+      addHostFlag: false,
     });
   } catch (err) {
     clearSpinner();
