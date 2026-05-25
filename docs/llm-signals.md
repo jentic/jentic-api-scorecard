@@ -63,16 +63,19 @@ export AWS_REGION=us-east-1
 npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
 
-### Local endpoint (Ollama)
+### Local endpoint (Ollama Docker image)
 
-Run any OpenAI-compatible server on your machine — nothing leaves your network:
+Run a local LLM in Docker — nothing leaves your network. Since Docker is already installed for
+the scorecard, this is the fastest path:
 
 ```bash
-# Start Ollama (if not already running)
-ollama pull llama3.1:8b
-ollama serve
+# Pull and start Ollama in a container (runs on port 11434)
+docker run -d --name ollama -p 11434:11434 ollama/ollama
 
-# In another terminal
+# Pull a model into the running container
+docker exec ollama ollama pull llama3.1:8b
+
+# Score with the local model
 export LLM_PROVIDER=OPENAI
 export LIGHT_LLM_PROVIDER=OPENAI
 export OPENAI_API_URL=http://localhost:11434/v1/chat/completions
@@ -83,8 +86,10 @@ export LLM_LIGHT_MODEL=llama3.1:8b
 npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
 
-This works identically with LM Studio, vLLM, llama.cpp, or any server exposing the
-`/v1/chat/completions` endpoint.
+For GPU acceleration, add `--gpus all` to the `docker run` command.
+
+This works identically with any OpenAI-compatible server (LM Studio, vLLM, llama.cpp, …)
+exposing the `/v1/chat/completions` endpoint on your host.
 
 ## Environment variables reference
 
