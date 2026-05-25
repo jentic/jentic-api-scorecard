@@ -111,12 +111,7 @@
                 "max_cost": 25.0,
                 "provenance": {
                   "diagnostics": {
-                    "severity": [
-                      1,
-                      2,
-                      3,
-                      4
-                    ]
+                    "severity": [1, 2, 3, 4]
                   }
                 }
               }
@@ -132,13 +127,8 @@
                 "unresolved_refs": 0,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "total_refs",
-                      "resolved_refs"
-                    ],
-                    "source": [
-                      "speclynx-validator"
-                    ]
+                    "code": ["total_refs", "resolved_refs"],
+                    "source": ["speclynx-validator"]
                   }
                 }
               }
@@ -158,9 +148,7 @@
                 },
                 "provenance": {
                   "diagnostics": {
-                    "severity": [
-                      1
-                    ]
+                    "severity": [1]
                   }
                 }
               }
@@ -216,10 +204,7 @@
                 "expected_examples": 3,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "present_examples",
-                      "expected_examples"
-                    ]
+                    "code": ["present_examples", "expected_examples"]
                   }
                 }
               }
@@ -254,10 +239,7 @@
                 "response_coverage_sum": 0.25,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "operation_response_coverage",
-                      "total_operations"
-                    ]
+                    "code": ["operation_response_coverage", "total_operations"]
                   }
                 }
               }
@@ -316,10 +298,7 @@
                 "describable_elements": 6,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "described_elements",
-                      "describable_elements"
-                    ]
+                    "code": ["described_elements", "describable_elements"]
                   }
                 }
               }
@@ -335,10 +314,7 @@
                 "total_operations": 1,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "operations_using_RFC9457",
-                      "total_operations"
-                    ]
+                    "code": ["operations_using_RFC9457", "total_operations"]
                   }
                 }
               }
@@ -371,10 +347,7 @@
                       "ambiguous_operation_id",
                       "operation-operationId-unique"
                     ],
-                    "source": [
-                      "speclynx-validator",
-                      "spectral-validator"
-                    ]
+                    "source": ["speclynx-validator", "spectral-validator"]
                   }
                 }
               }
@@ -390,10 +363,7 @@
                 "summaries_expected": 2,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "summaries_present",
-                      "summaries_expected"
-                    ]
+                    "code": ["summaries_present", "summaries_expected"]
                   }
                 }
               }
@@ -426,14 +396,8 @@
                 "depth_baseline": 18.0,
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "total_operations",
-                      "max_schema_depth",
-                      "schema_count"
-                    ],
-                    "source": [
-                      "speclynx-validator"
-                    ]
+                    "code": ["total_operations", "max_schema_depth", "schema_count"],
+                    "source": ["speclynx-validator"]
                   }
                 }
               }
@@ -467,9 +431,7 @@
                 "schemes": [],
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "security_schemes"
-                    ]
+                    "code": ["security_schemes"]
                   }
                 }
               }
@@ -496,10 +458,7 @@
                 "operations_scored": [],
                 "provenance": {
                   "diagnostics": {
-                    "code": [
-                      "semantic-analysis-summary",
-                      "POOR_OPERATION_SEMANTICS"
-                    ]
+                    "code": ["semantic-analysis-summary", "POOR_OPERATION_SEMANTICS"]
                   }
                 }
               }
@@ -517,9 +476,7 @@
       "source": "default-validator",
       "data": {
         "fixable": false,
-        "path": [
-          "servers"
-        ],
+        "path": ["servers"],
         "target": "bundled-spec"
       }
     },
@@ -530,9 +487,7 @@
       "source": "redocly-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "openapi"
-        ],
+        "path": ["openapi"],
         "target": "bundled-spec"
       }
     },
@@ -543,9 +498,7 @@
       "source": "redocly-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "info"
-        ],
+        "path": ["info"],
         "target": "bundled-spec"
       }
     },
@@ -556,12 +509,7 @@
       "source": "redocly-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get",
-          "responses"
-        ],
+        "path": ["paths", "/health", "get", "responses"],
         "target": "bundled-spec"
       }
     },
@@ -572,11 +520,7 @@
       "source": "redocly-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get"
-        ],
+        "path": ["paths", "/health", "get"],
         "target": "bundled-spec"
       }
     },
@@ -598,9 +542,7 @@
       "source": "spectral-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "info"
-        ],
+        "path": ["info"],
         "target": "bundled-spec"
       }
     },
@@ -611,11 +553,7 @@
       "source": "spectral-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get"
-        ],
+        "path": ["paths", "/health", "get"],
         "target": "bundled-spec"
       }
     },
@@ -626,11 +564,7 @@
       "source": "spectral-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get"
-        ],
+        "path": ["paths", "/health", "get"],
         "target": "bundled-spec"
       }
     },
@@ -641,15 +575,7 @@
       "source": "spectral-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get",
-          "responses",
-          "200",
-          "content",
-          "application/json"
-        ],
+        "path": ["paths", "/health", "get", "responses", "200", "content", "application/json"],
         "target": "bundled-spec"
       }
     },
@@ -677,16 +603,7 @@
         "target": "bundled-spec",
         "schema_count": 2,
         "paths": [
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200",
-            "content",
-            "application/json",
-            "schema"
-          ],
+          ["paths", "/health", "get", "responses", "200", "content", "application/json", "schema"],
           [
             "paths",
             "/health",
@@ -713,35 +630,11 @@
         "target": "bundled-spec",
         "describable_elements": 6,
         "paths": [
-          [
-            "info"
-          ],
-          [
-            "paths",
-            "/health"
-          ],
-          [
-            "paths",
-            "/health",
-            "get"
-          ],
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200"
-          ],
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200",
-            "content",
-            "application/json",
-            "schema"
-          ],
+          ["info"],
+          ["paths", "/health"],
+          ["paths", "/health", "get"],
+          ["paths", "/health", "get", "responses", "200"],
+          ["paths", "/health", "get", "responses", "200", "content", "application/json", "schema"],
           [
             "paths",
             "/health",
@@ -767,18 +660,7 @@
         "path": [],
         "target": "bundled-spec",
         "described_elements": 2,
-        "paths": [
-          [
-            "info"
-          ],
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200"
-          ]
-        ]
+        "paths": [["info"], ["paths", "/health", "get", "responses", "200"]]
       }
     },
     {
@@ -792,15 +674,8 @@
         "target": "bundled-spec",
         "summaries_expected": 2,
         "paths": [
-          [
-            "paths",
-            "/health"
-          ],
-          [
-            "paths",
-            "/health",
-            "get"
-          ]
+          ["paths", "/health"],
+          ["paths", "/health", "get"]
         ]
       }
     },
@@ -814,13 +689,7 @@
         "path": [],
         "target": "bundled-spec",
         "summaries_present": 1,
-        "paths": [
-          [
-            "paths",
-            "/health",
-            "get"
-          ]
-        ]
+        "paths": [["paths", "/health", "get"]]
       }
     },
     {
@@ -834,25 +703,8 @@
         "target": "bundled-spec",
         "expected_examples": 3,
         "paths": [
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200",
-            "content",
-            "application/json"
-          ],
-          [
-            "paths",
-            "/health",
-            "get",
-            "responses",
-            "200",
-            "content",
-            "application/json",
-            "schema"
-          ],
+          ["paths", "/health", "get", "responses", "200", "content", "application/json"],
+          ["paths", "/health", "get", "responses", "200", "content", "application/json", "schema"],
           [
             "paths",
             "/health",
@@ -923,12 +775,7 @@
       "source": "speclynx-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get",
-          "operationId"
-        ],
+        "path": ["paths", "/health", "get", "operationId"],
         "target": "bundled-spec",
         "casing": "camelCase",
         "operation_id": "getHealth"
@@ -954,11 +801,7 @@
       "source": "speclynx-validator",
       "data": {
         "fixable": true,
-        "path": [
-          "paths",
-          "/health",
-          "get"
-        ],
+        "path": ["paths", "/health", "get"],
         "target": "bundled-spec",
         "2XX": true,
         "4XX": false,
@@ -976,16 +819,8 @@
         "path": [],
         "target": "bundled-spec",
         "operations_with_operationId": 1,
-        "operation_ids": [
-          "getHealth"
-        ],
-        "paths": [
-          [
-            "paths",
-            "/health",
-            "get"
-          ]
-        ]
+        "operation_ids": ["getHealth"],
+        "paths": [["paths", "/health", "get"]]
       }
     },
     {
@@ -1063,13 +898,7 @@
         "path": [],
         "target": "bundled-spec",
         "total_operations": 1,
-        "paths": [
-          [
-            "paths",
-            "/health",
-            "get"
-          ]
-        ]
+        "paths": [["paths", "/health", "get"]]
       }
     },
     {
