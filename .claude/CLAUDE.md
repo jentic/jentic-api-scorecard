@@ -69,6 +69,8 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Remove the CLI's local image | `npm run clean:image -w @jentic/api-scorecard-cli` |
 | Run Python tests | `cd docker && uv run poe test` |
 | Run a Python test subset | `cd docker && uv run poe test tests/test_gate.py` |
+| Run JS/TS tests | `npm test` (delegates via `lerna run test`) |
+| Run JS/TS tests for one package | `npm test -w @jentic/api-scorecard-cli` |
 | Python lint check | `cd docker && uv run poe lint` |
 | Python lint fix | `cd docker && uv run poe lint:fix` |
 | JS/TS lint check (all packages) | `npm run lint` |

@@ -30,7 +30,8 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Scoring engine | `jentic-apitools-cli` (PyPI) | `docker/pyproject.toml:7` (pinned exactly); shells out to `npx`-launched Redocly / Spectral / Speclynx validators |
 | Dependency manager | uv (build-time only) | `docker/uv.lock`; `docker/Dockerfile` builder stage pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
 | Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via `docker/.build/sample.yaml` |
-| Test framework | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
+| Test framework (Python) | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
+| Test framework (JS/TS) | mocha | `packages/cli/package.json` devDep; `packages/cli/.mocharc.json`; tests in `packages/cli/test/`; ESLint flat config already wires `eslint-plugin-mocha` for `packages/*/test/**/*.ts` |
 | Lint / format (Python) | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
 | Lint / format (JS/TS) | ESLint 9 (flat config) + Prettier 3 | `eslint.config.js`, `.prettierrc` at repo root; `eslint-plugin-import-x`, `typescript-eslint`, `eslint-plugin-prettier` recommended |
 | Commit-message lint | commitlint + `@commitlint/config-conventional` | `.commitlintrc.json` at repo root; `header-max-length: 69`; shared by `.husky/commit-msg` (humans) and `.claude/hooks/commitlint-before-commit.py` (Claude) |
@@ -52,9 +53,10 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 ## Testing
 
-- **Test framework:** pytest 9.x (`docker/pyproject.toml:12`).
-- **Test types visible:** unit (`docker/tests/test_gate.py`, `test_main.py`) + integration (`docker/tests/test_integration.py` exercises a built Docker image end-to-end).
-- **Convention: no mocks.** Tests use the real gate logic and (for integration) the real engine via subprocess. Environment is manipulated with pytest's `monkeypatch`; external services are not stubbed. Run with `cd docker && uv run poe test`.
+- **Python test framework:** pytest 9.x (`docker/pyproject.toml:12`).
+- **JS/TS test framework:** mocha (`packages/cli/package.json` devDep; `packages/cli/.mocharc.json` enables `tsx`-loaded ESM specs under `packages/cli/test/**/*.test.ts`). Chai is the assertion library.
+- **Test types visible:** Python unit (`docker/tests/test_gate.py`, `test_main.py`) + integration (`docker/tests/test_integration.py` exercises a built Docker image end-to-end). JS/TS fixture-based formatter tests (`packages/cli/test/formatters/pretty.test.ts` against a captured engine output JSON in `packages/cli/test/fixtures/`).
+- **Convention: no mocks.** Python tests use the real gate logic and (for integration) the real engine via subprocess. JS/TS tests assert on `formatPretty()` output against engine-captured fixtures. Environment is manipulated with pytest's `monkeypatch`; external services are not stubbed. Run with `cd docker && uv run poe test` (Python) and `npm test` from the repo root (JS/TS — delegates via `lerna run test`).
 
 ## Tooling and Developer Experience
 
