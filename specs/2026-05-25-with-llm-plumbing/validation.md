@@ -47,13 +47,13 @@ Exits `1` (`GENERIC_ERROR`). Stderr contains a guidance string that names at min
 ### 5. Cloud-credential path no longer fails fast
 
 ```
-JENTIC_API_KEY=mvp-preview OPENAI_API_KEY=fake-key-for-test \
+OPENAI_API_KEY=fake-key-for-test \
   node packages/cli/bin/jentic-api-scorecard.mjs \
     score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<allowlisted-path> \
     --with-llm
 ```
 
-The CLI proceeds past the env-scan gate and invokes `docker run` (verifiable by observing the spinner and the docker pull / image-inspect output). The downstream LLM call may fail with an engine-side error — that is **not** what this check asserts; the gate is "fail-fast no longer triggers when a credential is present."
+The CLI proceeds past the env-scan gate and invokes `docker run` (verifiable by observing the spinner and the docker pull / image-inspect output). The downstream engine call will likely fail (the credential is fake, and `LLM_PROVIDER` is unset → engine defaults to `BEDROCK` and rejects) — that is **not** what this check asserts; the gate is single-purpose: "fail-fast no longer triggers when a credential is present." `JENTIC_API_KEY` is omitted on purpose — the URL is in the gate allowlist, so this test isolates the LLM env-scan path from the gate path.
 
 ### 6. Roadmap completion marker
 
@@ -66,11 +66,13 @@ Exits 0. The leading space before ✅ is load-bearing per the roadmap lifecycle 
 ### 7. Architecture doc updated
 
 ```
+grep -F "Bring your own LLM" docs/architecture.md
 grep -F "OPENAI_API_URL" docs/architecture.md
-grep -E "Ollama|local LLM|OpenAI-compatible" docs/architecture.md
+grep -F "Ollama" docs/architecture.md
+grep -F "host-gateway" docs/architecture.md
 ```
 
-Both exit 0. `docs/architecture.md` §5 contains a "Bring your own LLM" subsection that:
+All four exit 0. The first asserts the new subsection heading anchor exists; the next three lock down the load-bearing recipe + mechanism keywords. `docs/architecture.md` §5 contains a "Bring your own LLM" subsection that:
 
 - Names the cloud-provider env-var allowlist.
 - Names the local-endpoint env vars (`LLM_PROVIDER`, `OPENAI_API_URL`, `OPENAI_API_KEY` placeholder, `LLM_MODEL`).
