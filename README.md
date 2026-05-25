@@ -85,15 +85,23 @@ npx @jentic/api-scorecard-cli@alpha score --detail diagnostics ./openapi.yaml
 
 ## LLM analysis
 
-Add `--with-llm` to unlock LLM-backed signals (deeper semantic reasoning about each operation).
-Requires an LLM provider — cloud (OpenAI / Anthropic / Gemini / AWS Bedrock) or a local
-OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, …). See
-[Bring your own LLM](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/architecture.md#bring-your-own-llm)
-for the full export contract.
+Add `--with-llm` to unlock LLM-backed signals — deeper semantic reasoning about whether your API
+descriptions are actionable for agents, whether error responses support autonomous recovery, and
+more. Requires an LLM provider: cloud (OpenAI / Anthropic / Gemini / AWS Bedrock) or a local
+OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, …).
 
 ```bash
+export OPENAI_API_KEY=sk-...
+export LLM_PROVIDER=OPENAI
+export LIGHT_LLM_PROVIDER=OPENAI
+export LLM_LIGHT_MODEL=gpt-4o-mini
+
 JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
+
+See **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
+for all provider recipes (including local Ollama), the full environment variable reference, and
+troubleshooting.
 
 ## Anonymous vs keyed access
 
