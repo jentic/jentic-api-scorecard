@@ -94,14 +94,6 @@ Exits 0. README has an LLM-analysis pointer (subsection or sentence) that cross-
 
 `.claude/CLAUDE.md` repository-state section's `--with-llm` mention reflects the env-scan + forward-set behavior introduced by this phase. (Per the file's own "When you read this file and find a mismatch with what's on disk, update this file in the same change." rule.)
 
-### 10. Python tests still green (regression guard)
-
-```
-cd docker && uv run poe test
-```
-
-Exits 0. Phase 10 is host-CLI-only; this gate guards against accidental container-side regressions.
-
 ## Not Required
 
 - **JS/TS unit tests in `packages/cli/`** — `.claude/rules/testing.md` explicitly defers a JS test runner ("no JS/TS tests yet — `packages/` ships scaffolding plus the Phase 2 CLI smoke; suites land when behavior lands"). Adding a runner would be its own un-roadmapped phase.
@@ -112,3 +104,4 @@ Exits 0. Phase 10 is host-CLI-only; this gate guards against accidental containe
 - **`--verbose` interaction** — `--verbose` ships in Phase 7; how the new env-scan output integrates with verbose mode is decided then.
 - **Secret-leak grep regression test** — covered by the no-leak invariant in code (passthrough form `-e <NAME>` only), not by an automated grep against output. The `-e <NAME>` form makes leakage structurally impossible at the docker-argv layer; an output grep would only catch a regression that re-introduces value interpolation, which is out of scope for this phase's surface.
 - **Real-auth gate replacement (Phase 13) and `--bundle` interactions (Phase 11)** — separate phases.
+- **Python tests (`cd docker && uv run poe test`)** — Phase 10 is host-CLI-only, scoped to `packages/cli/`, `docs/`, and `specs/`. Per `.claude/rules/testing.md` ("Changed only `packages/`, `docs/`, `specs/`, `.claude/`, or root configs → no Python tests required"), running pytest is not a DoD gate for this phase. CI runs the suite unconditionally on every PR anyway as a regression guard, so any accidental container-side change still surfaces — there is no need to duplicate that gate as a manual DoD step here.
