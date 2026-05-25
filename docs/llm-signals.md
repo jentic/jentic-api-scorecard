@@ -117,8 +117,8 @@ exposing the `/v1/chat/completions` endpoint on your host.
 |---|---|
 | `LLM_PROVIDER` | Primary model provider (`OPENAI`, `ANTHROPIC`, `GEMINI`, `BEDROCK`) |
 | `LIGHT_LLM_PROVIDER` | Lightweight model provider (same values) |
-| `LLM_MODEL` | Primary model ID (e.g. `gpt-4o`, `claude-sonnet-4-20250514`) |
-| `LLM_LIGHT_MODEL` | Lightweight model ID (e.g. `gpt-4o-mini`, `claude-haiku-4-5-20251001`) |
+| `LLM_LIGHT_MODEL` | Lightweight model ID — **this is what scoring uses** (e.g. `gpt-4o-mini`, `eu.anthropic.claude-haiku-4-5-20251001-v1:0`) |
+| `LLM_MODEL` | Primary model ID (not used for scoring today; reserved for future engine features) |
 | `LLM_MAX_TOKENS` | Max tokens per LLM call (optional) |
 | `OPENAI_API_URL` | Custom endpoint URL (for local/self-hosted) |
 | `ANTHROPIC_API_URL` | Custom Anthropic endpoint URL |
