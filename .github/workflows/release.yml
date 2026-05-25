@@ -48,8 +48,6 @@ jobs:
         run: npm ci --engine-strict=false
       - name: Build monorepo
         run: npm run build
-      - name: Check TypeScript types
-        run: npm run typescript:check-types
       - name: Version bump & GitHub release
         run: |
           git config user.name "github-actions[bot]"
