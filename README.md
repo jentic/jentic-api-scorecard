@@ -99,6 +99,10 @@ export LLM_LIGHT_MODEL=gpt-4o-mini
 JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
 
+Token cost is minimal — the engine uses a lightweight model (e.g. Claude Haiku, GPT-4o-mini) and
+processes operations in small batches. A typical spec costs fractions of a cent; large specs with
+50+ operations stay under a few cents per run. Local models (Ollama) cost nothing.
+
 See **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
 for all provider recipes (including local Ollama), the full environment variable reference, and
 troubleshooting.

@@ -129,6 +129,21 @@ exposing the `/v1/chat/completions` endpoint on your host.
 non-Bedrock providers. Always set `LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, and `LLM_LIGHT_MODEL`
 together when using a non-Bedrock provider.
 
+## Token cost
+
+The engine uses the lightweight model (`LLM_LIGHT_MODEL`) exclusively and processes operations
+in batches of ~7. Each batch sends a focused prompt containing only the operation signatures and
+descriptions — not the full spec.
+
+| Spec size | Batches | Approximate cost (Claude Haiku / GPT-4o-mini) |
+|---|---|---|
+| Small (1–5 operations) | 1 | < $0.001 |
+| Medium (10–20 operations) | 2–3 | ~$0.002–$0.005 |
+| Large (50+ operations) | 7 (capped) | ~$0.01–$0.02 |
+
+The engine caps at 7 batches by default (sampling randomly when there are more); this keeps cost
+predictable regardless of spec size. Local models (Ollama, vLLM) cost nothing per call.
+
 ## How it works under the hood
 
 1. The CLI scans your environment for credentials and routing variables.
