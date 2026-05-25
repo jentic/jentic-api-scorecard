@@ -52,16 +52,22 @@ npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 
 ### Cloud provider (AWS Bedrock)
 
-Bedrock is the engine's default — if you only export AWS credentials, the engine routes there
-automatically without needing `LLM_PROVIDER` or `LLM_LIGHT_MODEL`:
+Bedrock is the engine's default provider. Export your AWS credentials and override the model IDs
+to match your region's inference profile:
 
 ```bash
 export AWS_ACCESS_KEY_ID=AKIA...
 export AWS_SECRET_ACCESS_KEY=...
-export AWS_REGION=us-east-1
+export AWS_REGION=eu-west-1
+export LLM_MODEL=eu.anthropic.claude-sonnet-4-20250514-v1:0
+export LLM_LIGHT_MODEL=eu.anthropic.claude-haiku-4-5-20251001-v1:0
 
 npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
+
+The engine defaults to `global.anthropic.*` model IDs (cross-region inference profiles). If your
+account uses region-scoped profiles, set `LLM_MODEL` and `LLM_LIGHT_MODEL` with the appropriate
+prefix (`eu.`, `us.`, or the base model ID without prefix for single-region access).
 
 ### Local endpoint (Ollama Docker image)
 
