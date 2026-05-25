@@ -149,7 +149,8 @@ binary, and validator tarball it needs is baked in at build time. Scoring does
 not call PyPI, npmjs, a Jentic backend, or any external service. Local-file
 inputs and bundled-URL inputs run fully offline; URL inputs reach the network
 only to fetch the OpenAPI document and resolve any external `$ref`s it points
-at. Multi-arch images
+at. `--with-llm` optionally sends spec context to an LLM provider of the
+user's choice; a local endpoint (Ollama) keeps everything on-machine. Multi-arch images
 (linux/amd64 + linux/arm64) ship from the same release, so the same guarantees
 hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
 
