@@ -1,0 +1,59 @@
+# Phase 10 Requirements — `--with-llm` plumbing end-to-end
+
+## Scope
+
+Phase 10 closes the host-side gap in `--with-llm`. The container already accepts `--with-llm` and forwards `--enable-llm-analysis` to the upstream engine; the npm CLI today only declares the flag and passes it through, with no environment scanning or forwarding. After this phase, running `npx @jentic/api-scorecard-cli score <input> --with-llm` on a host with valid LLM provider configuration Just Works — for both cloud providers (OpenAI / Anthropic / Gemini / AWS Bedrock) and OpenAI-compatible local endpoints (Ollama, LM Studio, llama.cpp, vLLM, …). When `--with-llm` is set without a usable provider, the CLI exits before `docker run` is invoked with a guidance message covering both recipes.
+
+The phase is host-CLI-only. The container's existing `--with-llm` handling is unchanged. Documentation in `docs/architecture.md` §5 grows a "Bring your own LLM" subsection and `README.md` gains an LLM-analysis pointer.
+
+## Out of Scope
+
+- Container-side changes (`docker/src/jentic_scorecard_runner/`). The container already accepts `--with-llm` and forwards `--enable-llm-analysis` to the engine; this phase does not rebuild the image.
+- A new exit code for "no LLM provider configured". Fail-fast reuses `GENERIC_ERROR=1` per the existing exit-code contract; introducing a new public code is deferred (no concrete CI-integrator demand yet).
+- LLM provider inference. The CLI does not invent a `LLM_PROVIDER` value when one is not set — users are responsible for matching `LLM_PROVIDER` to whichever credential is present. Guidance message names the contract; engine raises if the match is wrong.
+- JS/TS unit tests inside `packages/cli/`. Per `.claude/rules/testing.md`, a JS test runner is its own future phase ("suites land when behavior lands"). Verification relies on build/lint/type-check gates plus a fail-fast smoke runnable from the documented CLI command.
+- End-to-end smokes against real LLM providers in CI. Cloud and local-LLM happy-paths are documented as manual smokes; CI does not consume credentials or spin up a local Ollama.
+- `--verbose` / `--quiet` / `-o FILE` interactions with the new fail-fast path. Those flags ship in Phases 7 / 9 / 8 and will integrate with `--with-llm` then.
+- Real-auth gate replacement (Phase 13) and `--bundle` interactions (Phase 11).
+
+## Decisions
+
+### Detect both cloud credentials and local-LLM routing
+The host-environment scan covers two disjoint groups: cloud-provider credentials (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` / `AWS_REGION` / `AWS_BEARER_TOKEN_BEDROCK`) and engine-routing variables (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `LLM_MAX_TOKENS`, `OPENAI_API_URL`, `ANTHROPIC_API_URL`, `GEMINI_API_URL`). A "usable provider" exists when at least one credential is present, **or** when `LLM_PROVIDER=OPENAI` is set together with a non-default `OPENAI_API_URL` (the local-endpoint recipe — placeholder `OPENAI_API_KEY` like `ollama` satisfies the engine since it only checks the value is non-empty). Both groups are forwarded into the container via `-e <NAME>` (docker passthrough form, value never on argv).
+
+### Reuse `GENERIC_ERROR=1` for the missing-provider fail-fast
+When `--with-llm` is set and the scan finds no usable provider, the CLI writes guidance to stderr (naming both cloud and local recipes) and exits `GENERIC_ERROR=1` **before** any `docker pull`, `docker image inspect`, or `docker run` is invoked. This matches the architecture text ("exit 1 (or chosen code)" in `docs/architecture.md` §11) and avoids growing the public exit-code surface (`docs/architecture.md` §6) until a CI-integrator pain signal warrants a distinct code. The guidance message is the public contract; the exit code is intentionally generic.
+
+### Solve host-network reachability inside the CLI
+A local-LLM endpoint at `http://localhost:11434/v1/chat/completions` (or `127.0.0.1`) is unreachable from inside a default-network container on Linux. When the CLI detects a forwarded `*_API_URL` whose hostname is `localhost`, `127.0.0.1`, or `host.docker.internal`, it appends `--add-host=host.docker.internal:host-gateway` to the `docker run` invocation. On Linux Docker ≥ 20.10 this resolves `host.docker.internal` to the host gateway; on macOS / Windows Docker Desktop the host already exists, so the flag is harmlessly idempotent. The same `npx … score --with-llm` command therefore works on all three platforms with no per-OS user instructions. URL values are forwarded verbatim — the CLI does not rewrite the user's URL.
+
+### Forwarding form preserves the no-leak invariant
+Every forwarded variable uses docker's passthrough form `-e <NAME>` with no `=value`. The credential never appears on the docker command line, in `/proc/<pid>/cmdline`, or in spinner / error / future-`--verbose` output. The CLI may log the **names** of forwarded variables for transparency; values are never interpolated into any human-facing output. `docker inspect <container-id>` exposes the runtime environment for the duration of the run — this is standard Docker behavior, documented as a security note in both `docs/architecture.md` §5 and the README pointer.
+
+## Constraints
+
+Load-bearing invariants from `specs/mission.md` and `specs/tech-stack.md` that this phase must preserve.
+
+- **CLI version = image tag invariant** — `imageRef()` in `packages/cli/src/docker.ts` continues to build `ghcr.io/jentic/jentic-api-scorecard:<cli-version>`. No env-var image override is introduced (`docs/architecture.md` §2; `specs/tech-stack.md`).
+- **Container is image-internal; no container-side LLM logic** — `docker/src/jentic_scorecard_runner/score.py` already calls `jentic-apitools score … --enable-llm-analysis`; the engine reads provider routing from its own environment. The CLI's job is to populate that environment, not to translate it (`specs/tech-stack.md`, "What We Are Not Using").
+- **No runtime package installs** — the engine's `OpenAIProvider` is pure HTTP via `requests`; no new wheels at scoring time (`docs/architecture.md` §6).
+- **Result JSON is engine-verbatim** — Phase 10 changes nothing about how results flow. LLM-derived signals appear inside the engine's existing JSON shape (`docs/architecture.md` §7).
+- **Exit codes are public CLI contract** — the existing set (0/1/2/3/4/5/6) stays intact. Reusing `GENERIC_ERROR=1` for the missing-provider case follows §6 of the architecture doc.
+- **Credentials never appear in logs / spinner / telemetry** — explicit invariant from the phase body and `docs/architecture.md` §5. The `-e <NAME>` passthrough form is the implementation; the test gate is grep-based.
+- **`process.env['X']` bracket access** — `noUncheckedIndexedAccess: true` makes env access return `string | undefined`. Compare `!== undefined && !== ''` to distinguish unset from set-but-empty (`.claude/rules/typescript-code-style.md`).
+- **TypeScript ESM + `.ts` import suffixes** — every relative import in the new module uses `.ts` per `rewriteRelativeImportExtensions: true` (`.claude/rules/typescript-code-style.md`).
+
+## Context
+
+The roadmap (`specs/roadmap.md` Phase 10) was extended in the same PR as this spec to cover local OpenAI-compatible LLM endpoints. The original cloud-only framing was insufficient for enterprise users — many organizations cannot route OpenAPI specs through third-party LLM APIs and must keep `--with-llm` analysis on internal infrastructure (Ollama, LM Studio, llama.cpp, vLLM). The upstream engine (`jentic-apitools-cli`) already supports OpenAI-compatible local endpoints via `OPENAI_API_URL` — confirmed by reading `packages/llm/src/jentic/apitools/llm/providers/openai.py` in the upstream repo, which POSTs the standard chat-completions payload to whatever URL is configured. No engine changes are needed; Phase 10 is the host-CLI plumbing that lets users opt into the local recipe through `npx`.
+
+Phase 10 fits in the Phase 4-anchored cluster of CLI surface work (Phases 5–9 already shipped; 11 is `--bundle`, 12 alpha publish, 14 HTML formatter). It depends on Phase 4 (the pretty formatter became the default) but does not interact with any later flag (`--format`, `-o`, `--quiet`, `--verbose`); those wire in independently.
+
+The architecture doc is canonical: `docs/architecture.md` §5 currently describes `--with-llm` and the env-var forwarding contract for cloud providers. Phase 10 adds a "Bring your own LLM" subsection alongside that text covering the local-endpoint recipe, the host-network mechanism, and the security note. README cross-references the new subsection from its (presently absent) `--with-llm` mention.
+
+## Stakeholder Notes
+
+- **Enterprise / regulated platform teams scoring private specs** — the load-bearing audience for the local-LLM expansion. Cannot send specs to third-party APIs; need `--with-llm` to point at an internal Ollama / vLLM / LM Studio. The cross-OS reachability mechanism (`--add-host=host.docker.internal:host-gateway`) keeps their command line identical to a cloud user's.
+- **Spec authors using cloud-LLM accounts** — already have `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `AWS_*` exported. After Phase 10, `--with-llm` Just Works with no extra config beyond the existing env. The fail-fast guidance is the safety net when they switch shells.
+- **CI integrators wanting LLM-backed signals on every PR** — need `--with-llm` to fail predictably when the runner has no provider. The fail-fast path is reproducible in CI without spending real-LLM tokens; integrators can set the variables in repository secrets and skip the flag in PR contexts that lack them.
+- **Local-dev users iterating with `--detail signals`** — already running Ollama for other dev work. The local recipe is a one-line export; the cross-OS reachability flag means a Linux dev's invocation matches the macOS dev's verbatim.
