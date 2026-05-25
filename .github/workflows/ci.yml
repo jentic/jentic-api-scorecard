@@ -93,6 +93,25 @@ jobs:
       - name: Build TypeScript
         run: npx lerna run build:typescript
 
+  typescript-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false
+
+      - name: Run tests
+        run: npm test
+
   python-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
