@@ -132,17 +132,17 @@ together when using a non-Bedrock provider.
 ## Token cost
 
 The engine uses the lightweight model (`LLM_LIGHT_MODEL`) exclusively and processes operations
-in batches of ~7. Each batch sends a focused prompt containing only the operation signatures and
-descriptions — not the full spec.
+in batches of ~7. Each batch sends a system prompt (~800 tokens), the API's semantic context
+(schemas, tags, security info), and the operation signatures with their current descriptions.
+The full spec is never sent — only the context needed for quality assessment.
 
-| Spec size | Batches | Approximate cost (Claude Haiku / GPT-4o-mini) |
-|---|---|---|
-| Small (1–5 operations) | 1 | < $0.001 |
-| Medium (10–20 operations) | 2–3 | ~$0.002–$0.005 |
-| Large (50+ operations) | 7 (capped) | ~$0.01–$0.02 |
+The engine caps at 7 batches by default, sampling randomly when there are more. This keeps cost
+bounded regardless of spec size: a 200-operation spec runs the same number of LLM calls as a
+50-operation spec.
 
-The engine caps at 7 batches by default (sampling randomly when there are more); this keeps cost
-predictable regardless of spec size. Local models (Ollama, vLLM) cost nothing per call.
+Actual per-run cost depends on the spec's verbosity and your provider's pricing. As a reference,
+the Petstore v3 spec (19 operations, 3 batches) consumed roughly 15k input tokens and 8k output
+tokens per run with Claude Haiku. Local models (Ollama, vLLM) cost nothing per call.
 
 ## How it works under the hood
 
