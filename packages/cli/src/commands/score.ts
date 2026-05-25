@@ -36,6 +36,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const forwardJenticKey = apiKey !== undefined && apiKey !== '';
 
   let forwardEnvVars: string[] = [];
+  let forwardEnvOverrides = new Map<string, string>();
   let needsHostNetwork = false;
 
   if (options.withLlm) {
@@ -64,6 +65,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       return ExitCode.GENERIC_ERROR;
     }
     forwardEnvVars = detection.forwardEnvVars;
+    forwardEnvOverrides = detection.forwardEnvOverrides;
     needsHostNetwork = detection.needsHostNetwork;
   }
 
@@ -115,6 +117,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       stdinPayload,
       forwardJenticKey,
       forwardEnvVars,
+      forwardEnvOverrides,
       needsHostNetwork,
     });
   } catch (err) {

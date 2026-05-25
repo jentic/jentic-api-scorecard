@@ -52,6 +52,7 @@ export interface DockerRunOptions {
   stdinPayload?: string;
   forwardJenticKey: boolean;
   forwardEnvVars: string[];
+  forwardEnvOverrides: Map<string, string>;
   needsHostNetwork: boolean;
 }
 
@@ -74,7 +75,12 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
   }
 
   for (const name of opts.forwardEnvVars) {
-    dockerArgs.push('-e', name);
+    const override = opts.forwardEnvOverrides.get(name);
+    if (override !== undefined) {
+      dockerArgs.push('-e', `${name}=${override}`);
+    } else {
+      dockerArgs.push('-e', name);
+    }
   }
 
   if (opts.needsHostNetwork) {
