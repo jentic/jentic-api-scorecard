@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-mock-test",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": "mock-model",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"success\": true,\n  \"output\": [\n    {\n      \"operation_id\": \"getGreeting\",\n      \"has_quality_issues\": true,\n      \"issues_found\": [\"vague_description\", \"missing_output_details\"],\n      \"current_summary\": \"Get a greeting\",\n      \"current_description\": \"Returns a greeting\",\n      \"summary_suggestion\": \"Retrieve a personalized greeting message\",\n      \"description_suggestion\": \"Returns a greeting message for the caller. The response includes a greeting string in JSON format. No authentication required.\",\n      \"reasoning\": \"The current description is too minimal and lacks details about what is returned.\"\n    }\n  ]\n}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 800,
+    "completion_tokens": 200,
+    "total_tokens": 1000
+  }
+}
