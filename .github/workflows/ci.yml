@@ -132,7 +132,7 @@ jobs:
       - name: Run tests
         run: uv run poe test
 
-  typescript-e2e:
+  test-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
