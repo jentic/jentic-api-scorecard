@@ -5,6 +5,7 @@ import { DEFAULT_DETAIL, DetailLevel, filterByDetail } from '../detail.ts';
 import { imageExists, imageRef, pullImage, runDocker } from '../docker.ts';
 import { ExitCode } from '../exit-codes.ts';
 import { formatPretty } from '../formatters/pretty.ts';
+import { detectLlmEnv } from '../llm-env.ts';
 import { ScorecardResult } from '../result.ts';
 import { spin, done, clearSpinner } from '../spinner.ts';
 
@@ -33,6 +34,38 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   const apiKey = process.env['JENTIC_API_KEY'];
   const forwardJenticKey = apiKey !== undefined && apiKey !== '';
+
+  let forwardEnvVars: string[] = [];
+  let addHostFlag = false;
+
+  if (options.withLlm) {
+    const detection = detectLlmEnv(process.env);
+    if (!detection.hasUsableProvider) {
+      process.stderr.write(
+        `error: --with-llm requires an LLM provider but none was detected.\n` +
+          `\n` +
+          `Cloud recipe (set one credential + routing variables):\n` +
+          `  export OPENAI_API_KEY=<key>        # or ANTHROPIC_API_KEY, GEMINI_API_KEY, AWS_ACCESS_KEY_ID\n` +
+          `  export LLM_PROVIDER=OPENAI          # match the credential\n` +
+          `  export LIGHT_LLM_PROVIDER=OPENAI    # lightweight model provider\n` +
+          `  export LLM_LIGHT_MODEL=<model>      # e.g. gpt-4o-mini\n` +
+          `\n` +
+          `  Without LLM_LIGHT_MODEL the engine falls back to a Bedrock model ID\n` +
+          `  and the run will fail for non-Bedrock providers.\n` +
+          `\n` +
+          `Local recipe (OpenAI-compatible endpoint, e.g. Ollama):\n` +
+          `  export LLM_PROVIDER=OPENAI\n` +
+          `  export LIGHT_LLM_PROVIDER=OPENAI\n` +
+          `  export OPENAI_API_URL=http://localhost:11434/v1/chat/completions\n` +
+          `  export OPENAI_API_KEY=ollama        # any non-empty value\n` +
+          `  export LLM_MODEL=<your-model>       # e.g. llama3.1:8b\n` +
+          `  export LLM_LIGHT_MODEL=<your-model>\n`,
+      );
+      return ExitCode.GENERIC_ERROR;
+    }
+    forwardEnvVars = detection.forwardEnvVars;
+    addHostFlag = detection.addHostFlag;
+  }
 
   let stdinPayload: string | undefined;
   const startTime = Date.now();
@@ -81,8 +114,8 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       args: containerArgs,
       stdinPayload,
       forwardJenticKey,
-      forwardEnvVars: [],
-      addHostFlag: false,
+      forwardEnvVars,
+      addHostFlag,
     });
   } catch (err) {
     clearSpinner();
