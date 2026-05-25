@@ -143,16 +143,19 @@ Phase 4 already auto-suppresses the spinner when stderr is not a TTY (the common
 
 ## Phase 10 — `--with-llm` plumbing end-to-end
 
-**Goal:** the CLI scans for LLM provider keys, errors fast if `--with-llm` is set without one, and forwards present keys via docker's passthrough form.
+**Goal:** the CLI detects available LLM provider configuration — cloud-provider credentials *or* a local OpenAI-compatible endpoint — errors fast if `--with-llm` is set without a usable provider, and forwards detected configuration into the container.
 **Depends on:** Phase 4
 **Priority:** Medium–High
 
 Architecture.md §5 describes `--with-llm` precisely. The container already accepts `--with-llm` and forwards `--enable-llm-analysis` to the engine. The host-side scan-and-forward is the remaining piece. Until it ships, users can only invoke `--with-llm` by piping their own `docker run -e …` invocation.
 
-- CLI scans its env for `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` / `AWS_REGION`.
-- If `--with-llm` is set and none are present, exit non-zero **before** `docker run` is invoked, with a guidance message.
-- Forward each present key via `-e <NAME>` (docker passthrough form). Do not log keys in spinner / error / telemetry output.
-- Document the security note (provider keys appear in `docker inspect` for the run; this is standard Docker behavior, see `docs/architecture.md` §5).
+Local-LLM support is load-bearing for enterprise users: many organizations cannot send OpenAPI specs to third-party LLMs for compliance, data-residency, or contractual reasons. The upstream engine already supports OpenAI-compatible local endpoints (Ollama, LM Studio, llama.cpp, vLLM, …) — Phase 10's job is to make that work end-to-end through the npm CLI's docker orchestration without users having to bypass `npx … score` and hand-craft their own `docker run -e …`.
+
+- CLI detects two kinds of LLM configuration in the host environment: cloud-provider credentials (OpenAI / Anthropic / Gemini / AWS Bedrock) and local-LLM routing (provider selection, model, endpoint URL).
+- If `--with-llm` is set and no usable provider is detected, exit non-zero **before** `docker run` is invoked, with a guidance message covering both cloud and local recipes.
+- Forward detected configuration into the container; credentials never appear in logs, spinner output, or telemetry.
+- A local-LLM endpoint pointing at the host machine works on Linux, macOS, and Windows Docker Desktop without per-OS user instructions — host-network reachability is the CLI's problem to solve, not the user's.
+- Architecture.md §5 documents both recipes (cloud and local) and the security note that credentials forwarded via `docker run -e` are visible to anyone with access to the user's docker daemon (standard Docker behavior). README links to the new subsection from the `--with-llm` reference.
 
 ## Phase 11 — `--bundle` host-side fetch + bundling
 
