@@ -1,0 +1,92 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+import { expect } from 'chai';
+
+const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
+const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
+const SAMPLE_SPEC = `${REPO_ROOT}/docker/.build/sample.yaml`;
+
+const E2E_TIMEOUT_MS = 120_000;
+
+function strip(s: string): string {
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/\x1B\[[0-9;]*m/g, '');
+}
+
+describe('score command — e2e against docker', function () {
+  this.timeout(E2E_TIMEOUT_MS);
+
+  describe('local file input (mvp-preview key)', function () {
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(function () {
+      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC], {
+        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      exitCode = result.status;
+      stdout = result.stdout ?? '';
+      stderr = result.stderr ?? '';
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('renders the headline', function () {
+      const out = strip(stdout);
+      expect(out).to.include('API Readiness Scorecard');
+      expect(out).to.include('Final score:');
+      expect(out).to.include('Readiness:');
+    });
+
+    it('renders the dimension table for the sample spec', function () {
+      const out = strip(stdout);
+      expect(out).to.include('Foundational Compliance');
+      expect(out).to.include('Security');
+      expect(out).to.match(/1\s+operations/);
+    });
+
+    it('echoes the source path', function () {
+      expect(strip(stdout)).to.include(SAMPLE_SPEC);
+    });
+  });
+
+  describe('--detail summary', function () {
+    let exitCode: number | null;
+    let stdout: string;
+
+    before(function () {
+      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--detail', 'summary'], {
+        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      exitCode = result.status;
+      stdout = result.stdout ?? '';
+    });
+
+    it('exits 0', function () {
+      expect(exitCode).to.equal(0);
+    });
+
+    it('omits the Dimensions table', function () {
+      expect(strip(stdout)).to.not.include('Dimensions');
+    });
+  });
+
+  it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
+    const env = { ...process.env };
+    delete env['JENTIC_API_KEY'];
+    const result = spawnSync('node', [CLI_BIN, 'score', 'https://example.com/openapi.yaml'], {
+      env,
+      encoding: 'utf8',
+      timeout: E2E_TIMEOUT_MS,
+    });
+    expect(result.status).to.equal(3);
+  });
+});

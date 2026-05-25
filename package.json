@@ -15,10 +15,11 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./lerna.json').version\") ./docker",
+    "build:image": "npm run build:image -w @jentic/api-scorecard-cli",
     "clean": "lerna run clean",
-    "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./lerna.json').version\") || true",
+    "clean:image": "npm run clean:image -w @jentic/api-scorecard-cli",
     "test": "lerna run test",
+    "test:e2e": "lerna run test:e2e",
     "typescript:check-types": "lerna run typescript:check-types",
     "lint": "lerna run lint",
     "lint:fix": "lerna run lint:fix",

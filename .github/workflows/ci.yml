@@ -131,3 +131,22 @@ jobs:
 
       - name: Run tests
         run: uv run poe test
+
+  typescript-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false
+
+      - name: Run e2e tests
+        run: npm run test:e2e

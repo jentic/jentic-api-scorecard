@@ -1,4 +1,5 @@
 {
   "node-option": ["import=tsx"],
-  "spec": ["test/**/*.test.ts"]
+  "spec": ["test/**/*.test.ts"],
+  "ignore": ["test/e2e/**"]
 }
