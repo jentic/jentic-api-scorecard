@@ -11,9 +11,8 @@ jobs:
   # registry. Gating release-prepare on this means a failing lint /
   # test / build short-circuits the release with no version bump, no
   # tag, no GitHub release, and no artifacts to roll back. Without
-  # this gate, release-prepare runs only `npm run build` +
-  # `typescript:check-types` and skips python-lint, typescript-lint,
-  # and (critically) the python-test suite — see issue #23.
+  # this gate, nothing else in release-prepare runs lint or tests —
+  # see issue #23.
   ci:
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/ci.yml
@@ -46,8 +45,6 @@ jobs:
           node-version: 24.10.0
       - name: Install monorepo dependencies
         run: npm ci --engine-strict=false
-      - name: Build monorepo
-        run: npm run build
       - name: Version bump & GitHub release
         run: |
           git config user.name "github-actions[bot]"
