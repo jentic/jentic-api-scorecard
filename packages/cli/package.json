@@ -52,7 +52,7 @@
     "lint": "eslint src test",
     "lint:fix": "eslint src test --fix",
     "test": "mocha",
-    "test:e2e": "npm run build && (cd ../.. && npm run build:image) && mocha --no-config --node-option import=tsx --timeout 120000 'test/e2e/**/*.e2e.test.ts'",
+    "test:e2e": "mocha --no-config --node-option import=tsx --timeout 120000 'test/e2e/**/*.e2e.test.ts'",
     "typescript:check-types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json"
   },
   "dependencies": {
