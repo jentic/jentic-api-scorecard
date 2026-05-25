@@ -7,12 +7,24 @@ env:
   HUSKY: 0
 
 jobs:
+  # Step 0: run the full CI suite before anything mutates the repo or
+  # registry. Gating release-prepare on this means a failing lint /
+  # test / build short-circuits the release with no version bump, no
+  # tag, no GitHub release, and no artifacts to roll back. Without
+  # this gate, release-prepare runs only `npm run build` +
+  # `typescript:check-types` and skips python-lint, typescript-lint,
+  # and (critically) the python-test suite — see issue #23.
+  ci:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+
   # Step 1: bump version, tag, create GitHub release, push to main.
   # No artifacts shipped yet — that happens in publish-docker and
   # release-publish below. Keeping the version bump and "latest"
   # flag here matches the previous workflow's behavior.
   release-prepare:
     name: Prepare release (version bump)
+    needs: [ci]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
