@@ -5,5 +5,5 @@
     "rootDir": "..",
     "types": ["node", "mocha"]
   },
-  "include": ["../src/**/*", "**/*"]
+  "include": ["../src/**/*.ts", "**/*.ts"]
 }
