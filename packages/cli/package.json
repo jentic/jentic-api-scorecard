@@ -48,7 +48,6 @@
     "build:typescript": "tsc -p tsconfig.json",
     "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./package.json').version\") ../../docker",
     "clean": "rimraf dist *.tsbuildinfo",
-    "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./package.json').version\") || true",
     "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE . && copyfiles -u 2 ../../README.md .",
     "postpack": "rimraf NOTICE LICENSE README.md",
     "lint": "eslint src test",

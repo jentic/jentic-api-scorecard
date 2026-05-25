@@ -17,7 +17,7 @@
     "build": "lerna run build",
     "build:image": "npm run build:image -w @jentic/api-scorecard-cli",
     "clean": "lerna run clean",
-    "clean:image": "npm run clean:image -w @jentic/api-scorecard-cli",
+    "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") || true",
     "test": "lerna run test",
     "test:e2e": "lerna run test:e2e",
     "typescript:check-types": "lerna run typescript:check-types",
