@@ -141,7 +141,7 @@ bounded regardless of spec size: a 200-operation spec runs the same number of LL
 50-operation spec.
 
 Actual per-run cost depends on the spec's verbosity and your provider's pricing. As a reference,
-the Petstore v3 spec (19 operations, 3 batches) consumed roughly 15k input tokens and 8k output
+the [Petstore v3](https://petstore3.swagger.io/api/v3/openapi.json) spec (19 operations, 3 batches) consumed roughly 15k input tokens and 8k output
 tokens per run with Claude Haiku. Local models (Ollama, vLLM) cost nothing per call.
 
 ## How it works under the hood
