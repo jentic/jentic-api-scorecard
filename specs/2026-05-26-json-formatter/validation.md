@@ -74,7 +74,7 @@ JENTIC_API_KEY=mvp-preview node packages/cli/bin/jentic-api-scorecard.mjs \
   score docker/.build/sample.yaml
 ```
 
-Exits 0; stdout contains the dimension table; stderr contains `Full report: --format json --detail diagnostics` (or `Full evidence: ...` when run with `--detail signals`). Asserts the regression `337b55e` introduced is undone and the canonical sample at `docs/architecture.md:34` reads true.
+Exits 0; stdout contains the dimension table and the footer hint `Full report: --format json --detail diagnostics` (or `Full evidence: ...` when run with `--detail signals`). The footer hint is part of the formatted report payload — `appendHint()` pushes into the same `lines[]` array that `score.ts:156` writes to `process.stdout`; stderr carries only the spinner. Asserts the regression `337b55e` introduced is undone and the canonical sample at `docs/architecture.md:34` reads true.
 
 ### 9. Roadmap completion marker present
 
