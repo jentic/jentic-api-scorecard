@@ -113,8 +113,12 @@ describe('score command — e2e against docker', function () {
         expect(parsed['diagnostics']).to.equal(undefined);
       });
 
-      it('keeps the spinner on stderr so `> out.json` captures only JSON', function () {
-        expect(stderr.length, 'expected spinner output on stderr').to.be.greaterThan(0);
+      it('never leaks progress chrome onto stdout', function () {
+        // Spinner-only strings the engine JSON cannot emit. 'Bundling' and
+        // bare 'Scoring' would false-positive on metadata.engine.name
+        // ('Jentic API Scoring Framework') and summary.scoringDate.
+        expect(stdout).to.not.include('Bundling…');
+        expect(stdout).to.not.include('Scoring done in');
       });
     });
 
