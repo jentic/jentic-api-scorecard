@@ -114,9 +114,6 @@ describe('score command — e2e against docker', function () {
       });
 
       it('keeps the spinner on stderr so `> out.json` captures only JSON', function () {
-        // Stdout is parseable JSON (asserted above) AND stderr carries the
-        // spinner — `score … --format json > out.json` must produce a clean
-        // JSON file with the progress chrome staying visible in the terminal.
         expect(stderr.length, 'expected spinner output on stderr').to.be.greaterThan(0);
       });
     });
