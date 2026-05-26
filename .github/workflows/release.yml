@@ -29,15 +29,19 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.value }}
       sha: ${{ steps.version.outputs.sha }}
-    permissions:
-      contents: write
+    # GITHUB_TOKEN needs no permissions: the version-bump push and
+    # the GitHub release both go through the App token minted below.
+    permissions: {}
 
     steps:
-      # Mint an App token so the version-bump push, the GitHub release,
-      # and the "latest" flag are attributed to the arazzo-builder App
-      # rather than github-actions[bot]. The lerna version-bump commit
-      # message carries `[skip ci]` (lerna.json), so the push to main
-      # does not retrigger docker-publish.yml's push job.
+      # Mint an App token so the version-bump push and the GitHub
+      # release are made by the arazzo-builder App, which is on the
+      # `Protect main` ruleset's bypass list. GITHUB_TOKEN is a
+      # separate identity that the ruleset would reject — the post-
+      # bump SHA has no status check runs against it yet, and
+      # `strict_required_status_checks_policy: true` demands them.
+      # The lerna commit message carries `[skip ci]` (lerna.json),
+      # so the push does not retrigger docker-publish.yml.
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -58,8 +62,8 @@ jobs:
         run: npm ci --engine-strict=false
       - name: Version bump & GitHub release
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
           npx lerna version prerelease --preid alpha --no-private --yes --force-publish
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
