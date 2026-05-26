@@ -89,6 +89,10 @@ describe('formatPretty', function () {
       expect(output).to.include('--detail signals');
     });
 
+    it('hints at --format json --detail diagnostics', function () {
+      expect(output).to.include('--format json --detail diagnostics');
+    });
+
     it('does not render the Signals or Diagnostics sections', function () {
       expect(output).to.not.include('Signals');
       expect(output).to.not.include('Diagnostics');
@@ -114,6 +118,10 @@ describe('formatPretty', function () {
     it('hints at --detail dimensions', function () {
       expect(output).to.include('--detail dimensions');
     });
+
+    it('hints at --format json --detail diagnostics', function () {
+      expect(output).to.include('--format json --detail diagnostics');
+    });
   });
 
   describe('detail = signals', function () {
@@ -137,6 +145,10 @@ describe('formatPretty', function () {
 
     it('hints at --detail diagnostics', function () {
       expect(output).to.include('--detail diagnostics');
+    });
+
+    it('hints at --format json --detail diagnostics', function () {
+      expect(output).to.include('--format json --detail diagnostics');
     });
   });
 

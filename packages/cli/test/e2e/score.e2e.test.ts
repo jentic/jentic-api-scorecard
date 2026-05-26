@@ -79,6 +79,126 @@ describe('score command — e2e against docker', function () {
     });
   });
 
+  describe('--format json', function () {
+    describe('default detail (dimensions)', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json'], {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        });
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('emits parseable JSON on stdout', function () {
+        expect(() => JSON.parse(stdout)).to.not.throw();
+      });
+
+      it('has a numeric summary.score and 6 dimensions, no details/diagnostics', function () {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        const summary = parsed['summary'] as Record<string, unknown>;
+        expect(summary['score']).to.be.a('number');
+        expect(summary['dimensions']).to.be.an('array').with.length(6);
+        expect(parsed['details']).to.equal(undefined);
+        expect(parsed['diagnostics']).to.equal(undefined);
+      });
+    });
+
+    describe('--detail summary', function () {
+      let exitCode: number | null;
+      let stdout: string;
+
+      before(function () {
+        const result = spawnSync(
+          'node',
+          [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--detail', 'summary'],
+          {
+            env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+            encoding: 'utf8',
+            timeout: E2E_TIMEOUT_MS,
+          },
+        );
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode).to.equal(0);
+      });
+
+      it('omits summary.dimensions, details, and diagnostics', function () {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        const summary = parsed['summary'] as Record<string, unknown>;
+        expect(summary['dimensions']).to.equal(undefined);
+        expect(parsed['details']).to.equal(undefined);
+        expect(parsed['diagnostics']).to.equal(undefined);
+      });
+    });
+
+    describe('--detail diagnostics', function () {
+      let exitCode: number | null;
+      let stdout: string;
+
+      before(function () {
+        const result = spawnSync(
+          'node',
+          [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--detail', 'diagnostics'],
+          {
+            env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+            encoding: 'utf8',
+            timeout: E2E_TIMEOUT_MS,
+          },
+        );
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode).to.equal(0);
+      });
+
+      it('includes details and diagnostics arrays', function () {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        expect(parsed['details']).to.be.an('array');
+        expect(parsed['diagnostics']).to.be.an('array');
+      });
+    });
+
+    describe('--format invalid', function () {
+      let exitCode: number | null;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'invalid'], {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        });
+        exitCode = result.status;
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits non-zero', function () {
+        expect(exitCode).to.not.equal(0);
+      });
+
+      it('mentions --format and invalid on stderr', function () {
+        expect(stderr).to.include('--format');
+        expect(stderr).to.include('invalid');
+      });
+    });
+  });
+
   it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
     // RFC 6761 reserves .test as never-resolvable, so even if the gate were
     // bypassed the engine could not fetch the URL.
