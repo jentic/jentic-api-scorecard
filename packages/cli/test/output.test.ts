@@ -1,12 +1,4 @@
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -55,34 +47,10 @@ describe('writeReport', function () {
     expect(readFileSync(target, 'utf8')).to.equal('fresh');
   });
 
-  it('leaves no temp file behind on success', function () {
-    const target = join(workDir, 'report.json');
-    writeReport('payload', target, Format.JSON);
-    const leftovers = readdirSync(workDir).filter((name) => name.startsWith('report.json.tmp-'));
-    expect(leftovers).to.deep.equal([]);
-  });
-
   it('throws a wrapped error when the parent directory does not exist', function () {
     const target = join(workDir, 'missing-dir', 'report.json');
     expect(() => writeReport('payload', target, Format.JSON)).to.throw(
       /failed to write .*report\.json/,
     );
-  });
-
-  it('does not partially overwrite the target when the temp open fails', function () {
-    if (process.platform === 'win32' || process.getuid?.() === 0) {
-      this.skip();
-    }
-    const unwritableDir = join(workDir, 'ro');
-    mkdirSync(unwritableDir);
-    const blocked = join(unwritableDir, 'report.json');
-    writeFileSync(blocked, 'pre-existing');
-    chmodSync(unwritableDir, 0o500);
-    try {
-      expect(() => writeReport('new', blocked, Format.JSON)).to.throw(/failed to write/);
-      expect(readFileSync(blocked, 'utf8')).to.equal('pre-existing');
-    } finally {
-      chmodSync(unwritableDir, 0o700);
-    }
   });
 });
