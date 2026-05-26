@@ -33,7 +33,7 @@ describe('tryParseEngineOutput', function () {
       if (!result.ok) {
         expect(result.exitCode).to.equal(ExitCode.ENGINE_FAILURE);
         expect(result.stderr).to.match(/^error:/);
-        expect(result.stderr).to.include('engine output was not valid JSON');
+        expect(result.stderr).to.include('engine output was not a valid scorecard');
         expect(result.stdout).to.equal('');
       }
     });

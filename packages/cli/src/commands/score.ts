@@ -50,14 +50,14 @@ function invalidEngineOutput(format: Format, stdout: string): ParseEngineOutputR
     return {
       ok: false,
       exitCode: ExitCode.ENGINE_FAILURE,
-      stderr: 'error: engine output was not valid JSON.\n',
+      stderr: 'error: engine output was not a valid scorecard.\n',
       stdout: '',
     };
   }
   return {
     ok: false,
     exitCode: ExitCode.SUCCESS,
-    stderr: 'warning: engine output was not valid JSON; passing through raw output.\n',
+    stderr: 'warning: engine output was not a valid scorecard; passing through raw output.\n',
     stdout,
   };
 }
