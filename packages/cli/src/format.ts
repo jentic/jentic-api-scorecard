@@ -1,0 +1,14 @@
+export const Format = {
+  PRETTY: 'pretty',
+  JSON: 'json',
+} as const;
+
+export type Format = (typeof Format)[keyof typeof Format];
+
+export const FORMATS: readonly Format[] = [Format.PRETTY, Format.JSON];
+
+export const DEFAULT_FORMAT: Format = Format.PRETTY;
+
+export function isFormat(value: string): value is Format {
+  return (FORMATS as readonly string[]).includes(value);
+}
