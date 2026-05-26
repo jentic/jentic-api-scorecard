@@ -21,6 +21,13 @@ COPY --from=node:24-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:24-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    # Refresh bundled npm so its transitive deps (ip-address, brace-expansion, …) carry current fixes.
+    npm install -g npm@latest && \
+    npm cache clean --force && \
+    # System pip is unused at runtime — venv ships via uv. Remove it to drop pip CVEs from the scan.
+    rm -rf /usr/local/lib/python3.12/site-packages/pip \
+           /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12 && \
     groupadd --gid 10001 runner && \
     useradd --uid 10001 --gid 10001 --home-dir /home/runner \
             --create-home --shell /usr/sbin/nologin runner && \
