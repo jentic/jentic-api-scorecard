@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.8.5 /uv /usr/local/bin/uv
 
@@ -8,7 +8,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 LABEL maintainer="vladimir@jentic.com" \
       org.opencontainers.image.authors="vladimir@jentic.com" \
@@ -25,9 +25,9 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     npm install -g npm@latest && \
     npm cache clean --force && \
     # System pip is unused at runtime — venv ships via uv. Remove it to drop pip CVEs from the scan.
-    rm -rf /usr/local/lib/python3.12/site-packages/pip \
-           /usr/local/lib/python3.12/site-packages/pip-*.dist-info \
-           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12 && \
+    rm -rf /usr/local/lib/python3.14/site-packages/pip \
+           /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14 && \
     groupadd --gid 10001 runner && \
     useradd --uid 10001 --gid 10001 --home-dir /home/runner \
             --create-home --shell /usr/sbin/nologin runner && \

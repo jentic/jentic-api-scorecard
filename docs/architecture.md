@@ -49,7 +49,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Input dispatch | Local path → CLI bundles via Redocly → pipes to container stdin. URL → CLI passes `--url` to container, engine fetches directly. URL + `--bundle` → CLI fetches and bundles host-side, pipes via stdin (escape hatch for internal/auth-gated URLs). |
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
 | Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. MVP scaffolds the auth pipeline by checking against a documented public placeholder (`mvp-preview`); real validation lands in a follow-up. No login subcommand or creds file in MVP. |
-| Engine | [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) on PyPI. Image bundles Python 3.12 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
+| Engine | [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) on PyPI. Image bundles Python 3.14 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
 | Usage tracking | Out of scope for Delivery 1. No container-side calls to Jentic. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
@@ -127,7 +127,7 @@ jentic-api-scorecard/
 │       ├── package.json
 │       └── src/index.ts                      (export format(result): string — TODO)
 ├── docker/                                   (image internals; not a deliverable on its own)
-│   ├── Dockerfile                            (python:3.12-slim + Node 24, uv install)
+│   ├── Dockerfile                            (python:3.14-slim + Node 24, uv install)
 │   ├── .dockerignore
 │   ├── pyproject.toml                        (uv; deps: jentic-apitools-cli)
 │   ├── uv.lock
@@ -383,7 +383,7 @@ exit 4
 
 ### Base + tooling
 
-- Base: `python:3.12-slim`.
+- Base: `python:3.14-slim`.
 - Adds Node.js 24 LTS. Required by `jentic-apitools-cli`, which spawns Redocly / Spectral / Speclynx via `npx`. The engine documents Node ≥18 as the minimum; we ship the latest LTS so users get current security patches and modern V8 startup.
 - Build via `uv` (single-stage build is fine for MVP; can be split later).
 - Engine: [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) installed from PyPI. Its `jentic-apitools score` command is the scoring engine.

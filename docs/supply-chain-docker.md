@@ -51,7 +51,7 @@ also apply to the image, with one extra concern:
   has a different digest; signatures don't transfer.
 - **Dependency substitution.** The per-platform SPDX SBOMs enumerate every
   package inside the image — Python wheels, Node.js binaries, Debian
-  packages from the `python:3.12-slim` base — at the version actually
+  packages from the `python:3.14-slim` base — at the version actually
   resolved during the build.
 - **Registry compromise.** A compromise of GHCR alone can't forge matching
   Sigstore signatures (ephemeral keys, rooted in GitHub's OIDC identity)
