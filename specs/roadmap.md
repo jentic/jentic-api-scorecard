@@ -222,6 +222,7 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 
 - `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `7 — score below threshold`, documented in `docs/architecture.md` §6) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
 - Markdown formatter (`--format markdown`) — a Markdown table projection of the scorecard for pasting into PR comments / status checks. Deferred until concrete CI-integrator demand surfaces; `--format json` (Phase 6) covers the machine-readable channel in the meantime.
+- `--format` ergonomics — `-f` short flag for `--format` and the `--json` convenience alias for `--format json`. Both are documented in `docs/architecture.md` §5 but sit outside Phase 6's roadmap bullet, so the architecture doc currently marks them as deferred. Implementation is a one-line commander change once we decide it's worth shipping; bundle with the next CLI surface phase that already touches `index.ts` rather than as a standalone PR.
 - Native binary distribution via `curl -fsSL | bash` (self-extracting archive bundling Node + node_modules; platform-specific builds in CI; requires code signing for macOS/Windows)
 - CLI connecting to remote docker instance with `--api-url` option
 - Multi-spec / portfolio scoring across many APIs in one invocation
