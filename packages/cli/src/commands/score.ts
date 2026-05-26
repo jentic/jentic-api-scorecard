@@ -22,14 +22,14 @@ export type ParseEngineOutputResult =
   | { ok: false; exitCode: ExitCode; stderr: string; stdout: string };
 
 function isScorecardShape(value: unknown): value is ScorecardResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    'summary' in value &&
-    typeof (value as { summary: unknown }).summary === 'object' &&
-    (value as { summary: unknown }).summary !== null
-  );
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  if (!('summary' in value)) {
+    return false;
+  }
+  const summary = (value as { summary: unknown }).summary;
+  return typeof summary === 'object' && summary !== null && !Array.isArray(summary);
 }
 
 export function tryParseEngineOutput(stdout: string, format: Format): ParseEngineOutputResult {

@@ -70,6 +70,7 @@ describe('tryParseEngineOutput', function () {
       ['array', '[1,2,3]'],
       ['object missing summary', '{"summary_typo":{}}'],
       ['object with non-object summary', '{"summary":"oops"}'],
+      ['object with array summary', '{"summary":[]}'],
     ] as const;
 
     for (const [label, raw] of nonScorecards) {
