@@ -333,7 +333,7 @@ Spinner still appears on stderr unless `--quiet`.
 
 #### Other output controls
 
-**`-o FILE` / `--output FILE`** — when set, report output is written to `<file>` instead of stdout. Spinner and engine warnings remain on stderr. Equivalent to shell redirection but portable to Windows and explicit in CI scripts. Writes are atomic: the CLI writes to `<file>.tmp-<pid>`, fsyncs, then renames — readers either see the previous file or the new one, never a half-written stream. File-write errors print to stderr with a non-zero exit, and the previous `<file>` (if any) is preserved.
+**`-o FILE` / `--output FILE`** — when set, report output is written to `<file>` instead of stdout. Spinner and engine warnings remain on stderr. Equivalent to shell redirection but portable to Windows and explicit in CI scripts. Writes are atomic: the CLI writes to a sibling temp file (`<file>.tmp-<uuid>`), fsyncs, renames, then fsyncs the parent directory — readers either see the previous file or the new one, never a half-written stream. File-write errors print to stderr with a non-zero exit, and the previous `<file>` (if any) is preserved. For pretty output, ANSI escapes are stripped so the file stays plain text on disk; JSON output is engine-verbatim.
 
 **Spinner (stderr)** — replaces in place, single line:
 

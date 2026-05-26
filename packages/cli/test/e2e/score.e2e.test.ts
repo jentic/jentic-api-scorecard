@@ -301,27 +301,25 @@ describe('score command — e2e against docker', function () {
   });
 
   it('exits non-zero when -o targets an unwritable path', function () {
-    // /nonexistent-dir-jentic does not exist under /, so the temp-file
-    // open fails before any bytes land. Don't "fix" this by mkdir-ing.
-    const result = spawnSync(
-      'node',
-      [
-        CLI_BIN,
-        'score',
-        SAMPLE_SPEC,
-        '--format',
-        'json',
-        '-o',
-        '/nonexistent-dir-jentic/report.json',
-      ],
-      {
-        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
-        encoding: 'utf8',
-        timeout: E2E_TIMEOUT_MS,
-      },
-    );
-    expect(result.status).to.not.equal(0);
-    expect(result.stderr).to.include('failed to write');
+    // Build a deterministically-missing parent under our own temp dir so
+    // the failure mode does not depend on host filesystem layout.
+    const workDir = mkdtempSync(join(tmpdir(), 'jentic-e2e-unwritable-'));
+    try {
+      const target = join(workDir, 'does-not-exist', 'report.json');
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '-o', target],
+        {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr).to.include('failed to write');
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
   });
 
   it('writes plain text (no ANSI escapes) when -o is set with --format pretty', function () {

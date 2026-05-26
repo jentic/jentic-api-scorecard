@@ -212,7 +212,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   if (options.output !== undefined) {
     try {
-      writeReport(output, options.output);
+      writeReport(output, options.output, format);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`error: ${message}\n`);
