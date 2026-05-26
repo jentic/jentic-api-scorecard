@@ -17,6 +17,31 @@ export interface ScoreOptions {
   format?: Format;
 }
 
+export type ParseEngineOutputResult =
+  | { ok: true; parsed: ScorecardResult }
+  | { ok: false; exitCode: ExitCode; stderr: string; stdout: string };
+
+export function tryParseEngineOutput(stdout: string, format: Format): ParseEngineOutputResult {
+  try {
+    return { ok: true, parsed: JSON.parse(stdout) as ScorecardResult };
+  } catch {
+    if (format === Format.JSON) {
+      return {
+        ok: false,
+        exitCode: ExitCode.ENGINE_FAILURE,
+        stderr: 'error: engine output was not valid JSON.\n',
+        stdout: '',
+      };
+    }
+    return {
+      ok: false,
+      exitCode: ExitCode.SUCCESS,
+      stderr: 'warning: engine output was not valid JSON; passing through raw output.\n',
+      stdout,
+    };
+  }
+}
+
 function isURL(input: string): boolean {
   return /^https:\/\//i.test(input);
 }
@@ -140,21 +165,16 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   const format = options.format ?? DEFAULT_FORMAT;
 
-  let parsed: ScorecardResult;
-  try {
-    parsed = JSON.parse(result.stdout) as ScorecardResult;
-  } catch {
+  const parseResult = tryParseEngineOutput(result.stdout, format);
+  if (!parseResult.ok) {
     clearSpinner();
-    if (format === Format.JSON) {
-      process.stderr.write('error: engine output was not valid JSON.\n');
-      return ExitCode.ENGINE_FAILURE;
+    process.stderr.write(parseResult.stderr);
+    if (parseResult.stdout) {
+      process.stdout.write(parseResult.stdout);
     }
-    process.stderr.write(
-      'warning: engine output was not valid JSON; passing through raw output.\n',
-    );
-    process.stdout.write(result.stdout);
-    return ExitCode.SUCCESS;
+    return parseResult.exitCode;
   }
+  const parsed = parseResult.parsed;
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   done(`Scoring done in ${elapsed}s`);
