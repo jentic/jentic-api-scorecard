@@ -34,6 +34,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Test framework (JS/TS) | mocha | `packages/cli/package.json` devDep; `packages/cli/.mocharc.json`; tests in `packages/cli/test/`; ESLint flat config already wires `eslint-plugin-mocha` for `packages/*/test/**/*.ts` |
 | Lint / format (Python) | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
 | Lint / format (JS/TS) | ESLint 9 (flat config) + Prettier 3 | `eslint.config.js`, `.prettierrc` at repo root; `eslint-plugin-import-x`, `typescript-eslint`, `eslint-plugin-prettier` recommended |
+| Lint (Dockerfile) | hadolint via Docker image | root `package.json` `lint:docker` script (`docker run --rm -i hadolint/hadolint < docker/Dockerfile`); `.lintstagedrc.json` runs it on staged `docker/Dockerfile`; `.github/workflows/ci.yml` `typescript-lint` job invokes it; PostToolUse hook `.claude/hooks/hadolint-check.sh` runs on every Dockerfile edit |
 | Commit-message lint | commitlint + `@commitlint/config-conventional` | `.commitlintrc.json` at repo root; `header-max-length: 69`; shared by `.husky/commit-msg` (humans) and `.claude/hooks/commitlint-before-commit.py` (Claude) |
 | Pre-commit hooks | husky + lint-staged | `.husky/{pre-commit,commit-msg}`; `.lintstagedrc.json` runs eslint on TS, ruff check + format check on Python |
 | Task runner | poethepoet (poe) | `docker/pyproject.toml:14, 33-48`; tasks: `lint`, `lint:fix`, `test` |
@@ -67,7 +68,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **Type checking:** none on Python (no mypy / pyright in CI). TypeScript itself runs strict-mode (`tsconfig.base.json`); `lerna run typescript:check-types` verifies via `tsc --noEmit` per package.
 - **CI/CD:** GitHub Actions — `ci.yml` runs python-lint, python-test, typescript-lint, typescript-build, and lint-commit-messages on PRs to `main`. `docker-publish.yml` triggers on push to `main` (or manual dispatch), reuses `ci.yml` via `workflow_call`, and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable`. Versioned tags from git tags are roadmap, not yet wired. See `docs/architecture.md` §4.
 - **Conventional Commits enforcement:** two hooks share `.commitlintrc.json` — `.husky/commit-msg` runs `npx commitlint -e` for human / CI commits; `.claude/hooks/commitlint-before-commit.py` (PreToolUse) intercepts Claude-driven `git commit -m` payloads before they fire. Both are active now that `node_modules/.bin/commitlint` is installed at the repo root (Phase 5).
-- **Pre-commit lint pipeline:** `.husky/pre-commit` invokes `npx lint-staged`; `.lintstagedrc.json` runs `eslint` on staged `packages/**/*.ts` and `cd docker && uv run ruff check && uv run ruff format --check` on staged `docker/**/*.py`.
+- **Pre-commit lint pipeline:** `.husky/pre-commit` invokes `npx lint-staged`; `.lintstagedrc.json` runs `eslint` on staged `packages/**/*.ts`, `cd docker && uv run ruff check && uv run ruff format --check` on staged `docker/**/*.py`, and `npm run lint:docker` (hadolint via Docker) on staged `docker/Dockerfile`.
 - **DCO sign-off:** required by convention. `git commit -s` adds `Signed-off-by:` per `.claude/rules/git-workflow.md`.
 
 ## Deployment and Operations

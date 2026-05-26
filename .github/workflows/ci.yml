@@ -74,6 +74,9 @@ jobs:
       - name: Run lint
         run: npm run lint
 
+      - name: Lint Dockerfile
+        run: npm run lint:docker
+
   typescript-build:
     runs-on: ubuntu-latest
     timeout-minutes: 5

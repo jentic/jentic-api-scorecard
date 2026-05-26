@@ -3,5 +3,6 @@
   "packages/*/test/fixtures/**/*.json": "prettier --check",
   "docker/**/*.py": [
     "bash -c 'cd docker && uv run ruff check \"$@\" && uv run ruff format --check \"$@\"' --"
-  ]
+  ],
+  "docker/Dockerfile": "bash -c 'npm run lint:docker' --"
 }

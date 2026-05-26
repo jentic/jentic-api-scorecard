@@ -76,6 +76,7 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Python lint fix | `cd docker && uv run poe lint:fix` |
 | JS/TS lint check (all packages) | `npm run lint` |
 | JS/TS lint fix (all packages) | `npm run lint:fix` (Prettier runs via `eslint-plugin-prettier`) |
+| Dockerfile lint (hadolint via Docker) | `npm run lint:docker` |
 | Build the image | `docker build -t jentic-scorecard:dev ./docker` |
 | Smoke an allowlisted URL via image | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
 | Smoke an allowlisted URL via CLI | `node packages/cli/bin/jentic-api-scorecard.mjs score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
@@ -88,7 +89,7 @@ Tests use pytest, no mocking — `tests/test_main.py` and `tests/test_gate.py` e
 
 ESLint (`eslint.config.js` — flat config), Prettier (`.prettierrc`), and commitlint (`.commitlintrc.json`) all live at the repo root. `husky` installs git hooks on `npm install` via the root `prepare` script, and the hooks delegate to lint-staged + commitlint:
 
-- `.husky/pre-commit` → `npx lint-staged` runs `eslint` on staged `packages/**/*.ts` and `cd docker && uv run ruff check && uv run ruff format --check` on staged `docker/**/*.py` (config: `.lintstagedrc.json`).
+- `.husky/pre-commit` → `npx lint-staged` runs `eslint` on staged `packages/**/*.ts`, `cd docker && uv run ruff check && uv run ruff format --check` on staged `docker/**/*.py`, and `npm run lint:docker` (hadolint via Docker) when `docker/Dockerfile` is staged (config: `.lintstagedrc.json`).
 - `.husky/commit-msg` → `npx commitlint -e` validates the commit message against `@commitlint/config-conventional` plus the project's `header-max-length: 69` and `scope-case` rules.
 
 The `.claude/hooks/commitlint-before-commit.py` PreToolUse hook (which guards Claude-driven commits) and `.husky/commit-msg` (which guards human-driven commits) share the same `.commitlintrc.json` config, so they enforce the same rules.
@@ -96,7 +97,7 @@ The `.claude/hooks/commitlint-before-commit.py` PreToolUse hook (which guards Cl
 ## Harness layout (`.claude/`)
 
 - **`rules/`** — always-on guidance. `git-workflow.md` (branches, atomic commits, DCO sign-off, `Refs #N` vs `Closes #N`), `conventional-commits.md` (header format, ≤69 chars, scopes), `python-code-style.md` (ruff, top-level imports only, modern type syntax), `typescript-code-style.md` (ESLint flat config, Prettier 100-col, `.ts` import suffix via `rewriteRelativeImportExtensions`, `as const` over enums), `testing.md` (pytest in `docker/tests/`, no mocking, when to run), `karpathy-guidelines.md` (think before coding, simplicity, surgical changes), `sdd-constitution.md` (SDD workflow), `review-auto-apply.md` + `copilot-review-comments.md` (review behavior).
-- **`hooks/`** — `commitlint-before-commit.py` (PreToolUse) blocks malformed `git commit -m` payloads; active now that `node_modules/.bin/commitlint` is installed at the repo root. `ruff-fix.sh` (PostToolUse) runs `cd docker && uv run ruff check --fix && uv run ruff format` on every edited `.py` file. `eslint-fix.sh` (PostToolUse) runs `eslint --fix` on every edited `.ts` file under `packages/` (Prettier runs via `eslint-plugin-prettier`). `typescript-check.sh` (PostToolUse) runs `tsc --noEmit -p <package-tsconfig>` after every `.ts` edit under `packages/`; on type errors it exits 2 with the `tsc` output on stderr so Claude Code surfaces them back into the conversation.
+- **`hooks/`** — `commitlint-before-commit.py` (PreToolUse) blocks malformed `git commit -m` payloads; active now that `node_modules/.bin/commitlint` is installed at the repo root. `ruff-fix.sh` (PostToolUse) runs `cd docker && uv run ruff check --fix && uv run ruff format` on every edited `.py` file. `eslint-fix.sh` (PostToolUse) runs `eslint --fix` on every edited `.ts` file under `packages/` (Prettier runs via `eslint-plugin-prettier`). `typescript-check.sh` (PostToolUse) runs `tsc --noEmit -p <package-tsconfig>` after every `.ts` edit under `packages/`; on type errors it exits 2 with the `tsc` output on stderr so Claude Code surfaces them back into the conversation. `hadolint-check.sh` (PostToolUse) runs `docker run --rm -i hadolint/hadolint < docker/Dockerfile` whenever `docker/Dockerfile` is edited; on findings it exits 2 with hadolint output on stderr so Claude Code surfaces them back into the conversation.
 - **`skills/`** — invokable slash commands. SDD: `/sdd-create-constitution`, `/sdd-new-phase`, `/sdd-new-spec`, `/sdd-implement-spec`, `/sdd-distill-lessons`. Review: `/review-community` (someone else's PR with the diplomatic tone in `output-styles/review-comments.md`).
 - **`templates/sdd/`** — structural scaffolds for constitution and feature-spec files. `/sdd-create-constitution` and `/sdd-new-spec` consume these.
 - **`worktrees/`** — git-worktree mount points (gitignored content; only `.gitkeep` is tracked).

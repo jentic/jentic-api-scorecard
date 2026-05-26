@@ -30,6 +30,11 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/typescript-check.sh",
             "statusMessage": "Type-checking edited TypeScript package"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/hadolint-check.sh",
+            "statusMessage": "Linting Dockerfile with hadolint"
           }
         ]
       }
