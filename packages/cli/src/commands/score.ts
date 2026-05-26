@@ -143,6 +143,11 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     parsed = JSON.parse(result.stdout) as ScorecardResult;
   } catch {
     clearSpinner();
+    const requestedFormat = options.format ?? DEFAULT_FORMAT;
+    if (requestedFormat === Format.JSON) {
+      process.stderr.write('error: engine output was not valid JSON.\n');
+      return ExitCode.ENGINE_FAILURE;
+    }
     process.stderr.write(
       'warning: engine output was not valid JSON; passing through raw output.\n',
     );
