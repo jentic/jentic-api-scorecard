@@ -32,7 +32,7 @@ per-dimension scores, and rolls those up into a single weighted score and grade.
 
 ## Requirements
 
-- **Node.js** >= 20.10.0 with npm/npx. See [Node.js downloads](https://nodejs.org/).
+- **Node.js** 20 LTS or newer (`>= 20.19.0`) with npm/npx. See [Node.js downloads](https://nodejs.org/).
 - **Docker** installed and running. See [Docker installation](https://docs.docker.com/get-docker/).
   The CLI pulls the scoring image automatically on first run.
 - Network access to [`ghcr.io`](https://ghcr.io) (to pull the image) and to whatever URL hosts the

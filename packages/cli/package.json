@@ -56,13 +56,13 @@
     "typescript:check-types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json"
   },
   "dependencies": {
-    "@redocly/openapi-core": "^1.30.0",
+    "@redocly/openapi-core": "^2.31.4",
     "chalk": "^4.1.2",
     "commander": "^14.0.0",
     "ora": "^9.4.0"
   },
   "engines": {
-    "node": ">=20.10.0"
+    "node": ">=22.12.0 || >=20.19.0 <21.0.0"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",

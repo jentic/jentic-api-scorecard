@@ -49,6 +49,6 @@
     "typescript:check-types": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=20.10.0"
+    "node": ">=22.12.0 || >=20.19.0 <21.0.0"
   }
 }
