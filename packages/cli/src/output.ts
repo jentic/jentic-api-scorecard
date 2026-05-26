@@ -14,25 +14,13 @@ export function writeReport(content: string, filePath: string, format: Format): 
   // state — when -o redirects to a file we want plain text on disk. JSON
   // is engine-verbatim per docs/architecture.md §7, so leave it alone.
   const payload = format === Format.PRETTY ? stripAnsi(content) : content;
-  let fd: number | undefined;
   try {
-    fd = openSync(tmpPath, 'w');
-    // writeFileSync(fd, …) loops internally over short writes — writeSync
-    // may return a partial count for large payloads.
-    writeFileSync(fd, payload);
-    fsyncSync(fd);
-    closeSync(fd);
-    fd = undefined;
+    // flush: true was added in Node 20.10 / 21.0 and is always present
+    // for our `engines` range; older Nodes silently ignore the option.
+    writeFileSync(tmpPath, payload, { flush: true });
     renameSync(tmpPath, absPath);
     fsyncDir(dirname(absPath));
   } catch (err) {
-    if (fd !== undefined) {
-      try {
-        closeSync(fd);
-      } catch {
-        // ignore — the original error is what the caller cares about
-      }
-    }
     try {
       unlinkSync(tmpPath);
     } catch {
@@ -44,8 +32,8 @@ export function writeReport(content: string, filePath: string, format: Format): 
 }
 
 // Persist the directory entry created by rename so the new file survives
-// a power loss. POSIX requires this; Windows fsyncs the directory itself
-// is not meaningful and the API may EPERM — we tolerate that silently.
+// a power loss. POSIX requires this; Windows fsyncs of the directory
+// itself are not meaningful and the API may EPERM — we tolerate that.
 function fsyncDir(dir: string): void {
   let dirFd: number | undefined;
   try {
