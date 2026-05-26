@@ -2,6 +2,7 @@ import { Command, Option } from 'commander';
 
 import { runScore } from './commands/score.ts';
 import { DEFAULT_DETAIL, DETAIL_LEVELS, DetailLevel } from './detail.ts';
+import { DEFAULT_FORMAT, FORMATS, Format } from './format.ts';
 import { cliVersion } from './version.ts';
 
 export async function main(argv: string[] = process.argv): Promise<void> {
@@ -22,10 +23,19 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         .choices([...DETAIL_LEVELS])
         .default(DEFAULT_DETAIL),
     )
-    .action(async (input: string, opts: { withLlm?: boolean; detail: DetailLevel }) => {
-      const exitCode = await runScore(input, { withLlm: opts.withLlm, detail: opts.detail });
-      process.exitCode = exitCode;
-    });
+    .addOption(
+      new Option('--format <fmt>', 'Output encoding').choices([...FORMATS]).default(DEFAULT_FORMAT),
+    )
+    .action(
+      async (input: string, opts: { withLlm?: boolean; detail: DetailLevel; format: Format }) => {
+        const exitCode = await runScore(input, {
+          withLlm: opts.withLlm,
+          detail: opts.detail,
+          format: opts.format,
+        });
+        process.exitCode = exitCode;
+      },
+    );
 
   await program.parseAsync(argv);
 }

@@ -4,6 +4,8 @@ import { bundleSpec } from '../bundle.ts';
 import { DEFAULT_DETAIL, DetailLevel, filterByDetail } from '../detail.ts';
 import { imageExists, imageRef, pullImage, runDocker } from '../docker.ts';
 import { ExitCode } from '../exit-codes.ts';
+import { DEFAULT_FORMAT, Format } from '../format.ts';
+import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
 import { ScorecardResult } from '../result.ts';
@@ -12,6 +14,7 @@ import { spin, done, clearSpinner } from '../spinner.ts';
 export interface ScoreOptions {
   withLlm?: boolean;
   detail?: DetailLevel;
+  format?: Format;
 }
 
 function isURL(input: string): boolean {
@@ -152,7 +155,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   const detail = options.detail ?? DEFAULT_DETAIL;
   const filtered = filterByDetail(parsed, detail);
-  const output = formatPretty(filtered, input, { detail });
+  const format = options.format ?? DEFAULT_FORMAT;
+  const output =
+    format === Format.JSON ? formatJson(filtered) : formatPretty(filtered, input, { detail });
   process.stdout.write(output);
 
   return ExitCode.SUCCESS;
