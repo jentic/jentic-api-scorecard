@@ -138,13 +138,14 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     return result.exitCode;
   }
 
+  const format = options.format ?? DEFAULT_FORMAT;
+
   let parsed: ScorecardResult;
   try {
     parsed = JSON.parse(result.stdout) as ScorecardResult;
   } catch {
     clearSpinner();
-    const requestedFormat = options.format ?? DEFAULT_FORMAT;
-    if (requestedFormat === Format.JSON) {
+    if (format === Format.JSON) {
       process.stderr.write('error: engine output was not valid JSON.\n');
       return ExitCode.ENGINE_FAILURE;
     }
@@ -160,7 +161,6 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   const detail = options.detail ?? DEFAULT_DETAIL;
   const filtered = filterByDetail(parsed, detail);
-  const format = options.format ?? DEFAULT_FORMAT;
   const output =
     format === Format.JSON ? formatJson(filtered) : formatPretty(filtered, input, { detail });
   process.stdout.write(output);
