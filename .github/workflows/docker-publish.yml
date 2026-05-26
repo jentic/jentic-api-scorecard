@@ -156,7 +156,7 @@ jobs:
 
       - name: Attest build provenance (index)
         if: inputs.version != ''
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
