@@ -137,7 +137,7 @@ jobs:
       # retry loop for the worst case so a healthy publish is never
       # short-circuited by a slow CDN write.
       - name: Download published CLI tarball from registry
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           max_attempts: 60
           retry_wait_seconds: 30
