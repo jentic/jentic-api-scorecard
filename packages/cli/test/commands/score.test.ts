@@ -32,6 +32,7 @@ describe('tryParseEngineOutput', function () {
       expect(result.ok).to.equal(false);
       if (!result.ok) {
         expect(result.exitCode).to.equal(ExitCode.ENGINE_FAILURE);
+        expect(result.stderr).to.match(/^error:/);
         expect(result.stderr).to.include('engine output was not valid JSON');
         expect(result.stdout).to.equal('');
       }
@@ -53,7 +54,7 @@ describe('tryParseEngineOutput', function () {
       expect(result.ok).to.equal(false);
       if (!result.ok) {
         expect(result.exitCode).to.equal(ExitCode.SUCCESS);
-        expect(result.stderr).to.include('warning');
+        expect(result.stderr).to.match(/^warning:/);
         expect(result.stderr).to.include('passing through raw output');
         expect(result.stdout).to.equal(raw);
       }
