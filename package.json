@@ -23,7 +23,7 @@
     "typescript:check-types": "lerna run typescript:check-types",
     "lint": "lerna run lint",
     "lint:fix": "lerna run lint:fix",
-    "lint:docker": "docker run --rm -i hadolint/hadolint < docker/Dockerfile",
+    "lint:docker": "docker run --rm -i hadolint/hadolint:v2.14.0 < docker/Dockerfile",
     "prepare": "husky"
   },
   "overrides": {
