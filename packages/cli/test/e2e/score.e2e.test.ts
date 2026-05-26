@@ -182,6 +182,31 @@ describe('score command — e2e against docker', function () {
       });
     });
 
+    describe('-f short flag', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '-f', 'json'], {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        });
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('emits parseable JSON on stdout', function () {
+        expect(() => JSON.parse(stdout)).to.not.throw();
+      });
+    });
+
     describe('--format invalid', function () {
       let exitCode: number | null;
       let stderr: string;

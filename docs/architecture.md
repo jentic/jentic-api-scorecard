@@ -160,8 +160,7 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 
 | Flag | Default | Behavior |
 |---|---|---|
-| `--format <fmt>` | `pretty` | Output encoding. Default: `pretty` (unconditional). Values: `pretty`, `json`. `markdown` and `html` are reserved for later phases. The `-f` short flag is deferred. |
-| `--json` | — | (deferred — not in Phase 6) Convenience alias for `--format json`. |
+| `--format <fmt>` / `-f` | `pretty` | Output encoding. Default: `pretty` (unconditional). Values: `pretty`, `json`. `markdown` and `html` are reserved for later phases. |
 | `--detail <level>` / `-d` | `dimensions` | Controls payload depth — how much of the scoring result is included in output. Values form a graduated hierarchy: `summary` (score + grade + level only), `dimensions` (+ dimension table), `signals` (+ per-signal breakdown), `diagnostics` (+ raw diagnostics array). Each level includes everything below it. Applies uniformly to all formats (pretty, json, markdown, html). |
 | `--verbose` / `-v` | off | Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
 | `--quiet` / `-q` | off | Suppress stderr spinner. Engine warnings still pass through stderr (they're a small, bounded signal). Pretty/JSON stdout unchanged. The spinner ALSO auto-suppresses when stderr is not a TTY (CI logs, redirected stderr) — `--quiet` is the explicit override for interactive shells. |
@@ -270,7 +269,7 @@ Three orthogonal concepts control output:
 
 | Concept | Flag | Controls |
 |---|---|---|
-| **Format** | `--format <fmt>` | How output is encoded: `pretty`, `json` (`-f` short flag deferred; `markdown` / `html` reserved for later phases). |
+| **Format** | `--format <fmt>` / `-f` | How output is encoded: `pretty`, `json` (`markdown` / `html` reserved for later phases). |
 | **Detail level** | `--detail <level>` / `-d` | How much of the scoring result is included in the payload (stdout). |
 | **Verbosity** | `--verbose` / `-v` | How much internal logging goes to stderr. |
 

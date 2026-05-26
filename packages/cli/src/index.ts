@@ -24,7 +24,9 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         .default(DEFAULT_DETAIL),
     )
     .addOption(
-      new Option('--format <fmt>', 'Output encoding').choices([...FORMATS]).default(DEFAULT_FORMAT),
+      new Option('-f, --format <fmt>', 'Output encoding')
+        .choices([...FORMATS])
+        .default(DEFAULT_FORMAT),
     )
     .action(
       async (input: string, opts: { withLlm?: boolean; detail: DetailLevel; format: Format }) => {
