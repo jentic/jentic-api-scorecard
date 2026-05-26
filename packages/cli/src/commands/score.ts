@@ -29,7 +29,11 @@ function isScorecardShape(value: unknown): value is ScorecardResult {
     return false;
   }
   const summary = (value as { summary: unknown }).summary;
-  return typeof summary === 'object' && summary !== null && !Array.isArray(summary);
+  if (typeof summary !== 'object' || summary === null || Array.isArray(summary)) {
+    return false;
+  }
+  const s = summary as { score?: unknown; level?: unknown; grade?: unknown };
+  return typeof s.score === 'number' && typeof s.level === 'string' && typeof s.grade === 'string';
 }
 
 export function tryParseEngineOutput(stdout: string, format: Format): ParseEngineOutputResult {

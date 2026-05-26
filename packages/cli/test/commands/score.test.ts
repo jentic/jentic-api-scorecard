@@ -71,6 +71,13 @@ describe('tryParseEngineOutput', function () {
       ['object missing summary', '{"summary_typo":{}}'],
       ['object with non-object summary', '{"summary":"oops"}'],
       ['object with array summary', '{"summary":[]}'],
+      ['object with empty summary', '{"summary":{}}'],
+      ['summary missing score', '{"summary":{"level":"AI-AWARE","grade":"B"}}'],
+      ['summary missing level', '{"summary":{"score":67,"grade":"B"}}'],
+      ['summary missing grade', '{"summary":{"score":67,"level":"AI-AWARE"}}'],
+      ['summary score wrong type', '{"summary":{"score":"67","level":"AI-AWARE","grade":"B"}}'],
+      ['summary level wrong type', '{"summary":{"score":67,"level":1,"grade":"B"}}'],
+      ['summary grade wrong type', '{"summary":{"score":67,"level":"AI-AWARE","grade":null}}'],
     ] as const;
 
     for (const [label, raw] of nonScorecards) {
