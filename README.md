@@ -117,8 +117,10 @@ npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --format json | jq .sum
 
 # Capture the full evidence bundle to a file
 npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml \
-  --format json --detail diagnostics > report.json
+  --format json --detail diagnostics --output report.json
 ```
+
+`--output <file>` (`-o`) writes the report to a path instead of stdout; the spinner stays on stderr.
 
 ## LLM analysis
 

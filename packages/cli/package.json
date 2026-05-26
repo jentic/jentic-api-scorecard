@@ -59,7 +59,8 @@
     "@redocly/openapi-core": "^2.31.4",
     "chalk": "^4.1.2",
     "commander": "^14.0.0",
-    "ora": "^9.4.0"
+    "ora": "^9.4.0",
+    "strip-ansi": "^7.2.0"
   },
   "engines": {
     "node": ">=22.12.0 || >=20.19.0 <21.0.0"

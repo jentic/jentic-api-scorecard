@@ -1,4 +1,7 @@
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect } from 'chai';
@@ -230,6 +233,118 @@ describe('score command — e2e against docker', function () {
         expect(stderr).to.include('invalid');
       });
     });
+  });
+
+  describe('-o / --output FILE', function () {
+    let workDir: string;
+    let outPath: string;
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(function () {
+      workDir = mkdtempSync(join(tmpdir(), 'jentic-e2e-output-'));
+      outPath = join(workDir, 'report.json');
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '-o', outPath],
+        {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      exitCode = result.status;
+      stdout = result.stdout ?? '';
+      stderr = result.stderr ?? '';
+    });
+
+    after(function () {
+      rmSync(workDir, { recursive: true, force: true });
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('writes parseable JSON to the output file', function () {
+      const fileContents = readFileSync(outPath, 'utf8');
+      expect(() => JSON.parse(fileContents)).to.not.throw();
+      const parsed = JSON.parse(fileContents) as Record<string, unknown>;
+      expect((parsed['summary'] as Record<string, unknown>)['score']).to.be.a('number');
+    });
+
+    it('does not write the report to stdout', function () {
+      expect(stdout).to.equal('');
+    });
+
+    it('keeps the spinner completion message on stderr', function () {
+      expect(stderr).to.include('Scoring done in');
+    });
+
+    it('also accepts the --output longform', function () {
+      const altPath = join(workDir, 'longform.json');
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--output', altPath],
+        {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      expect(result.status, `stderr: ${result.stderr}`).to.equal(0);
+      expect(result.stdout).to.equal('');
+      const fileContents = readFileSync(altPath, 'utf8');
+      expect(() => JSON.parse(fileContents)).to.not.throw();
+    });
+  });
+
+  it('exits non-zero when -o targets an unwritable path', function () {
+    // /nonexistent-dir-jentic does not exist under /, so the temp-file
+    // open fails before any bytes land. Don't "fix" this by mkdir-ing.
+    const result = spawnSync(
+      'node',
+      [
+        CLI_BIN,
+        'score',
+        SAMPLE_SPEC,
+        '--format',
+        'json',
+        '-o',
+        '/nonexistent-dir-jentic/report.json',
+      ],
+      {
+        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      },
+    );
+    expect(result.status).to.not.equal(0);
+    expect(result.stderr).to.include('failed to write');
+  });
+
+  it('writes plain text (no ANSI escapes) when -o is set with --format pretty', function () {
+    const workDir = mkdtempSync(join(tmpdir(), 'jentic-e2e-pretty-output-'));
+    const outPath = join(workDir, 'report.txt');
+    try {
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'pretty', '-o', outPath],
+        {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview', FORCE_COLOR: '1' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      expect(result.status, `stderr: ${result.stderr}`).to.equal(0);
+      const fileContents = readFileSync(outPath, 'utf8');
+      expect(fileContents).to.include('API Readiness Scorecard');
+      // eslint-disable-next-line no-control-regex
+      expect(fileContents).to.not.match(/\x1B\[/);
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
   });
 
   it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {

@@ -8,6 +8,7 @@ import { DEFAULT_FORMAT, Format } from '../format.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
+import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
 import { spin, done, clearSpinner } from '../spinner.ts';
 
@@ -15,6 +16,7 @@ export interface ScoreOptions {
   withLlm?: boolean;
   detail?: DetailLevel;
   format?: Format;
+  output?: string;
 }
 
 export type ParseEngineOutputResult =
@@ -207,7 +209,18 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const filtered = filterByDetail(parsed, detail);
   const output =
     format === Format.JSON ? formatJson(filtered) : formatPretty(filtered, input, { detail });
-  process.stdout.write(output);
+
+  if (options.output !== undefined) {
+    try {
+      writeReport(output, options.output);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`error: ${message}\n`);
+      return ExitCode.GENERIC_ERROR;
+    }
+  } else {
+    process.stdout.write(output);
+  }
 
   return ExitCode.SUCCESS;
 }

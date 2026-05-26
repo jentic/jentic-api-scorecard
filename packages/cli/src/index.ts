@@ -28,12 +28,22 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         .choices([...FORMATS])
         .default(DEFAULT_FORMAT),
     )
+    .option('-o, --output <file>', 'Write the formatted report to <file> instead of stdout')
     .action(
-      async (input: string, opts: { withLlm?: boolean; detail: DetailLevel; format: Format }) => {
+      async (
+        input: string,
+        opts: {
+          withLlm?: boolean;
+          detail: DetailLevel;
+          format: Format;
+          output?: string;
+        },
+      ) => {
         const exitCode = await runScore(input, {
           withLlm: opts.withLlm,
           detail: opts.detail,
           format: opts.format,
+          output: opts.output,
         });
         process.exitCode = exitCode;
       },
