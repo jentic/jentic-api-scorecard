@@ -60,4 +60,36 @@ describe('tryParseEngineOutput', function () {
       }
     });
   });
+
+  describe('syntactically valid JSON that is not a scorecard', function () {
+    const nonScorecards = [
+      ['number', '42'],
+      ['string', '"hi"'],
+      ['boolean', 'true'],
+      ['null', 'null'],
+      ['array', '[1,2,3]'],
+      ['object missing summary', '{"summary_typo":{}}'],
+      ['object with non-object summary', '{"summary":"oops"}'],
+    ] as const;
+
+    for (const [label, raw] of nonScorecards) {
+      it(`escalates ${label} to ENGINE_FAILURE under Format.JSON`, function () {
+        const result = tryParseEngineOutput(raw, Format.JSON);
+        expect(result.ok).to.equal(false);
+        if (!result.ok) {
+          expect(result.exitCode).to.equal(ExitCode.ENGINE_FAILURE);
+          expect(result.stdout).to.equal('');
+        }
+      });
+
+      it(`falls back ${label} to raw passthrough under Format.PRETTY`, function () {
+        const result = tryParseEngineOutput(raw, Format.PRETTY);
+        expect(result.ok).to.equal(false);
+        if (!result.ok) {
+          expect(result.exitCode).to.equal(ExitCode.SUCCESS);
+          expect(result.stdout).to.equal(raw);
+        }
+      });
+    }
+  });
 });

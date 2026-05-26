@@ -21,25 +21,45 @@ export type ParseEngineOutputResult =
   | { ok: true; parsed: ScorecardResult }
   | { ok: false; exitCode: ExitCode; stderr: string; stdout: string };
 
+function isScorecardShape(value: unknown): value is ScorecardResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'summary' in value &&
+    typeof (value as { summary: unknown }).summary === 'object' &&
+    (value as { summary: unknown }).summary !== null
+  );
+}
+
 export function tryParseEngineOutput(stdout: string, format: Format): ParseEngineOutputResult {
+  let value: unknown;
   try {
-    return { ok: true, parsed: JSON.parse(stdout) as ScorecardResult };
+    value = JSON.parse(stdout);
   } catch {
-    if (format === Format.JSON) {
-      return {
-        ok: false,
-        exitCode: ExitCode.ENGINE_FAILURE,
-        stderr: 'error: engine output was not valid JSON.\n',
-        stdout: '',
-      };
-    }
+    return invalidEngineOutput(format, stdout);
+  }
+  if (!isScorecardShape(value)) {
+    return invalidEngineOutput(format, stdout);
+  }
+  return { ok: true, parsed: value };
+}
+
+function invalidEngineOutput(format: Format, stdout: string): ParseEngineOutputResult {
+  if (format === Format.JSON) {
     return {
       ok: false,
-      exitCode: ExitCode.SUCCESS,
-      stderr: 'warning: engine output was not valid JSON; passing through raw output.\n',
-      stdout,
+      exitCode: ExitCode.ENGINE_FAILURE,
+      stderr: 'error: engine output was not valid JSON.\n',
+      stdout: '',
     };
   }
+  return {
+    ok: false,
+    exitCode: ExitCode.SUCCESS,
+    stderr: 'warning: engine output was not valid JSON; passing through raw output.\n',
+    stdout,
+  };
 }
 
 function isURL(input: string): boolean {
