@@ -699,7 +699,6 @@ When the implementation lands, these acceptance checks validate the architecture
 - `npx @jentic/api-scorecard-cli score <input> --detail summary` → only headline (score + grade + level), no dimension table.
 - `npx @jentic/api-scorecard-cli score <input> --format json --detail signals` → JSON includes `details[].dimensions[].signals[]`.
 - `npx @jentic/api-scorecard-cli score <input> --format json --detail diagnostics` → JSON includes `diagnostics` array.
-- `npx @jentic/api-scorecard-cli score <input> --format json -o report.json` → writes to file, no stdout. *(Phase 8)*
 - `npx @jentic/api-scorecard-cli score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged. *(Phase 7)*
 
 **Bundle / LLM:**
