@@ -304,12 +304,14 @@ function appendHint(lines: string[], detail: DetailLevel): void {
   if (detail === DetailLevel.SUMMARY) {
     lines.push('');
     lines.push(chalk.dim('  Run with --detail dimensions for the dimension table.'));
+    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
     return;
   }
 
   if (detail === DetailLevel.DIMENSIONS) {
     lines.push('');
     lines.push(chalk.dim('  Run with --detail signals for signal breakdown.'));
+    lines.push(chalk.dim('  Full report: --format json --detail diagnostics'));
     return;
   }
 
@@ -318,5 +320,6 @@ function appendHint(lines: string[], detail: DetailLevel): void {
     lines.push(
       chalk.dim('  Run with --detail diagnostics for severity counts and a preview of findings.'),
     );
+    lines.push(chalk.dim('  Full evidence: --format json --detail diagnostics'));
   }
 }
