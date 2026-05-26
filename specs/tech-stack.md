@@ -104,7 +104,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 These exist in `docs/architecture.md` but **not on disk**. Future phases will land them:
 
 - **`.github/workflows/npm-publish.yml`** — publish npm packages on tag (Phase 12 of the roadmap).
-- **Output formats and CLI surface.** `--format` (pretty / json / html), `--detail`, `-o`, `--quiet`, `--verbose` are deferred to Phase 3+. The CLI streams engine-verbatim JSON today.
+- **Output formats and CLI surface.** `--format` (`pretty` + `json`) and `--detail` are shipped. `-o`, `--quiet`, `--verbose` are deferred to Phases 8 / 9 / 7. The Markdown formatter and `--format html` (Phase 14) remain deferred.
 - **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container (Phase 13).
 - **HTML formatter implementation.** `@jentic/api-scorecard-formatter-html` ships as a stub today (per the architecture doc); the actual formatter lands in Phase 14.
 

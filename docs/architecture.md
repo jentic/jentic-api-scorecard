@@ -160,8 +160,8 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 
 | Flag | Default | Behavior |
 |---|---|---|
-| `--format <fmt>` / `-f` | `pretty` | Output encoding. Values: `pretty` (human-readable table), `json` (machine-readable JSON), `markdown` (Markdown report), `html` (single self-contained HTML; post-MVP). `pretty` is the default for interactive use; `json` is the default when stdout is not a TTY (piped/redirected). `html` has a distinct TTY rule because its payload is unreadable in a terminal and may be very large: it errors when stdout is a TTY without `-o`, and streams to stdout only when stdout is a pipe (`score … --format html > scorecard.html`). |
-| `--json` | — | Convenience alias for `--format json`. Kept for discoverability and ergonomics in simple CLIs, but `--format` is the canonical flag. |
+| `--format <fmt>` | `pretty` | Output encoding. Default: `pretty` (unconditional). Values: `pretty`, `json`. `markdown` and `html` are reserved for later phases. The `-f` short flag is deferred. |
+| `--json` | — | (deferred — not in Phase 6) Convenience alias for `--format json`. |
 | `--detail <level>` / `-d` | `dimensions` | Controls payload depth — how much of the scoring result is included in output. Values form a graduated hierarchy: `summary` (score + grade + level only), `dimensions` (+ dimension table), `signals` (+ per-signal breakdown), `diagnostics` (+ raw diagnostics array). Each level includes everything below it. Applies uniformly to all formats (pretty, json, markdown, html). |
 | `--verbose` / `-v` | off | Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
 | `--quiet` / `-q` | off | Suppress stderr spinner. Engine warnings still pass through stderr (they're a small, bounded signal). Pretty/JSON stdout unchanged. The spinner ALSO auto-suppresses when stderr is not a TTY (CI logs, redirected stderr) — `--quiet` is the explicit override for interactive shells. |
@@ -270,7 +270,7 @@ Three orthogonal concepts control output:
 
 | Concept | Flag | Controls |
 |---|---|---|
-| **Format** | `--format <fmt>` / `-f` | How output is encoded: `pretty`, `json`, `markdown`. |
+| **Format** | `--format <fmt>` | How output is encoded: `pretty`, `json` (`-f` short flag deferred; `markdown` / `html` reserved for later phases). |
 | **Detail level** | `--detail <level>` / `-d` | How much of the scoring result is included in the payload (stdout). |
 | **Verbosity** | `--verbose` / `-v` | How much internal logging goes to stderr. |
 
@@ -694,14 +694,13 @@ When the implementation lands, these acceptance checks validate the architecture
 
 **Output formats and detail levels:**
 - `npx @jentic/api-scorecard-cli score <input> --format json | jq .summary.score` → numeric, no chrome on stdout.
-- `npx @jentic/api-scorecard-cli score <input> --json | jq .summary.score` → same (alias works).
 - `npx @jentic/api-scorecard-cli score <input> --detail signals` → output includes all ~35 signals grouped by dimension.
 - `npx @jentic/api-scorecard-cli score <input> --detail diagnostics` → output includes diagnostics grouped by source (`redocly-validator`, `spectral-validator`, `speclynx-validator`) and severity.
 - `npx @jentic/api-scorecard-cli score <input> --detail summary` → only headline (score + grade + level), no dimension table.
 - `npx @jentic/api-scorecard-cli score <input> --format json --detail signals` → JSON includes `details[].dimensions[].signals[]`.
 - `npx @jentic/api-scorecard-cli score <input> --format json --detail diagnostics` → JSON includes `diagnostics` array.
-- `npx @jentic/api-scorecard-cli score <input> --format json -o report.json` → writes to file, no stdout.
-- `npx @jentic/api-scorecard-cli score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged.
+- `npx @jentic/api-scorecard-cli score <input> --format json -o report.json` → writes to file, no stdout. *(Phase 8)*
+- `npx @jentic/api-scorecard-cli score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged. *(Phase 7)*
 
 **Bundle / LLM:**
 - `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.

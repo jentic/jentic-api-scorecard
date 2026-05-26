@@ -83,6 +83,22 @@ npx @jentic/api-scorecard-cli@alpha score --detail signals ./openapi.yaml
 npx @jentic/api-scorecard-cli@alpha score --detail diagnostics ./openapi.yaml
 ```
 
+## Machine-readable output
+
+Add `--format json` to emit engine-verbatim JSON on stdout (filtered by whatever
+`--detail` level you pick). Pretty stays the unconditional default; `--format json`
+is the canonical way to get a stable machine-readable channel for CI gating, archival,
+or LLM-assisted review.
+
+```bash
+# Gate on the headline score in CI
+npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --format json | jq .summary.score
+
+# Capture the full evidence bundle to a file
+npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml \
+  --format json --detail diagnostics > report.json
+```
+
 ## LLM analysis
 
 Add `--with-llm` to unlock LLM-backed signals — deeper semantic reasoning about whether your API

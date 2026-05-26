@@ -93,7 +93,7 @@ Sequenced before the JSON formatter because `--detail` is what makes it interest
 - Apply the filter once, in a shared step that produces the canonical filtered result the formatters consume — see `docs/architecture.md` §7 for the per-level field map.
 - Initial wiring covers the `pretty` formatter only; subsequent formatter phases (JSON, HTML) inherit the filter automatically.
 
-## Phase 6 — JSON formatter (`--format json`)
+## Phase 6 — JSON formatter (`--format json`) ✅
 
 **Goal:** reintroduce engine-verbatim JSON via `--format json`, filtered by `--detail` level.
 **Depends on:** Phase 5
