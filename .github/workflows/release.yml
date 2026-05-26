@@ -33,12 +33,23 @@ jobs:
       contents: write
 
     steps:
+      # Mint an App token so the version-bump push, the GitHub release,
+      # and the "latest" flag are attributed to the arazzo-builder App
+      # rather than github-actions[bot]. The lerna version-bump commit
+      # message carries `[skip ci]` (lerna.json), so the push to main
+      # does not retrigger docker-publish.yml's push job.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -51,13 +62,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           npx lerna version prerelease --preid alpha --no-private --yes --force-publish
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Mark release as latest
         run: |
           VERSION=$(node -p "require('./lerna.json').version")
           gh release edit "v${VERSION}" --prerelease=false --latest
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Extract released version and bump SHA
         id: version
         run: |
