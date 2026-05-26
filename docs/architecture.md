@@ -271,7 +271,7 @@ Three orthogonal concepts control output:
 |---|---|---|
 | **Format** | `--format <fmt>` / `-f` | How output is encoded: `pretty`, `json` (`markdown` / `html` reserved for later phases). |
 | **Detail level** | `--detail <level>` / `-d` | How much of the scoring result is included in the payload (stdout). |
-| **Verbosity** | `--verbose` / `-v` | How much internal logging goes to stderr. *(deferred — Phase 7)* |
+| **Verbosity** | `--verbose` / `-v` | (deferred — Phase 7) How much internal logging goes to stderr. |
 
 Format and detail are independent axes. Any format can be combined with any detail level. Verbosity is orthogonal to both — it controls stderr logging (engine progress, validator invocations, timing), not the report payload.
 
@@ -333,7 +333,7 @@ Spinner still appears on stderr unless `--quiet`.
 
 #### Other output controls
 
-**`-o FILE`** — when set, report output is written to `<file>` instead of stdout. Spinner and engine warnings remain on stderr. Equivalent to shell redirection but portable to Windows and explicit in CI scripts.
+**`-o FILE`** *(deferred — Phase 8)* — when set, report output is written to `<file>` instead of stdout. Spinner and engine warnings remain on stderr. Equivalent to shell redirection but portable to Windows and explicit in CI scripts.
 
 **Spinner (stderr)** — replaces in place, single line:
 
