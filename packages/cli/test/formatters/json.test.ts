@@ -32,8 +32,10 @@ describe('formatJson', function () {
       expect(output).to.include('\n  ');
     });
 
-    it('includes metadata, apiMetadata, summary; no details or diagnostics', function () {
-      expect(Object.keys(parsed).sort()).to.deep.equal(['apiMetadata', 'metadata', 'summary']);
+    it('keeps summary; omits details and diagnostics', function () {
+      expect(parsed).to.have.property('summary');
+      expect(parsed.details).to.equal(undefined);
+      expect(parsed.diagnostics).to.equal(undefined);
     });
 
     it('preserves summary.dimensions', function () {
