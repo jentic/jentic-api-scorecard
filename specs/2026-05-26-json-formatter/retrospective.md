@@ -1,0 +1,29 @@
+# Phase 6 Retrospective — JSON formatter (`--format json`)
+
+## Deviations from the spec
+
+- **Branch name collision.** The slug-derived branch `feature/json-formatter` was already taken — it was the spec-scaffolding branch from PR #50, which had been squash-merged into `main` but not deleted from `origin`. Implementation cut `feature/json-formatter-impl`. Neither `requirements.md` nor `plan.md` named a branch.
+- **User-requested test outside `plan.md`.** During Phase 7 verification the user asked for an automated test enforcing the `score … --format json > out.json` redirect contract. `plan.md` task 9 enumerated four e2e cases; a fifth (`stream-discipline`) was added in the same describe block. The constraint it enforces (stdout/stderr discipline) was already in `requirements.md:51` as text, just not as a test.
+- **`-o` recipe in `docs/architecture.md` §11 — disjunctive resolution.** Plan task 10 said "remove the `--format json -o report.json` line if present, since `-o` is Phase 8 (or annotate as Phase 8)." Implementation first annotated, then a post-review fix-up removed it.
+- **JSON-parse fallback escalation.** `requirements.md` did not address the pre-existing `score.ts:142-150` fallback that wrote raw engine stdout and returned 0 when `JSON.parse` failed. The pre-push review surfaced that this produces an unparseable redirect file under `--format json`. A fix-up escalated to `ExitCode.ENGINE_FAILURE` (6) when `format === Format.JSON`. The branch has no automated coverage; tracked as issue #51.
+- **Commit-scope granularity.** All four `feat` commits used scope `cli`. Finer scopes (`feat(format)`, `feat(score)`, `feat(pretty)`) would have read more usefully in the per-commit log. Left as-is because the squash-merge commit is what reaches `main`.
+- **Copilot review found two real bugs after `/review` + three subagents declared the diff clean.** Comment 1 caught an exact-key match (`Object.keys(parsed).sort()`) that contradicted `requirements.md:21`'s engine-tolerance constraint. Comment 2 caught a stream-discipline assertion (`stderr.length > 0`) that didn't actually enforce the invariant — a spinner leaking to stdout would still pass. Both addressed as fix-up commits on the same branch.
+- **Copilot's stdout-purity canary collided with engine JSON.** The first pass at the new assertion checked that `'Bundling'` and `'Scoring'` never appeared on stdout — but `metadata.engine.name` is `"Jentic API Scoring Framework"` and `summary.scoringDate` exists, so the test failed immediately. Reworked to use spinner-only strings (`'Bundling…'` with the U+2026 char, `'Scoring done in'`).
+
+## Root cause
+
+The spec was written from the public-facing surface area of Phase 6 — what `--format json` users would see — and treated everything not in that surface as out of scope. That works when the surface is fully self-contained, but `--format json` shares one upstream code path with pretty (`runScore` in `score.ts`), and a pre-existing failure mode in that shared path silently regressed when the new format made the failure mode user-visible. The spec didn't ask "which existing code paths does the new flag interact with, and does any of them imply a behavior change for the new path?"
+
+The disjunctive `-o` instruction and the missing branch-name guidance are smaller — they're spec hygiene, not missing analysis. Both stem from `plan.md` being prose-shaped rather than command-shaped: when an instruction has more than one defensible resolution, an implementer-following-the-spec will pick whichever they hit first.
+
+## Lesson for future specs
+
+- **Phases that introduce a new public surface should audit the *upstream* code path the new surface shares with existing surfaces.** When the new surface has different failure tolerances than the existing one (here: machine consumers cannot recover from non-JSON stdout, where pretty consumers can read a warning), the spec should call out the divergence. This often means a new test for an existing failure mode that was tolerable before but isn't tolerable now.
+- **`plan.md` instructions should be unambiguous in their effect.** "Remove or annotate" is a choice; "remove (because $reason)" or "annotate (because $reason)" is an instruction. When the spec author genuinely doesn't know which is right, surface it as a Decision in `requirements.md` rather than as a `plan.md` choice.
+- **`/sdd-implement-spec`'s branch-cut step should check `git branch -a` for the slug-derived name** and offer alternatives when it collides — most often because the spec PR's branch is still around. Currently the skill's Phase 3 idempotence check catches the collision but treats it as a halt; offering the `*-impl` suffix as a default would smooth the common case.
+- **Pre-push review should pair `/review` with an external reviewer for code paths where the project's own review tooling has a blind spot.** `/review` plus three perspective subagents caught zero of the two issues Copilot flagged on the PR. The two reviewers have different blind spots: the agentic review focuses on spec adherence and architectural fit, Copilot focuses on test brittleness and standard-library nitpicks. Both signals are worth the spend; a future spec might want to land a draft PR earlier in the review loop to enroll Copilot before the agentic review's last pass.
+- **Stdout-purity tests should pick canary strings the engine output cannot emit.** "Spinner-only strings" sounds obvious but isn't: `'Scoring'` is engine-emitted, `'Scoring done in'` is spinner-emitted. The skill or rules should remind authors to greplog the actual engine fixture before picking a canary.
+
+## Promotion candidate
+
+no — these lessons live well in `specs/lessons.md` once `/sdd-distill-lessons` runs. None names a load-bearing invariant absent from `specs/tech-stack.md`; the existing "engine signal stability tolerance" entry already covers the test-brittleness lesson at the constitution level.
