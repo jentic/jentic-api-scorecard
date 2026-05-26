@@ -1,0 +1,55 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: dependabot-merge-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# GITHUB_TOKEN needs no permissions: every API call in this workflow
+# goes through the GitHub App token minted below.
+permissions: {}
+
+jobs:
+  dependabot-auto-merge:
+    name: Auto-merge non-major updates
+    runs-on: ubuntu-latest
+    # Use pull_request.user.login (PR author, immutable) rather than
+    # github.actor — actor flips to whoever pushed the latest commit on
+    # `synchronize`, which would skip this job if a maintainer pushed a
+    # fixup to the dependabot branch.
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      # Mint an App token instead of relying on GITHUB_TOKEN: branch
+      # protection on `main` requires an approving review from a non-author,
+      # which GITHUB_TOKEN can't satisfy when the workflow is triggered by
+      # the dependabot[bot] PR. The App acts as a distinct identity.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ steps.app-token.outputs.token }}"
+
+      - name: Approve PR
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Enable auto-merge for non-major updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
