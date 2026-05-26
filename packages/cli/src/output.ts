@@ -7,8 +7,8 @@ import { Format } from './format.ts';
 export function writeReport(content: string, filePath: string, format: Format): void {
   const absPath = resolve(filePath);
   // Pretty output goes through chalk, which keys colour on stdout's TTY
-  // state — when -o redirects to a file we want plain text on disk. JSON
-  // is engine-verbatim per docs/architecture.md §7, so leave it alone.
+  // state — when -o redirects to a file we want plain text on disk.
+  // JSON content is left as the formatter emitted it.
   const payload = format === Format.PRETTY ? stripAnsi(content) : content;
   try {
     writeFileSync(absPath, payload, { flush: true });

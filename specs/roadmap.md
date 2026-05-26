@@ -128,7 +128,7 @@ The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5
 
 - Add `-o FILE` to `packages/cli/`. Writes the formatted report (whatever `--format` selects, whatever `--detail` selects) to the path; spinner output continues to land on stderr.
 - When `-o` is set with `--format html` (Phase 14), behavior stays the same — write the HTML to the file.
-- File-write errors surface on stderr with non-zero exit; the report is not partially written.
+- File-write errors surface on stderr with non-zero exit. A partial write is possible if the process is killed mid-write or the disk fills — re-run in that case.
 
 ## Phase 9 — `--quiet` (explicit spinner suppression)
 

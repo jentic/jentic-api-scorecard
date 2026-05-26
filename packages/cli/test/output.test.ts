@@ -30,11 +30,11 @@ describe('writeReport', function () {
     expect(readFileSync(target, 'utf8')).to.equal('teal text');
   });
 
-  it('preserves JSON content byte-for-byte (engine-verbatim)', function () {
+  it('does not strip ANSI from JSON content', function () {
     const target = join(workDir, 'report.json');
     // Pathological: a JSON string value containing what looks like an ANSI
-    // sequence. JSON is engine-verbatim per docs/architecture.md §7, so the
-    // bytes must round-trip.
+    // sequence. ANSI stripping is for pretty output; JSON content must
+    // round-trip whatever bytes the formatter produced.
     const payload = '{"note":"\\u001b[36mfrom engine\\u001b[39m"}';
     writeReport(payload, target, Format.JSON);
     expect(readFileSync(target, 'utf8')).to.equal(payload);

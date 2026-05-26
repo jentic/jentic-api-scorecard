@@ -196,14 +196,21 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     clearSpinner();
     process.stderr.write(parseResult.stderr);
     if (parseResult.stdout) {
-      process.stdout.write(parseResult.stdout);
+      if (options.output !== undefined) {
+        try {
+          writeReport(parseResult.stdout, options.output, format);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          process.stderr.write(`error: ${message}\n`);
+          return ExitCode.GENERIC_ERROR;
+        }
+      } else {
+        process.stdout.write(parseResult.stdout);
+      }
     }
     return parseResult.exitCode;
   }
   const parsed = parseResult.parsed;
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  done(`Scoring done in ${elapsed}s`);
 
   const detail = options.detail ?? DEFAULT_DETAIL;
   const filtered = filterByDetail(parsed, detail);
@@ -214,6 +221,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     try {
       writeReport(output, options.output, format);
     } catch (err) {
+      clearSpinner();
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`error: ${message}\n`);
       return ExitCode.GENERIC_ERROR;
@@ -221,6 +229,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   } else {
     process.stdout.write(output);
   }
+
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  done(`Scoring done in ${elapsed}s`);
 
   return ExitCode.SUCCESS;
 }
