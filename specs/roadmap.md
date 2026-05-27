@@ -114,12 +114,11 @@ Phase 4 dropped engine-verbatim JSON from the npm CLI's default output. This pha
 
 The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5): stdout carries the report; stderr carries human-facing progress. `--verbose` is the dial that lets users see more on stderr when something is wrong, without making the spinner default-noisy.
 
-Phase 15 turns the runner into a long-lived HTTP server and gives the score endpoint a streaming progress channel (server-sent events / chunked NDJSON). Today's design has no such channel — the engine's stderr is multiplexed with the spinner's stderr through `'inherit'` stdio in `packages/cli/src/docker.ts`. That means there is nothing structured for `--verbose` to selectively show or hide; the substantive work in this phase only becomes possible after Phase 15 ships the streaming response.
+Today there is no structured progress channel for `--verbose` to consume — the engine's stderr is multiplexed with the spinner's stderr through `'inherit'` stdio in `packages/cli/src/docker.ts`. Phase 15 introduces a structured progress channel; this phase only becomes possible after that lands.
 
 - Add `--verbose` / `-v` flag. Wired only to the host-side CLI logger; the report payload on stdout is unchanged.
-- Verbose output covers engine progress, validator timings, and debug info, sourced from the streaming progress events Phase 15's HTTP API emits.
-- Transport touch points: (a) the engine invocation in `docker/src/jentic_scorecard_runner/score.py` lifts its hard-coded `--quiet` when the request payload sets `verbose: true`; the score endpoint forwards verbose-flagged events into the streaming response. (b) When `--verbose` is set, the CLI shows progress events as structured spinner text rather than suppressing them — so `--verbose` and `--quiet` interact only at the spinner-vs-event-log layer.
-- Independent of `--quiet` (Phase 9) at the log/error layer: `--verbose` controls verbosity *level* of the progress channel; `--quiet` controls whether the spinner renders at all.
+- Verbose output covers engine progress, validator timings, and debug info, sourced from the structured progress channel Phase 15 introduces.
+- Independent of `--quiet` (Phase 9) at the log/error layer: `--verbose` controls verbosity *level* of progress output; `--quiet` controls whether the spinner renders at all.
 
 ## Phase 8 — `-o FILE` (write report to file) ✅
 
@@ -223,55 +222,23 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 
 ## Phase 15 — Runner becomes a long-lived HTTP server; CLI talks to it via `--api-url`
 
-**Goal:** convert the runner from a one-shot `python -m jentic_scorecard_runner score …` process into a long-lived HTTP server. The CLI becomes an HTTP client: in local mode it auto-starts a container running the server and routes requests to it; in remote mode (`--api-url <url>`) it bypasses Docker entirely and lets multiple CLIs share a single deployed server.
+**Goal:** convert the runner from a one-shot `python -m jentic_scorecard_runner score …` process into a long-lived HTTP server. The CLI becomes an HTTP client: in local mode it auto-starts a container running the server and reuses it across invocations; in remote mode (`--api-url <url>`) it bypasses Docker entirely so multiple CLIs can share a single deployed server.
 **Depends on:** Phase 4
 **Priority:** Medium–High
 
-Today every `npx … score` invocation is a fresh `docker run`: image lookup, container create, container start, engine cold-start, container teardown. Two costs: (a) the per-invocation latency tax (validator caches inside the container survive only because Phase 1's image build pre-warms them — every other warm path is rebuilt), and (b) the architectural foreclosure on multi-CLI deployments (one team running N CLIs means N concurrent containers when they could share one). Switching the runner to a server unlocks both: shared warm caches across requests in local mode, and a real remote-deployment path via `--api-url`. It also gives Phase 7 (`--verbose`) a structured streaming progress channel that doesn't exist today.
+Today every `npx … score` invocation is a fresh `docker run`. Two costs follow: (a) the per-invocation latency tax — validator caches inside the container survive only because Phase 1's image build pre-warms them, and every other warm path is rebuilt — and (b) the architectural foreclosure on multi-CLI deployments, where one team running N CLIs means N concurrent containers when they could share one. Switching the runner to a server unlocks both: shared warm caches across requests in local mode, and a real remote-deployment path via `--api-url`. It also gives Phase 7 (`--verbose`) a structured progress channel that today's `'inherit'` stdio cannot provide.
 
-This phase replaces the previous "Later Phases" entry "CLI connecting to remote docker instance with `--api-url` option" — that bullet is removed in this change.
+Framing decisions this phase commits to (everything else — endpoint shapes, auth-header names, lifecycle mechanics, port choices, framework — is `plan.md`-level):
 
-**Server (replaces today's container CLI entrypoint):**
+- Container's only entrypoint becomes the HTTP server. The one-shot `score` CLI inside the container is removed.
+- Local mode is auto-managed by the CLI: it starts a container on demand and reuses it on subsequent invocations. The container is left running on CLI exit; teardown is a user action.
+- Remote mode (`--api-url`) bypasses Docker entirely and lets the CLI talk to any reachable deployment.
+- LLM credentials are server-side configuration, never per-request — the user's keys do not traverse HTTP. In local mode, credentials are passed at container *start* (lifecycle boundary). In remote mode, `--with-llm` uses whatever the operator configured.
+- Auth posture is the existing gate (`docker/src/jentic_scorecard_runner/gate.py`), promoted to per-request enforcement. The gate's anonymous URL allowlist still bounds anonymous SSRF; the per-key throughput cap (the future "100 scores per period" mechanic) is the layer that bounds DoS in the keyed case. Operator-side hardening for remote deployments is documented but not shipped here.
 
-- Container's only entrypoint becomes the HTTP server. The one-shot `score` subcommand in `docker/src/jentic_scorecard_runner/__main__.py` is removed; the human-facing `docker run … score --url …` smoke recipes in `docs/architecture.md` §1 and `.claude/CLAUDE.md` "Common commands" are rewritten as `curl` invocations against a running server.
-- Endpoints:
-  - `POST /v1/score` — body matches today's argparse surface (`{ url?: string, withLlm?: boolean, verbose?: boolean }`). For stdin/local-bundled inputs, the body carries the bundled spec (or the request streams it; chunked transfer is fine). Response is a streaming JSON-event channel (server-sent events or chunked NDJSON): zero or more `progress` events, then exactly one terminal `result` event (engine JSON) or `error` event (mapped to today's exit-code semantics). The streaming shape is what unblocks Phase 7.
-  - `GET /v1/healthz` — readiness probe. Returns 200 with `{ status: "ok", version }` once the engine and its validator caches are warm.
-  - `GET /v1/version` — `{ cliVersion, engineVersion }` for client-side compatibility checks.
-- Gate enforcement (`docker/src/jentic_scorecard_runner/gate.py`) moves from "called once per process from `__main__.py`" to a per-request check invoked by the score endpoint. `JENTIC_API_KEY` is read from the request (likely an `Authorization: Bearer …` or `X-Jentic-Api-Key` header), not from the server's environment, so the server does not need to be configured with a key at start time and one server can serve multiple keyed users.
-- Request quotas remain the gate's job. The existing anonymous-mode URL allowlist already caps that surface; a per-key throughput cap (the "100 scores per period" mechanic) is the layer that protects the server against DoS in the keyed case. That cap is a separate phase; Phase 15 does not ship it. Until that cap exists, operators running a server reachable from the public internet are responsible for ingress-level access control (VPN, reverse-proxy auth) — see "Operator security" below.
+This phase replaces the prior "Later Phases" entry "CLI connecting to remote docker instance with `--api-url` option" — that bullet is removed in this change.
 
-**CLI client and lifecycle:**
-
-- Replace `imageExists`, `pullImage`, `runDocker` in `packages/cli/src/docker.ts` with two paths: a Docker-lifecycle path that starts and reuses a local container, and an HTTP-client path that issues `POST /v1/score` against a base URL.
-- Local mode (no `--api-url`): CLI computes a deterministic container name like `jentic-api-scorecard-<cli-version>` and a fixed port. If a container with that name exists and `GET /v1/healthz` succeeds, reuse it. Otherwise: pull image if missing, `docker run -d --name <name> -p 127.0.0.1:<port>:<port> …`, poll `/v1/healthz` until 200 (or timeout → `ExitCode.ENGINE_FAILURE` with guidance). The container is left running on CLI exit — explicit `docker stop <name>` is a user action. Multi-CLI coordination falls out for free: subsequent invocations from the same or different shells reuse the same warm container.
-- Remote mode (`--api-url https://…`): CLI skips all Docker logic and goes straight to HTTP. The "CLI version = image tag" invariant in `docs/architecture.md` §2 holds in local mode; in remote mode the CLI checks `GET /v1/version` and warns on skew rather than failing hard, since the operator controls the server.
-- Auth forwarding: CLI reads `JENTIC_API_KEY` and sends it on every request as a header. Anonymous requests (no key) are sent without the header.
-- LLM credentials are server-side configuration, never per-request. In local mode, `--with-llm` env detection still happens on the host but credentials are passed at container *start* via `-e` (lifecycle boundary, not request boundary), matching today's `forwardEnvVars` / `forwardEnvOverrides` behavior. In remote mode, `--with-llm` uses whatever the server operator configured — the request body just sets the boolean, and the user gets the operator's quota. Per-request credential forwarding is explicitly rejected because credentials over HTTP across organizational boundaries is not a posture we want to ship.
-
-**Operator security (out of scope for Phase 15, called out so it isn't lost):**
-
-- The HTTP API itself does not enforce caller authentication beyond the gate. The gate prevents anonymous SSRF (URL allowlist) and rejects unrecognized keys (today `mvp-preview` is the only accepted value), but once Phase 13 ships real keys, a server configured with a real key creates an SSRF surface for anyone reachable: an attacker submits `--url https://internal.example/...` and the server fetches it on their behalf against the operator's quota. The 100-score-per-period cap bounds the damage but does not eliminate the SSRF vector itself. Mitigations are operator-side (network-level access control) until a follow-up phase adds API-level auth. Document this in `docs/architecture.md` §9 alongside the existing key-discussion block.
-
-**Doc and harness updates:**
-
-- `docs/architecture.md`:
-  - §1 — refresh the user-facing flow: CLI starts/reuses a local server, or hits a remote one via `--api-url`. Remove the "every invocation is a docker run" framing.
-  - §2 — replace the "Docker mode: shell out to `docker` CLI via `child_process.spawn`. No `dockerode`." decision with the new CLI-as-HTTP-client decision. Add a decision row covering the auto-start lifecycle and the deterministic-container-name reuse rule.
-  - §3 — redraw the component diagram. Today's diagram shows `docker run` arrows; the new diagram shows two arrows from the CLI: one to a local Docker daemon (lifecycle ops only — pull, run, stop) and one to the runner's HTTP API (score, healthz, version).
-  - §5 — add `--api-url <url>` to the flag table. Document that local and remote modes diverge only on the auth-and-skew rules above; flag semantics are otherwise identical.
-  - §6 — rewrite the container-entry-point section. `score [--url …] [--with-llm]` is gone; the entrypoint runs the server.
-  - §9 — add the operator-security note above.
-- `.claude/CLAUDE.md` — update the "Common commands" rows that refer to `docker run … score …` for human smoke testing. The CLI smoke rows already exist and stay valid; the direct-`docker run` rows become `docker run -d` + `curl http://localhost:<port>/v1/score …`.
-- `specs/tech-stack.md` — if it states "the CLI shells out to `docker run`" anywhere, flip it to the new transport.
-- E2E tests at `packages/cli/test/e2e/score.e2e.test.ts` — they spawn the CLI and assert on stdout/stderr, so they should pass unchanged in local mode. Add a remote-mode subset that starts a container manually, captures its URL, and runs the CLI with `--api-url`.
-- Image-level integration tests in `docker/tests/test_integration.py` — today they `docker run jentic-api-scorecard:dev score …`. They become `docker run -d`, healthcheck wait, then HTTP requests, then `docker stop`. The unit-level subset can move to FastAPI's TestClient (or framework equivalent) against the in-process app; a thinner end-to-end Docker test covers the wiring.
-
-**Out of scope (deliberately, for follow-up phases):**
-
-- Per-key throughput cap ("100 scores per period"). The gate today knows nothing about throughput; this is a separate phase whose design depends on whether quota state lives in-memory (single-server), on disk (single-server, persistent), or in an external store (multi-replica).
-- API-level auth on top of the gate. See "Operator security" — this becomes load-bearing once real keys ship in Phase 13 and operators want to expose servers across organizational boundaries. Likely a follow-up sequenced after Phase 13.
-- Auto-shutdown of idle local containers. CLI leaves the container running; `docker stop` is a user action. Worth revisiting if cold-start latency vs. background-resource-cost data argues for it.
+Out of scope for Phase 15, sequenced separately: per-key throughput cap, API-level auth on top of the gate (becomes load-bearing once Phase 13 ships real keys), auto-shutdown of idle local containers.
 
 ## Later Phases (Not Yet Planned)
 
