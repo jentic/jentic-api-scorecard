@@ -18,6 +18,11 @@ export async function main(argv: string[] = process.argv): Promise<void> {
     .description('Score an OpenAPI document by URL or local file path.')
     .argument('<input>', 'https:// URL or local file path to an OpenAPI document')
     .option('--with-llm', 'Enable LLM-backed analysis in the engine', false)
+    .option(
+      '--bundle',
+      'Force CLI-side bundling: fetch and bundle the URL on the host, pipe to the container via stdin. Use for URLs only the host can reach. Requires JENTIC_API_KEY. No-op for local files.',
+      false,
+    )
     .addOption(
       new Option('-d, --detail <level>', 'Payload depth')
         .choices([...DETAIL_LEVELS])
@@ -35,6 +40,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         input: string,
         opts: {
           withLlm?: boolean;
+          bundle?: boolean;
           detail: DetailLevel;
           format: Format;
           output?: string;
@@ -43,6 +49,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
       ) => {
         const exitCode = await runScore(input, {
           withLlm: opts.withLlm,
+          bundle: opts.bundle,
           detail: opts.detail,
           format: opts.format,
           output: opts.output,

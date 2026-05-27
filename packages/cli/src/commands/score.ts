@@ -14,6 +14,7 @@ import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
 
 export interface ScoreOptions {
   withLlm?: boolean;
+  bundle?: boolean;
   detail?: DetailLevel;
   format?: Format;
   output?: string;
@@ -130,7 +131,19 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const startTime = Date.now();
 
   if (isURL(input)) {
-    containerArgs.push('--url', input);
+    if (options.bundle) {
+      spin(`Bundling ${input}…`);
+      try {
+        stdinPayload = await bundleSpec(input);
+      } catch (err) {
+        clearSpinner();
+        const message = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`error: failed to bundle ${input}: ${message}\n`);
+        return ExitCode.SPEC_FAILURE;
+      }
+    } else {
+      containerArgs.push('--url', input);
+    }
   } else if (isExistingFile(input)) {
     spin(`Bundling ${input}…`);
     try {

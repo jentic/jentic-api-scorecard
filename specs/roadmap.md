@@ -156,7 +156,7 @@ Local-LLM support is load-bearing for enterprise users: many organizations canno
 - A local-LLM endpoint pointing at the host machine works on Linux, macOS, and Windows Docker Desktop without per-OS user instructions — host-network reachability is the CLI's problem to solve, not the user's.
 - Architecture.md §5 documents both recipes (cloud and local) and the security note that credentials forwarded via `docker run -e` are visible to anyone with access to the user's docker daemon (standard Docker behavior). README links to the new subsection from the `--with-llm` reference.
 
-## Phase 11 — `--bundle` host-side fetch + bundling
+## Phase 11 — `--bundle` host-side fetch + bundling ✅
 
 **Goal:** support scoring URLs that only the host can reach (internal networks, VPN-gated specs, auth-required URLs).
 **Depends on:** Phase 4

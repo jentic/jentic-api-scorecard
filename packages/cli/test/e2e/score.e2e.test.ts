@@ -426,4 +426,77 @@ describe('score command — e2e against docker', function () {
     });
     expect(result.status).to.equal(3);
   });
+
+  describe('--bundle', function () {
+    const OAK_URL =
+      'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
+
+    describe('URL + --bundle (host-side fetch and bundle)', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync('node', [CLI_BIN, 'score', OAK_URL, '--bundle'], {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        });
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('shows the bundling spinner phase for the URL', function () {
+        expect(stderr).to.include('Bundling');
+        expect(stderr).to.include(OAK_URL);
+      });
+
+      it('renders the headline against the fetched spec', function () {
+        const out = strip(stdout);
+        expect(out).to.include('API Readiness Scorecard');
+        expect(out).to.include('Final score:');
+      });
+    });
+
+    it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', function () {
+      const env = { ...process.env };
+      delete env['JENTIC_API_KEY'];
+      const result = spawnSync('node', [CLI_BIN, 'score', OAK_URL, '--bundle'], {
+        env,
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      expect(result.status).to.equal(2);
+    });
+
+    describe('local file + --bundle (no-op)', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--bundle'], {
+          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        });
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('renders the headline like a bare local-file invocation', function () {
+        expect(strip(stdout)).to.include('API Readiness Scorecard');
+      });
+    });
+  });
 });

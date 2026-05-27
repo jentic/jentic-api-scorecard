@@ -194,6 +194,7 @@ jentic-api-scorecard score <input> [options]
 | Flag | Default | Choices | Description |
 |---|---|---|---|
 | `--with-llm` | off | — | Enable LLM-backed analysis. Requires an LLM provider (see [LLM analysis](#llm-analysis)). |
+| `--bundle` | off | — | Force CLI-side bundling for URL inputs: the CLI fetches the URL on the host, bundles with Redocly, and pipes to the container via stdin. Use for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Requires `JENTIC_API_KEY`. No-op for local files. |
 | `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see [Control output depth](#control-output-depth)). |
 | `-f, --format <fmt>` | `pretty` | `pretty`, `json` | Output encoding (see [Machine-readable output](#machine-readable-output)). |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
