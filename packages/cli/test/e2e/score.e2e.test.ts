@@ -59,6 +59,35 @@ describe('score command — e2e against docker', function () {
     });
   });
 
+  describe('stream interleaving (regression: #84)', function () {
+    let exitCode: number | null;
+    let merged: string;
+
+    before(function () {
+      // Merge stderr into stdout so we can observe the actual emission
+      // order users see on a TTY.
+      const result = spawnSync('bash', ['-c', `node "${CLI_BIN}" score "${SAMPLE_SPEC}" 2>&1`], {
+        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      exitCode = result.status;
+      merged = strip(result.stdout ?? '');
+    });
+
+    it('exits 0', function () {
+      expect(exitCode).to.equal(0);
+    });
+
+    it("emits 'Scoring done in …' before the report headline", function () {
+      const doneIdx = merged.indexOf('Scoring done in');
+      const reportIdx = merged.indexOf('API Readiness Scorecard');
+      expect(doneIdx, 'spinner success line missing').to.be.greaterThan(-1);
+      expect(reportIdx, 'report headline missing').to.be.greaterThan(-1);
+      expect(doneIdx).to.be.lessThan(reportIdx);
+    });
+  });
+
   describe('--detail summary', function () {
     let exitCode: number | null;
     let stdout: string;
