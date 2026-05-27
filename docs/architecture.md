@@ -352,25 +352,28 @@ stdout stays clean so `--format json | jq` works without filtering.
 |---|---|
 | 0 | Scoring completed (regardless of the score itself). |
 | 1 | Generic error (input not found, bundling failed, container failed, etc.). |
-| 2 | Auth required: key missing for an input that needs one. Message includes signup link. |
+| 2 | Auth: `JENTIC_API_KEY` is set to an unrecognized value, or a local file / stdin input was used without the key set. Message points at `mvp-preview`. |
 | 3 | Anonymous gate rejected: URL not in jentic-public-apis allowlist. Message includes allowlist index URL. |
 | 4 | Docker not installed or daemon unreachable. Message includes install hint. |
+| 5 | Spec fetch or parse failure (engine exit code 2, passed through). |
+| 6 | Engine invocation failure (any other non-zero engine exit, passed through). |
 
 ### Error UX examples
 
 ```
 $ npx @jentic/api-scorecard-cli score ./local.yaml         # no key
-error: scoring local files requires a Jentic API key.
-  Get one at https://jentic.com/signup, then:
-    export JENTIC_API_KEY=...
+error: scoring from stdin requires a Jentic API key.
+  Set the MVP preview key, then retry:
+    export JENTIC_API_KEY=mvp-preview
 exit 2
 
 $ npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml   # no key
-error: anonymous scoring is restricted to specs hosted at:
+error: anonymous scoring is restricted to OpenAPI documents hosted at:
   https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/
-  Browse available specs:
+  Browse available documents:
     https://github.com/jentic/jentic-public-apis/tree/main/apis/openapi
-  Or sign up: https://jentic.com/signup
+  Or set the MVP preview key:
+    export JENTIC_API_KEY=mvp-preview
 exit 3
 
 $ npx @jentic/api-scorecard-cli score ./openapi.yaml      # docker not in PATH
@@ -521,7 +524,7 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 | 5 | Spec fetch / parse failure. |
 | 6 | Engine invocation failure. |
 
-CLI translates these to its own exit codes plus user-friendly messages.
+The CLI passes these through verbatim and adds its own codes for host-side concerns (4 = Docker missing). The user-facing exit-code contract is §5.
 
 ## 7. Result JSON schema
 
@@ -685,7 +688,7 @@ When the implementation lands, these acceptance checks validate the architecture
 **Anonymous / gate path:**
 - `npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` (no key) → success, scorecard printed.
 - `npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml` (no key) → exit 3 with allowlist-index hint.
-- `npx @jentic/api-scorecard-cli score ./local.yaml` (no key) → exit 2 with signup hint.
+- `npx @jentic/api-scorecard-cli score ./local.yaml` (no key) → exit 2 with `mvp-preview` hint.
 
 **MVP key scheme:**
 - `JENTIC_API_KEY=garbage npx @jentic/api-scorecard-cli score ./local.yaml` → exit 2 with placeholder-key error message.
