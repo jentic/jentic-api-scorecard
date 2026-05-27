@@ -161,6 +161,63 @@ export JENTIC_API_KEY=mvp-preview
 This is a documented public placeholder for the alpha preview — not a secret. Real key issuance
 arrives in a future release.
 
+## CLI reference
+
+```
+jentic-api-scorecard [-V | --version] [-h | --help]
+jentic-api-scorecard <command> [options]
+```
+
+### Commands
+
+| Command | Description |
+|---|---|
+| [`score <input>`](#score) | Score an OpenAPI document by URL or local file path. |
+
+### `score`
+
+Score an OpenAPI document by URL or local file path.
+
+```
+jentic-api-scorecard score <input> [options]
+```
+
+#### Arguments
+
+| Name | Description |
+|---|---|
+| `<input>` | `https://` URL or local file path to an OpenAPI document. Required. |
+
+#### Options
+
+| Flag | Default | Choices | Description |
+|---|---|---|---|
+| `--with-llm` | off | — | Enable LLM-backed analysis. Requires an LLM provider (see [LLM analysis](#llm-analysis)). |
+| `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see [Control output depth](#control-output-depth)). |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json` | Output encoding (see [Machine-readable output](#machine-readable-output)). |
+| `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
+| `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
+| `-h, --help` | — | — | Show usage for `score`. |
+
+#### Environment
+
+| Variable | When | Purpose |
+|---|---|---|
+| `JENTIC_API_KEY` | URLs outside OAK and local files | Set to `mvp-preview` during alpha (see [Anonymous vs keyed access](#anonymous-vs-keyed-access)). |
+| LLM provider + routing vars | With `--with-llm` | The CLI auto-detects credentials (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, AWS keys) and routing (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `*_API_URL`, `LLM_MAX_TOKENS`) and forwards them to the container; loopback URLs are rewritten so a host-side Ollama is reachable. Full reference: [LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md). |
+
+#### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Scoring completed (regardless of the score itself). |
+| 1 | Generic error (bad input, bundling failure, unexpected container failure). |
+| 2 | Auth: `JENTIC_API_KEY` is set to an unrecognized value, or a local file / stdin input was used without the key set. |
+| 3 | Anonymous gate rejected: URL outside the OAK allowlist and no key set. |
+| 4 | Docker not installed or daemon unreachable. |
+| 5 | Spec fetch or parse failure. |
+| 6 | Engine invocation failure. |
+
 ## Prefer a browser?
 
 [**jentic.com/scorecard**](https://jentic.com/scorecard) offers the same scoring in a web UI —
