@@ -109,14 +109,17 @@ Phase 4 dropped engine-verbatim JSON from the npm CLI's default output. This pha
 ## Phase 7 — `--verbose` / `-v` stderr logging
 
 **Goal:** opt-in verbose stderr logging (engine progress, validator timings, debug info) without changing the report payload on stdout.
-**Depends on:** Phase 4
+**Depends on:** Phase 15
 **Priority:** Medium
 
 The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5): stdout carries the report; stderr carries human-facing progress. `--verbose` is the dial that lets users see more on stderr when something is wrong, without making the spinner default-noisy.
 
+The substance of this phase is stream handling, not flag plumbing — how container stderr lines interleave with the host spinner without visual collision, line ordering with respect to stdout, and optionally tee-to-file. Today's transport (`packages/cli/src/docker.ts`) inherits the container's stderr directly, so there is no host-side handle to interleave against. That design only becomes possible after Phase 15 demuxes the attach stream on the host. Doing this work against the `'inherit'` transport would be thrown away once Phase 15 lands.
+
 - Add `--verbose` / `-v` flag. Wired only to the host-side CLI logger; the report payload on stdout is unchanged.
 - Verbose output covers engine progress, validator timings, and debug info as available from the container's stderr.
-- Independent of `--quiet` (Phase 9): `--verbose` controls verbosity *level* of stderr; `--quiet` controls whether the spinner renders at all.
+- Transport touch points: (a) lift the hard-coded `--quiet` from the engine invocation in `docker/src/jentic_scorecard_runner/score.py` when host-side `--verbose` is set; this requires adding `--verbose` to the container's argparse in `docker/src/jentic_scorecard_runner/__main__.py` and forwarding it from the host alongside the existing `--with-llm` push in `packages/cli/src/commands/score.ts`. (b) When `--verbose` is set, the spinner auto-suppresses to avoid colliding with engine progress lines on stderr — this couples Phase 7's behavior to Phase 9's spinner module.
+- Independent of `--quiet` (Phase 9) at the log/error layer: `--verbose` controls verbosity *level* of stderr; `--quiet` controls whether the spinner renders at all.
 
 ## Phase 8 — `-o FILE` (write report to file) ✅
 
@@ -217,6 +220,26 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 - Add a CLI flag `--format html` to `packages/cli/`. Behavior when `-o` is not set: error if stdout is a TTY (refuse to dump HTML into the terminal); stream to stdout if stdout is a pipe (so `score … --format html > scorecard.html` works).
 - Lift `"private": true` from `packages/formatter-html/package.json` so the package starts publishing on the same alpha cuts as the CLI.
 - Snapshot-test the formatter against a representative result JSON.
+
+## Phase 15 — Switch CLI–container transport to Docker Engine HTTP API
+
+**Goal:** replace the `child_process.spawn('docker', […])` subprocess in `packages/cli/src/docker.ts` with HTTP calls against the Docker Engine API (Unix socket on Linux/macOS, named pipe on Windows). Keep behavior identical to a user observing only stdout, stderr, and exit code.
+**Depends on:** Phase 4
+**Priority:** Medium–High
+
+Today the CLI shells out to the `docker` binary and relies on `stdio: ['pipe' | 'inherit', 'pipe', 'inherit']` to wire the container's stdio to the host's stdio for free. That works but it forecloses any host-side processing of container stderr — which is exactly what Phase 7 (`--verbose`) needs in order to interleave engine progress lines with the host spinner cleanly. Switching to the HTTP API gives the CLI a programmatic handle on the demuxed attach stream and unblocks Phase 7. It also removes the implicit dependency on the user having the `docker` CLI binary on their PATH (the daemon socket is sufficient).
+
+- Replace `imageExists`, `pullImage`, `runDocker` in `packages/cli/src/docker.ts` with HTTP-API equivalents (`GET /images/<name>/json`, `POST /images/create`, `POST /containers/create` + `POST /containers/<id>/start` + `POST /containers/<id>/attach`).
+- Demux the multiplexed attach stream (8-byte frame header: `[stream_type, 0,0,0, length(4 BE bytes)]`) into separate stdout / stderr handlers on the host. Stdout is captured to a buffer for the formatter; stderr passes through to `process.stderr` so engine warnings still surface.
+- Forward host signals (`SIGINT`/`SIGTERM`/`SIGHUP`) by killing the container via `POST /containers/<id>/kill?signal=...`, preserving today's signal-forwarding behavior in `runDocker`.
+- Preserve `-e VAR` env passthrough (`forwardEnvVars` / `forwardEnvOverrides`) by translating to the `Env` field in the container-create body. Preserve the `--network host` / `host.docker.internal` host-network branch by setting `HostConfig.NetworkMode` / `HostConfig.ExtraHosts` accordingly. Preserve the `-i` stdin behavior by attaching with `stdin: true` and streaming `stdinPayload` into the bidirectional stream.
+- Add a fallback path for users without a reachable Docker socket: a clear error pointing at `DOCKER_HOST`, mapped to today's `ExitCode.DOCKER_MISSING`.
+- Update `docs/architecture.md`:
+  - §2 "Architectural decisions" — flip the "Docker mode" decision (`Shell out to 'docker' CLI via 'child_process.spawn'. No 'dockerode'.`) to reflect the new transport, and document whether dockerode or a raw HTTP client is used.
+  - §3 component diagram — replace the `docker run` arrow with the HTTP-API call sequence.
+  - §6 container-entry-point section — revise the process chain, since there is no longer a `docker` CLI subprocess in the loop.
+- Update `.claude/CLAUDE.md` rows that describe how the CLI invokes the container. The user-facing `docker run …` smoke-test rows in "Common commands" stay valid (those are for humans, not the CLI).
+- E2E tests at `packages/cli/test/e2e/score.e2e.test.ts` should pass unchanged — they spawn the CLI and observe behavior; transport is invisible to them.
 
 ## Later Phases (Not Yet Planned)
 
