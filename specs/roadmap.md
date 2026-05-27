@@ -112,7 +112,7 @@ Phase 4 dropped engine-verbatim JSON from the npm CLI's default output. This pha
 **Depends on:** Phase 15
 **Priority:** Medium
 
-The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5): stdout carries the report; stderr carries human-facing progress. `--verbose` is the dial that lets users see more on stderr when something is wrong, without making the spinner default-noisy. Today's `'inherit'` stdio gives nothing structured to consume; Phase 15's progress channel is what makes selective verbose output possible.
+The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5): stdout carries the report; stderr carries human-facing progress. `--verbose` decides what shows up on stderr when something is wrong, without making the spinner default-noisy. Selective verbose output needs a structured channel to filter — Phase 15's progress events provide it; today's `'inherit'` stdio doesn't.
 
 - Add `--verbose` / `-v`. Host-side only — the report payload on stdout is unchanged.
 - Independent of `--quiet` (Phase 9): `--verbose` controls verbosity *level*; `--quiet` controls whether the spinner renders at all.
@@ -220,7 +220,7 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 ## Phase 15 — Runner becomes a long-lived HTTP server; CLI talks to it via `--api-url`
 
 **Goal:** convert the runner from a one-shot process into a long-lived HTTP server. The CLI auto-manages a local container in local mode and bypasses Docker in remote mode (`--api-url <url>`), so multiple CLIs can share one deployment.
-**Depends on:** Phase 4
+**Depends on:** Phase 12 (load-bearing breaking change to the container contract — needs the alpha channel to be the surface where it ships)
 **Priority:** Medium–High
 
 Today every `npx … score` is a fresh `docker run` — cold engine, cold validator caches, no path to a shared deployment. A long-lived server fixes both, and gives Phase 7 (`--verbose`) the structured progress channel that today's `'inherit'` stdio cannot provide.
