@@ -322,6 +322,36 @@ describe('score command — e2e against docker', function () {
     }
   });
 
+  describe('--quiet', function () {
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(function () {
+      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--quiet'], {
+        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      exitCode = result.status;
+      stdout = result.stdout ?? '';
+      stderr = result.stderr ?? '';
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('still renders the report on stdout', function () {
+      expect(stdout).to.include('API Readiness Scorecard');
+    });
+
+    it('omits the spinner completion message from stderr', function () {
+      expect(stderr).to.not.include('Scoring done in');
+      expect(stderr).to.not.include('Bundling');
+    });
+  });
+
   it('writes plain text (no ANSI escapes) when -o is set with --format pretty', function () {
     const workDir = mkdtempSync(join(tmpdir(), 'jentic-e2e-pretty-output-'));
     const outPath = join(workDir, 'report.txt');

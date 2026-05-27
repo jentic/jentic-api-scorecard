@@ -122,6 +122,9 @@ npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml \
 
 `--output <file>` (`-o`) writes the report to a path instead of stdout; the spinner stays on stderr.
 
+`--quiet` (`-q`) suppresses the stderr spinner even in interactive terminals (the spinner already
+auto-suppresses when stderr isn't a TTY). Engine warnings still pass through stderr.
+
 ## LLM analysis
 
 Add `--with-llm` to unlock LLM-backed signals — deeper semantic reasoning about whether your API

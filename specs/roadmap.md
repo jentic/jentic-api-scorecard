@@ -129,7 +129,7 @@ The stdout/stderr split is part of the documented UX (`docs/architecture.md` §5
 - When `-o` is set with `--format html` (Phase 14), behavior stays the same — write the HTML to the file.
 - File-write errors surface on stderr with non-zero exit. A partial write is possible if the process is killed mid-write or the disk fills — re-run in that case.
 
-## Phase 9 — `--quiet` (explicit spinner suppression)
+## Phase 9 — `--quiet` (explicit spinner suppression) ✅
 
 **Goal:** the explicit `--quiet` flag turns the spinner off even when stderr is a TTY.
 **Depends on:** Phase 4

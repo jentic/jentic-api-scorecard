@@ -10,13 +10,14 @@ import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
 import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
-import { spin, done, clearSpinner } from '../spinner.ts';
+import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
 
 export interface ScoreOptions {
   withLlm?: boolean;
   detail?: DetailLevel;
   format?: Format;
   output?: string;
+  quiet?: boolean;
 }
 
 export type ParseEngineOutputResult =
@@ -81,6 +82,8 @@ function isExistingFile(input: string): boolean {
 }
 
 export async function runScore(input: string, options: ScoreOptions): Promise<number> {
+  setQuiet(options.quiet === true);
+
   const containerArgs: string[] = ['score'];
   if (options.withLlm) {
     containerArgs.push('--with-llm');

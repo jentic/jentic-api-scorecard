@@ -29,6 +29,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         .default(DEFAULT_FORMAT),
     )
     .option('-o, --output <file>', 'Write the formatted report to <file> instead of stdout')
+    .option('-q, --quiet', 'Suppress the stderr spinner regardless of TTY', false)
     .action(
       async (
         input: string,
@@ -37,6 +38,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           detail: DetailLevel;
           format: Format;
           output?: string;
+          quiet?: boolean;
         },
       ) => {
         const exitCode = await runScore(input, {
@@ -44,6 +46,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           detail: opts.detail,
           format: opts.format,
           output: opts.output,
+          quiet: opts.quiet,
         });
         process.exitCode = exitCode;
       },
