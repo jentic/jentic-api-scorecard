@@ -20,12 +20,12 @@ export function spin(message: string): void {
 }
 
 export function done(message: string): void {
+  if (quiet) {
+    return;
+  }
   if (spinner) {
     spinner.succeed(message);
     spinner = null;
-    return;
-  }
-  if (quiet) {
     return;
   }
   process.stderr.write(`${message}\n`);
