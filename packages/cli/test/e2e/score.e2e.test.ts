@@ -65,9 +65,16 @@ describe('score command — e2e against docker', function () {
 
     before(function () {
       // Merge stderr into stdout so we can observe the actual emission
-      // order users see on a TTY.
-      const result = spawnSync('bash', ['-c', `node "${CLI_BIN}" score "${SAMPLE_SPEC}" 2>&1`], {
-        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+      // order users see on a TTY. Paths are passed via env to avoid any
+      // shell-interpolation hazard if the repo lives under a path that
+      // contains shell metacharacters.
+      const result = spawnSync('bash', ['-c', 'node "$CLI" score "$SPEC" 2>&1'], {
+        env: {
+          ...process.env,
+          JENTIC_API_KEY: 'mvp-preview',
+          CLI: CLI_BIN,
+          SPEC: SAMPLE_SPEC,
+        },
         encoding: 'utf8',
         timeout: E2E_TIMEOUT_MS,
       });
@@ -346,6 +353,9 @@ describe('score command — e2e against docker', function () {
       );
       expect(result.status).to.not.equal(0);
       expect(result.stderr).to.include('failed to write');
+      // Suppress success chrome on the failure path so the user does not
+      // see ✔ followed by an error.
+      expect(result.stderr).to.not.include('Scoring done in');
     } finally {
       rmSync(workDir, { recursive: true, force: true });
     }
