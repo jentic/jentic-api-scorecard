@@ -23,7 +23,7 @@ describe('bundleSpec', function () {
     try {
       let err: Error | undefined;
       try {
-        await bundleSpec(url, 250);
+        await bundleSpec(url, 500);
       } catch (e) {
         err = e as Error;
       }
