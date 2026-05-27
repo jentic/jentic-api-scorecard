@@ -237,6 +237,7 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 
 - `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `7 — score below threshold`, documented in `docs/architecture.md` §6) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
 - Markdown formatter (`--format markdown`) — a Markdown table projection of the scorecard for pasting into PR comments / status checks. Deferred until concrete CI-integrator demand surfaces; `--format json` (Phase 6) covers the machine-readable channel in the meantime.
+- Structured logger across `packages/cli/` — replace ad-hoc `process.stderr.write('error: …')` / `'warning: …'` calls with a level-based logger (likely `consola`). Not a phase on its own — refactor, no user-visible capability. The decision to introduce one (or not) belongs in Phase 7's `plan.md`, since `--verbose` is the first feature that makes log levels load-bearing. Listed here so the question isn't lost.
 - Native binary distribution via `curl -fsSL | bash` (self-extracting archive bundling Node + node_modules; platform-specific builds in CI; requires code signing for macOS/Windows)
 - Multi-spec / portfolio scoring across many APIs in one invocation
 - Plugins / custom rubrics on top of JAIRF
