@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.0.0-alpha.26](https://github.com/jentic/jentic-api-scorecard/compare/v1.0.0-alpha.25...v1.0.0-alpha.26) (2026-05-27)
+
+### Bug Fixes
+
+- **cli:** show '✔ Scoring done' above the report ([#87](https://github.com/jentic/jentic-api-scorecard/issues/87)) ([fa948ee](https://github.com/jentic/jentic-api-scorecard/commit/fa948ee249cc0acbcd957f7d46ff6722ad4ec364)), closes [#84](https://github.com/jentic/jentic-api-scorecard/issues/84)
+
 # [1.0.0-alpha.25](https://github.com/jentic/jentic-api-scorecard/compare/v1.0.0-alpha.24...v1.0.0-alpha.25) (2026-05-27)
 
 ### Features
