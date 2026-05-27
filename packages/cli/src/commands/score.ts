@@ -71,7 +71,7 @@ function invalidEngineOutput(format: Format, stdout: string): ParseEngineOutputR
 }
 
 function isURL(input: string): boolean {
-  return /^https:\/\//i.test(input);
+  return /^https?:\/\//i.test(input);
 }
 
 function isExistingFile(input: string): boolean {
@@ -156,7 +156,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     }
   } else {
     process.stderr.write(
-      `error: input '${input}' is neither an https:// URL nor an existing file.\n`,
+      `error: input '${input}' is neither an http(s):// URL nor an existing file.\n`,
     );
     return ExitCode.GENERIC_ERROR;
   }

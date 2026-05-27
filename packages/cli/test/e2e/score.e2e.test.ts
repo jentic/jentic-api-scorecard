@@ -1,14 +1,37 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { expect } from 'chai';
 
+import { startMockSpecServer } from './mock-spec-server.ts';
+
 const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
 const SAMPLE_SPEC = `${REPO_ROOT}/docker/.build/sample.yaml`;
+
+function runCliAsync(
+  args: string[],
+  env: NodeJS.ProcessEnv,
+): Promise<{ exitCode: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn('node', [CLI_BIN, ...args], { env, stdio: 'pipe' });
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
+    child.stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
+    child.stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
+    child.on('close', (code) => {
+      resolve({
+        exitCode: code,
+        stdout: Buffer.concat(stdoutChunks).toString('utf8'),
+        stderr: Buffer.concat(stderrChunks).toString('utf8'),
+      });
+    });
+  });
+}
 
 const E2E_TIMEOUT_MS = 120_000;
 
@@ -428,23 +451,32 @@ describe('score command — e2e against docker', function () {
   });
 
   describe('--bundle', function () {
-    const OAK_URL =
-      'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
+    let server: Server;
+    let mockUrl: string;
+
+    before(async function () {
+      const started = await startMockSpecServer();
+      server = started.server;
+      mockUrl = `http://127.0.0.1:${started.port}/openapi.yaml`;
+    });
+
+    after(function () {
+      server.close();
+    });
 
     describe('URL + --bundle (host-side fetch and bundle)', function () {
       let exitCode: number | null;
       let stdout: string;
       let stderr: string;
 
-      before(function () {
-        const result = spawnSync('node', [CLI_BIN, 'score', OAK_URL, '--bundle'], {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
-          encoding: 'utf8',
-          timeout: E2E_TIMEOUT_MS,
+      before(async function () {
+        const result = await runCliAsync(['score', mockUrl, '--bundle'], {
+          ...process.env,
+          JENTIC_API_KEY: 'mvp-preview',
         });
-        exitCode = result.status;
-        stdout = result.stdout ?? '';
-        stderr = result.stderr ?? '';
+        exitCode = result.exitCode;
+        stdout = result.stdout;
+        stderr = result.stderr;
       });
 
       it('exits 0', function () {
@@ -453,7 +485,7 @@ describe('score command — e2e against docker', function () {
 
       it('shows the bundling spinner phase for the URL', function () {
         expect(stderr).to.include('Bundling');
-        expect(stderr).to.include(OAK_URL);
+        expect(stderr).to.include(mockUrl);
       });
 
       it('renders the headline against the fetched spec', function () {
@@ -463,15 +495,11 @@ describe('score command — e2e against docker', function () {
       });
     });
 
-    it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', function () {
+    it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', async function () {
       const env = { ...process.env };
       delete env['JENTIC_API_KEY'];
-      const result = spawnSync('node', [CLI_BIN, 'score', OAK_URL, '--bundle'], {
-        env,
-        encoding: 'utf8',
-        timeout: E2E_TIMEOUT_MS,
-      });
-      expect(result.status).to.equal(2);
+      const result = await runCliAsync(['score', mockUrl, '--bundle'], env);
+      expect(result.exitCode).to.equal(2);
     });
 
     describe('local file + --bundle (no-op)', function () {
