@@ -220,11 +220,13 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const output =
     format === Format.JSON ? formatJson(filtered) : formatPretty(filtered, input, { detail });
 
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  done(`Scoring done in ${elapsed}s`);
+
   if (options.output !== undefined) {
     try {
       writeReport(output, options.output, format);
     } catch (err) {
-      clearSpinner();
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`error: ${message}\n`);
       return ExitCode.GENERIC_ERROR;
@@ -232,9 +234,6 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   } else {
     process.stdout.write(output);
   }
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  done(`Scoring done in ${elapsed}s`);
 
   return ExitCode.SUCCESS;
 }
