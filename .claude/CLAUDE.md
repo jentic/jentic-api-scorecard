@@ -8,7 +8,7 @@ A zero-install CLI that scores an OpenAPI document against the Jentic API AI Rea
 
 ## Repository state today
 
-- **`docker/`** — Python 3.14 + uv runner image that wraps `jentic-apitools-cli` (the JAIRF scoring engine). This is the GHCR artifact (`ghcr.io/jentic/jentic-api-scorecard`). Local dev floor is Python 3.12 (`requires-python = ">=3.12"`); ruff and the type-syntax rule track 3.12 too.
+- **`docker/`** — Python 3.14 + uv runner image that wraps `jentic-score` (the JAIRF scoring engine). This is the GHCR artifact (`ghcr.io/jentic/jentic-api-scorecard`). Local dev floor is Python 3.12 (`requires-python = ">=3.12"`); ruff and the type-syntax rule track 3.12 too.
 - **`packages/`** — Lerna fixed-version npm workspaces root (`package.json`, `lerna.json`, `tsconfig.base.json` at the repo root). Two packages:
   - `packages/cli/` (`@jentic/api-scorecard-cli`) — TypeScript CLI built with [commander](https://www.npmjs.com/package/commander). One subcommand: `score <input>` with `--with-llm` and `-d, --detail <level>`. Local files are bundled via `@redocly/openapi-core` and piped to the container's stdin; URLs are forwarded as `--url` so the container-side gate stays authoritative. `--bundle` is the URL escape hatch: the CLI fetches and Redocly-bundles the URL host-side, then pipes via stdin (key-required, since the anonymous allowlist no longer applies); for local files `--bundle` is a no-op. The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` and forwards `JENTIC_API_KEY` via docker's `-e` passthrough. When `--with-llm` is set, the CLI scans the host environment for LLM provider credentials and routing variables (cloud providers + OpenAI-compatible local endpoints), exits with guidance if none are detected, and forwards the detected set to the container via `-e <NAME>` passthrough (see `docs/architecture.md` §5 "Bring your own LLM"). The pretty formatter is the unconditional default; `--detail summary | dimensions | signals | diagnostics` (default `dimensions`) selects payload depth — diagnostics in pretty renders a severity tally followed by the top 5 findings per severity (terminal-width truncated), since the full evidence bundle isn't useful in a terminal (`--format json --detail diagnostics` surfaces the full evidence bundle). `-f, --format <pretty|json>` (default `pretty`) selects the output encoding; JSON is engine-verbatim, filtered by `--detail`. `-o, --output <file>` writes the formatted report to a path instead of stdout; spinner stays on stderr. `-q, --quiet` suppresses the stderr spinner regardless of TTY. **`--verbose` ships in Phase 7; the Markdown formatter is deferred to Later Phases.**
   - `packages/formatter-html/` (`@jentic/api-scorecard-formatter-html`) — typed `format(result): string` stub. Throws "not implemented" until Phase 14.
@@ -29,7 +29,7 @@ The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no e
 
 1. Parse `score [--url <url>] [--with-llm]` (or read bundled spec JSON from stdin if `--url` is absent).
 2. **Gate check** — `gate.check_gate(url)` decides whether the request is allowed.
-3. **Score** — `score.run_score(url, with_llm)` invokes `jentic-apitools score …` and streams the JSON result to stdout.
+3. **Score** — `score.run_score(url, with_llm)` invokes `jentic-score score …` and streams the JSON result to stdout.
 
 **The gate MUST run before the engine.** If you reorder the two, anonymous inputs reach the scoring engine without the URL allowlist enforcement, defeating the auth model in `docs/architecture.md` §9. Symptom: `--url` to a non-allowlisted host returns a normal score instead of exit code 3.
 
@@ -45,7 +45,7 @@ The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The placeholder 
 
 ### Scoring (`docker/src/jentic_scorecard_runner/score.py`)
 
-`run_score` shells out to `jentic-apitools score <target> --format json --include-diagnostics --quiet` (with `--enable-llm-analysis` when `--with-llm`). URL inputs are passed through verbatim; stdin inputs are written to a tempfile first and the path is passed to the engine. Engine timeout is 300s. Engine exit code 2 is mapped to `ExitCode.SPEC_FAILURE` (5); any other non-zero is `ExitCode.ENGINE_FAILURE` (6).
+`run_score` shells out to `jentic-score score <target> --format json --include-diagnostics --quiet` (with `--enable-llm-analysis` when `--with-llm`). URL inputs are passed through verbatim; stdin inputs are written to a tempfile first and the path is passed to the engine. Engine timeout is 300s. Engine exit code 2 is mapped to `ExitCode.SPEC_FAILURE` (5); any other non-zero is `ExitCode.ENGINE_FAILURE` (6).
 
 ### Exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`)
 

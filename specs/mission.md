@@ -45,7 +45,7 @@ We:
 
 ## Assumptions & Unknowns
 
-- **`jentic-apitools-cli` is the engine.** The mission assumes the upstream engine remains the JAIRF reference implementation. If JAIRF and the engine diverge, the constitution will need to revisit which one the mission describes.
+- **`jentic-score` is the engine.** The mission assumes the upstream engine remains the JAIRF reference implementation. If JAIRF and the engine diverge, the constitution will need to revisit which one the mission describes.
 - **`JENTIC_API_KEY=mvp-preview` is transitional.** When real key issuance ships, the user-facing flow (`export JENTIC_API_KEY=…`) does not change — but the validation moves from a static check to an HTTP call to `api.jentic.com`. This is design intent (`docs/architecture.md` §9), not a current capability.
 - **The npm CLI is on the roadmap, not shipped today.** Delivery 1 ships only the Docker image. The user-facing `npx @jentic/api-scorecard-cli …` UX is the target; today's actual UX is `docker run …`. Both paths are documented in the README.
 - **Sandboxing assumption.** We assume `docker run --rm` provides sufficient isolation for arbitrary public OpenAPI specs to score safely. We do not currently sandbox further (no `--cpus`, no `--memory`, no network namespaces). Architecture.md §10 defers concurrency / CPU control to "concrete user pain."

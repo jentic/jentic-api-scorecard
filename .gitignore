@@ -15,3 +15,4 @@ packages/cli/README.md
 /.claude/worktrees/*
 /.claude/scheduled_tasks*
 !/.claude/worktrees/.gitkeep
+.idea/*

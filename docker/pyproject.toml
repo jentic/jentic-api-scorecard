@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Container-internal runner for jentic-api-scorecard"
 requires-python = ">=3.12"
 dependencies = [
-    "jentic-apitools-cli==1.0.0a16",
+    "jentic-apitools-score-cli-internal==1.0.0a17",
 ]
 
 [dependency-groups]
@@ -16,6 +16,13 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+jentic-apitools-score-cli-internal = {
+  git = "https://github.com/jentic/jentic-apitools.git",
+  subdirectory = "packages/score-cli",
+  tag = "v1.0.0-alpha.17",
+}
 
 [tool.ruff]
 target-version = "py312"

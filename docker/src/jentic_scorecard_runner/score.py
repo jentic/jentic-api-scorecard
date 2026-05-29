@@ -1,4 +1,4 @@
-"""Invoke jentic-apitools score and stream results."""
+"""Invoke jentic-score score and stream results."""
 
 import os
 import subprocess
@@ -31,13 +31,13 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
 
 def _invoke_engine(spec_target: str, with_llm: bool) -> ExitCode:
     cmd = [
-        "jentic-apitools",
+        "jentic-score",
         "score",
-        spec_target,
         "--format",
         "json",
         "--include-diagnostics",
         "--quiet",
+        spec_target,
     ]
     if with_llm:
         cmd.append("--enable-llm-analysis")

@@ -2,10 +2,17 @@ FROM python:3.14-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.8.5 /uv /usr/local/bin/uv
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=secret,id=github_token \
+      git config --global url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/" \
+      && uv sync --frozen --no-dev --no-install-project \
+      && git config --global --unset url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf
 
 
 FROM python:3.14-slim
@@ -47,7 +54,7 @@ USER runner
 
 # Warm npm cache: run a real score so npx-invoked validators get cached
 COPY --chown=runner:runner .build/sample.yaml /tmp/sample.yaml
-RUN jentic-apitools score /tmp/sample.yaml --format json --quiet > /dev/null && \
+RUN jentic-score score --format json --quiet /tmp/sample.yaml > /dev/null && \
     rm /tmp/sample.yaml
 
 ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
