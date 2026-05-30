@@ -2,6 +2,11 @@ FROM python:3.14-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.8.5 /uv /usr/local/bin/uv
 
+# git and ca-certificates are only needed in the builder stage so uv can
+# clone the private engine repo. Reproducibility is anchored to the
+# digest-pinned `python:3.14-slim` base + `docker/uv.lock`, so pinning
+# apt package versions on top would add maintenance churn for no gain.
+# hadolint ignore=DL3008
 RUN apt-get update \
   && apt-get install -y --no-install-recommends git ca-certificates \
   && rm -rf /var/lib/apt/lists/*
