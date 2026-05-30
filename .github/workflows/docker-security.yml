@@ -22,6 +22,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # The image build clones the private jentic/jentic-apitools repo via
+      # uv; mint a short-lived GitHub App token scoped to that repo and
+      # forward it as a BuildKit secret so the builder stage's
+      # `git config insteadOf` rewrite resolves.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+          owner: jentic
+          repositories: jentic-apitools
+
       - uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
@@ -33,6 +46,8 @@ jobs:
           context: ./docker
           load: true
           pull: true
+          secrets: |
+            github_token=${{ steps.app-token.outputs.token }}
           tags: jentic-api-scorecard:security-scan
           cache-from: type=gha
           cache-to: type=gha,mode=max
