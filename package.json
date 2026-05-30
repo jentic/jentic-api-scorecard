@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "build:image": "docker build -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") ./docker",
+    "build:image": "DOCKER_BUILDKIT=1 docker build --secret id=github_token,env=GH_TOKEN -t ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") ./docker",
     "clean": "lerna run clean",
     "clean:image": "docker rmi ghcr.io/jentic/jentic-api-scorecard:$(node -p \"require('./packages/cli/package.json').version\") || true",
     "test": "lerna run test",
