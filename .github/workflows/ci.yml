@@ -42,6 +42,17 @@ jobs:
       run:
         working-directory: docker
     steps:
+      # uv resolves the engine from the private jentic/jentic-apitools repo,
+      # so even a pure lint job needs an authenticated git clone.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+          owner: jentic
+          repositories: jentic-apitools
+
       - uses: actions/checkout@v6
 
       - uses: astral-sh/setup-uv@v8.1.0
@@ -50,7 +61,13 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --frozen
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          GIT_CONFIG_COUNT=1 \
+          GIT_CONFIG_KEY_0="url.https://x-access-token:${GH_TOKEN}@github.com/.insteadOf" \
+          GIT_CONFIG_VALUE_0="https://github.com/" \
+          uv sync --frozen
 
       - name: Run lint
         run: uv run poe lint:ci
@@ -122,6 +139,17 @@ jobs:
       run:
         working-directory: docker
     steps:
+      # uv resolves the engine from the private jentic/jentic-apitools repo,
+      # so even pure runner-module tests need an authenticated git clone.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+          owner: jentic
+          repositories: jentic-apitools
+
       - uses: actions/checkout@v6
 
       - uses: astral-sh/setup-uv@v8.1.0
@@ -130,7 +158,13 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --frozen
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          GIT_CONFIG_COUNT=1 \
+          GIT_CONFIG_KEY_0="url.https://x-access-token:${GH_TOKEN}@github.com/.insteadOf" \
+          GIT_CONFIG_VALUE_0="https://github.com/" \
+          uv sync --frozen
 
       - name: Run tests
         run: uv run poe test
@@ -148,6 +182,8 @@ jobs:
         with:
           app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
           private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+          owner: jentic
+          repositories: jentic-apitools
 
       - uses: actions/checkout@v6
 

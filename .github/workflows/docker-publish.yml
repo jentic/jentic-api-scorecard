@@ -48,6 +48,8 @@ jobs:
         with:
           app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
           private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+          owner: jentic
+          repositories: jentic-apitools
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
