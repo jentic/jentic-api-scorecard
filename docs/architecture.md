@@ -389,7 +389,7 @@ exit 4
 - Base: `python:3.14-slim`.
 - Adds Node.js 24 LTS. Required by `jentic-score`, which spawns Redocly / Spectral / Speclynx via `npx`. The engine documents Node ≥18 as the minimum; we ship the latest LTS so users get current security patches and modern V8 startup.
 - Build via `uv` (multi-stage: builder runs `uv sync --frozen` against the private repo and materializes `/app/.venv`; runtime copies the venv only — uv is not present in the runtime image).
-- Engine: `jentic-score` — the CLI binary shipped by the `jentic-apitools-score-cli-internal` package, installed at build time from the private [`jentic/jentic-apitools`](https://github.com/jentic/jentic-apitools) repo (pinned by tag in `docker/pyproject.toml`, locked in `docker/uv.lock`). The clone is authenticated via a BuildKit `--secret id=github_token` mount that only exists for the `uv sync` layer (see `docker/Dockerfile:12-15`); the token is rewritten via a transient `git config insteadOf` and unset before the layer ends, so it never lands in any image layer.
+- Engine: `jentic-score` — the CLI binary shipped by the `jentic-apitools-score-cli-internal` package, installed at build time from the private [`jentic/jentic-apitools`](https://github.com/jentic/jentic-apitools) repo (pinned by tag in `docker/pyproject.toml`, locked in `docker/uv.lock`). The clone is authenticated via a BuildKit `--secret id=github_token` mount that only exists for the `uv sync` layer (see `docker/Dockerfile:17-20`); the token is rewritten via a transient `git config insteadOf` and unset before the layer ends, so it never lands in any image layer.
 - Image entry point: `python -m jentic_scorecard_runner` — a thin wrapper that parses args, enforces the anonymous gate, and shells out to `jentic-score score`. It does not fetch URLs itself.
 
 ### Container entry point and process chain
@@ -430,8 +430,14 @@ This matters because the engine ships JS tools as bundled tarballs inside its Py
 **Mitigation: warm the npm cache during `docker build` by running a real score.**
 
 ```
+# Builder stage — install the engine from the private repo via uv:
+RUN --mount=type=secret,id=github_token \
+      git config --global url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf "https://github.com/" \
+      && uv sync --frozen --no-dev --no-install-project \
+      && git config --global --unset url."https://x-access-token:$(cat /run/secrets/github_token)@github.com/".insteadOf
+
+# Runtime stage — warm the npm cache by running a real score:
 ENV NPM_CONFIG_CACHE=/var/cache/npm
-RUN pip install --no-cache-dir jentic-score==<pinned-version>
 COPY .build/sample.yaml /tmp/sample.yaml
 RUN jentic-score score /tmp/sample.yaml --format json --quiet >/dev/null
 ```

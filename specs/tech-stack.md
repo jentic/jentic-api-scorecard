@@ -24,7 +24,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 | Layer | Choice | Evidence |
 |---|---|---|
-| Language | Python 3.12 | `docker/pyproject.toml:5` (`requires-python = ">=3.12"`); `docker/Dockerfile:1` (`FROM python:3.12-slim`) |
+| Language | Python 3.12 (local floor) / 3.14 (in image) | `docker/pyproject.toml:5` (`requires-python = ">=3.12"`); `docker/Dockerfile:1` (`FROM python:3.14-slim AS builder`); `docker/Dockerfile:23` (runtime stage `FROM python:3.14-slim`) |
 | Runtime (host) | Docker | `docker/Dockerfile`; `ghcr.io/jentic/jentic-api-scorecard` is the deliverable |
 | Runtime (in image) | Python 3.12 + Node 24 LTS | `docker/Dockerfile:1, 3-6` (Node copied from `node:24-slim` for engine's `npx` dispatch) |
 | Scoring engine | `jentic-score` (CLI binary; ships in `jentic-apitools-score-cli-internal`, installed from the private `jentic/jentic-apitools` GitHub repo — not PyPI) | `docker/pyproject.toml:7-23` (uv git source pinned by tag); `docker/uv.lock` (resolved git revision); shells out to `npx`-launched Redocly / Spectral / Speclynx validators |
@@ -43,7 +43,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 - **`jentic-score`** — the JAIRF scoring engine, exposed as a CLI binary by the `jentic-apitools-score-cli-internal` package. Installed at image build time from the private [`jentic/jentic-apitools`](https://github.com/jentic/jentic-apitools) repo (uv `[tool.uv.sources]` git source, pinned by tag in `docker/pyproject.toml`, locked in `docker/uv.lock`) — **not** from PyPI. Build authentication uses a BuildKit `--secret id=github_token` mount; CI mints the token from the `ARAZZO_BUILDER_APP_ID` GitHub App, local builds expect `GH_TOKEN` in the environment. Invoked as `jentic-score score <target> --format json --include-diagnostics --quiet [--enable-llm-analysis]`. Reproducibility is "pin one CLI version → pin one image tag → pin one engine git revision" (see `docs/architecture.md` §8). The package name (`jentic-apitools-score-cli-internal`) and the binary name (`jentic-score`) differ — the package is the upstream Python distribution, the binary is its console script entry point.
 - **uv** — fast Python resolver/installer; lockfile (`docker/uv.lock`) is the source of truth for dependency versions. `uv sync --frozen --no-dev --no-install-project` runs in the Dockerfile's builder stage only — uv is not present in the runtime image. `[tool.uv]` declares `package = false` because the runner is image-internal, never published to PyPI.
-- **Docker (multi-stage build)** — builder stage on `python:3.12-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.12-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
+- **Docker (multi-stage build)** — builder stage on `python:3.14-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.14-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
 
 ## Data and Storage
 
