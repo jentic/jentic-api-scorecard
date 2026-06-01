@@ -65,11 +65,10 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             )
             return ExitCode.ENGINE_FAILURE
 
-        scorecard = _find_scorecard(result, output_dir)
-        if scorecard is None:
-            print("error: scorecard not found in pipeline output", file=sys.stderr)
-            return ExitCode.ENGINE_FAILURE
-
+        assert result.version_dir is not None  # noqa: S101 — engine contract on success
+        scorecard = json.loads(
+            (Path(result.version_dir) / "scorecard.json").read_text(encoding="utf-8")
+        )
         sys.stdout.write(json.dumps(scorecard, indent=2))
         sys.stdout.write("\n")
         sys.stdout.flush()
@@ -77,6 +76,7 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
 
 
 def _stdin_to_tempfile() -> Path | None:
+    """Read stdin in chunks to a tempfile; return the path."""
     try:
         tmp = tempfile.NamedTemporaryFile(suffix=".json", prefix="jentic-stdin-", delete=False)
         while chunk := sys.stdin.buffer.read(65536):
@@ -86,13 +86,3 @@ def _stdin_to_tempfile() -> Path | None:
     except OSError as exc:
         print(f"error: failed to read stdin: {exc}", file=sys.stderr)
         return None
-
-
-def _find_scorecard(result, output_dir: str) -> dict | None:
-    if result.version_dir:
-        path = Path(result.version_dir) / "scorecard.json"
-        if path.exists():
-            return json.loads(path.read_text(encoding="utf-8"))
-    for candidate in Path(output_dir).rglob("scorecard.json"):
-        return json.loads(candidate.read_text(encoding="utf-8"))
-    return None
