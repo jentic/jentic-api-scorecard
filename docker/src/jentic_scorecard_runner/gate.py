@@ -102,4 +102,5 @@ def check_gate(url: str | None) -> ExitCode:
         )
         return ExitCode.SUCCESS
 
+    _warn(f"warning: unexpected validator result type {type(result).__name__}; proceeding.")
     return ExitCode.SUCCESS
