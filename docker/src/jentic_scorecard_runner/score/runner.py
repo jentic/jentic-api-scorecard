@@ -1,5 +1,6 @@
 """Score an OpenAPI spec in-process and stream the scorecard JSON to stdout."""
 
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -68,10 +69,8 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             print("error: engine returned no output directory", file=sys.stderr)
             return ExitCode.ENGINE_FAILURE
 
-        print(
-            (Path(result.version_dir) / "scorecard.json").read_text(encoding="utf-8"),
-            file=sys.stdout,
-        )
+        with (Path(result.version_dir) / "scorecard.json").open("rb") as src:
+            shutil.copyfileobj(src, sys.stdout.buffer)
     return ExitCode.SUCCESS
 
 
