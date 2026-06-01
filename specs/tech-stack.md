@@ -24,9 +24,9 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 | Layer | Choice | Evidence |
 |---|---|---|
-| Language | Python 3.12 | `docker/pyproject.toml:5` (`requires-python = ">=3.12"`); `docker/Dockerfile:1` (`FROM python:3.12-slim`) |
+| Language | Python 3.12 (floor); 3.14 in image | `docker/pyproject.toml:5` (`requires-python = ">=3.12"`); `docker/Dockerfile:1` (`FROM python:3.14-slim`) |
 | Runtime (host) | Docker | `docker/Dockerfile`; `ghcr.io/jentic/jentic-api-scorecard` is the deliverable |
-| Runtime (in image) | Python 3.12 + Node 24 LTS | `docker/Dockerfile:1, 3-6` (Node copied from `node:24-slim` for engine's `npx` dispatch) |
+| Runtime (in image) | Python 3.14 + Node 24 LTS | `docker/Dockerfile:1, 11` (`python:3.14-slim` in both stages); Node copied from `node:24-slim` for engine's `npx` dispatch |
 | Scoring engine | `jentic-apitools-pipelines` + `jentic-apitools-common` (PyPI) | `docker/pyproject.toml` (pinned exactly); pipelines transitively pulls `analyze`, `llm`, `score`, `storage`, which spawn `npx`-launched Redocly / Spectral / Speclynx validators |
 | Dependency manager | uv (build-time only) | `docker/uv.lock`; `docker/Dockerfile` builder stage pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
 | Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via `docker/.build/sample.yaml` |
@@ -43,7 +43,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 - **`jentic-apitools-pipelines` + `jentic-apitools-common`** — the JAIRF scoring engine, called in-process via `jentic.apitools.pipelines.score_openapi(...)` from `docker/src/jentic_scorecard_runner/score/runner.py`. The `pipelines` package transitively pulls `jentic-apitools-{analyze,llm,score,storage}`, so we don't list those in `docker/pyproject.toml`. The previous OSS console-script `jentic-apitools-cli` was discontinued upstream; the runner now owns the click-free entrypoint that used to live there. Both engine packages are pinned exactly in `docker/pyproject.toml`; reproducibility is "pin one CLI version → pin one image tag → pin one engine pair" (see `docs/architecture.md` §8).
 - **uv** — fast Python resolver/installer; lockfile (`docker/uv.lock`) is the source of truth for dependency versions. `uv sync --frozen --no-dev --no-install-project` runs in the Dockerfile's builder stage only — uv is not present in the runtime image. `[tool.uv]` declares `package = false` because the runner is image-internal, never published to PyPI.
-- **Docker (multi-stage build)** — builder stage on `python:3.12-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.12-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
+- **Docker (multi-stage build)** — builder stage on `python:3.14-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.14-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
 
 ## Data and Storage
 

@@ -45,7 +45,7 @@ The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The placeholder 
 
 ### Scoring (`docker/src/jentic_scorecard_runner/score/`)
 
-`run_score` calls `jentic.apitools.pipelines.score_openapi` in-process with `OASProcessConfiguration(enable_llm_analysis=with_llm, include_diagnostics_in_score=True)`. URL inputs are forwarded verbatim as `SpecSourceUrl(kind="url", url=...)`; stdin inputs are written to a tempfile first and the `file://` URI is forwarded the same way. The pipeline's output directory is a `TemporaryDirectory`; the runner reads `scorecard.json` from `result.version_dir` (or the first match under the temp dir) and writes it to stdout. Pipeline exceptions and `result.success == False` both map to `ExitCode.ENGINE_FAILURE` (6); `ExitCode.SPEC_FAILURE` (5) stays defined in the public contract but is no longer reached.
+`run_score` calls `jentic.apitools.pipelines.score_openapi` in-process with `OASProcessConfiguration(enable_llm_analysis=with_llm, include_diagnostics_in_score=True)`. URL inputs are forwarded verbatim as `SpecSourceUrl(kind="url", url=...)`; stdin inputs are written to a tempfile first and the `file://` URI is forwarded the same way. The pipeline's output directory is a `TemporaryDirectory`; the runner reads `scorecard.json` from `result.version_dir` and writes it to stdout. Pipeline exceptions, `result.success == False`, and a missing `result.version_dir` all map to `ExitCode.ENGINE_FAILURE` (6); `ExitCode.SPEC_FAILURE` (5) stays defined in the public contract but is no longer reached.
 
 ### Exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`)
 

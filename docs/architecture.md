@@ -456,7 +456,7 @@ Two large-data boundaries cross the wrapper. Both go through tempfiles, neither 
 
 **Stdin → tempfile (input side).** For local and bundled-URL modes, the wrapper reads `sys.stdin.buffer` in chunks and writes to a tempfile, then passes the path to the engine. `sys.stdin` has no hard size limit — it's a stream, kernel pipe buffers are just an in-flight window — but reading the whole spec into memory before persisting it is wasteful. Chunked read keeps RSS flat regardless of bundled-spec size.
 
-**Engine output → scorecard.json on disk.** The runner gives `score_openapi(...)` an `output_dir` that points at a per-invocation `tempfile.TemporaryDirectory`. The pipeline writes its `scorecard.json` (and other artifacts) into that directory; the runner then reads `scorecard.json` back and writes its contents to stdout. There is no subprocess pipe to drain, so kernel pipe-buffer deadlocks and PIPE-vs-RSS tradeoffs no longer apply. Memory is still bounded: the only object the runner holds is the final scorecard dict, dumped to stdout once. The temp dir is removed by the `with` block when the runner returns.
+**Engine output → scorecard.json on disk.** The runner gives `score_openapi(...)` an `output_dir` that points at a per-invocation `tempfile.TemporaryDirectory`. The pipeline writes its `scorecard.json` (and other artifacts) into that directory; the runner then reads the file's text and writes it through to stdout verbatim. There is no subprocess pipe to drain, so kernel pipe-buffer deadlocks and PIPE-vs-RSS tradeoffs no longer apply. Memory is bounded by the size of one scorecard JSON (≪ 1 MB in practice); the runner does not parse the JSON into a Python object. The temp dir is removed by the `with` block when the runner returns.
 
 ### Container CLI
 
