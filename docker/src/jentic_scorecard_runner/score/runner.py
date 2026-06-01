@@ -33,8 +33,8 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
     try:
         return _score(spec_url, with_llm)
     finally:
-        if stdin_tempfile is not None and stdin_tempfile.exists():
-            stdin_tempfile.unlink()
+        if stdin_tempfile is not None:
+            stdin_tempfile.unlink(missing_ok=True)
 
 
 def _score(spec_url: str, with_llm: bool) -> ExitCode:
@@ -76,13 +76,15 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
 
 
 def _stdin_to_tempfile() -> Path | None:
-    """Read stdin in chunks to a tempfile; return the path."""
+    """Stream stdin in chunks to a tempfile; return the path or None on I/O error."""
+    tmp = tempfile.NamedTemporaryFile(suffix=".json", prefix="jentic-stdin-", delete=False)
+    path = Path(tmp.name)
     try:
-        tmp = tempfile.NamedTemporaryFile(suffix=".json", prefix="jentic-stdin-", delete=False)
-        while chunk := sys.stdin.buffer.read(65536):
-            tmp.write(chunk)
-        tmp.close()
-        return Path(tmp.name)
+        with tmp:
+            while chunk := sys.stdin.buffer.read(65536):
+                tmp.write(chunk)
+        return path
     except OSError as exc:
-        print(f"error: failed to read stdin: {exc}", file=sys.stderr)
+        path.unlink(missing_ok=True)
+        print(f"error: failed to buffer stdin to tempfile: {exc}", file=sys.stderr)
         return None
