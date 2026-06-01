@@ -27,7 +27,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Language | Python 3.12 | `docker/pyproject.toml:5` (`requires-python = ">=3.12"`); `docker/Dockerfile:1` (`FROM python:3.12-slim`) |
 | Runtime (host) | Docker | `docker/Dockerfile`; `ghcr.io/jentic/jentic-api-scorecard` is the deliverable |
 | Runtime (in image) | Python 3.12 + Node 24 LTS | `docker/Dockerfile:1, 3-6` (Node copied from `node:24-slim` for engine's `npx` dispatch) |
-| Scoring engine | `jentic-apitools-cli` (PyPI) | `docker/pyproject.toml:7` (pinned exactly); shells out to `npx`-launched Redocly / Spectral / Speclynx validators |
+| Scoring engine | `jentic-apitools-pipelines` + `jentic-apitools-common` (PyPI) | `docker/pyproject.toml` (pinned exactly); pipelines transitively pulls `analyze`, `llm`, `score`, `storage`, which spawn `npx`-launched Redocly / Spectral / Speclynx validators |
 | Dependency manager | uv (build-time only) | `docker/uv.lock`; `docker/Dockerfile` builder stage pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
 | Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via `docker/.build/sample.yaml` |
 | Test framework (Python) | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
@@ -41,7 +41,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 ## Key Libraries and Frameworks
 
-- **`jentic-apitools-cli`** — the JAIRF scoring engine. Invoked as `jentic-apitools score <target> --format json --include-diagnostics --quiet [--enable-llm-analysis]`. Pinned exactly in `docker/pyproject.toml`; reproducibility is "pin one CLI version → pin one image tag → pin one engine version" (see `docs/architecture.md` §8).
+- **`jentic-apitools-pipelines` + `jentic-apitools-common`** — the JAIRF scoring engine, called in-process via `jentic.apitools.pipelines.score_openapi(...)` from `docker/src/jentic_scorecard_runner/score/runner.py`. The `pipelines` package transitively pulls `jentic-apitools-{analyze,llm,score,storage}`, so we don't list those in `docker/pyproject.toml`. The previous OSS console-script `jentic-apitools-cli` was discontinued upstream; the runner now owns the click-free entrypoint that used to live there. Both engine packages are pinned exactly in `docker/pyproject.toml`; reproducibility is "pin one CLI version → pin one image tag → pin one engine pair" (see `docs/architecture.md` §8).
 - **uv** — fast Python resolver/installer; lockfile (`docker/uv.lock`) is the source of truth for dependency versions. `uv sync --frozen --no-dev --no-install-project` runs in the Dockerfile's builder stage only — uv is not present in the runtime image. `[tool.uv]` declares `package = false` because the runner is image-internal, never published to PyPI.
 - **Docker (multi-stage build)** — builder stage on `python:3.12-slim` runs `uv sync` to materialize `/app/.venv`; runtime stage on `python:3.12-slim` copies the venv plus binaries from `node:24-slim`, prepends `/app/.venv/bin` to `PATH`, and runs plain `python` (no `uv run` wrapper). `ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]` is fixed; every `docker run` appends arguments.
 
@@ -76,17 +76,17 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **Deployment target:** GHCR (`ghcr.io/jentic/jentic-api-scorecard`). Manual today; automated via `docker-image.yml` on the roadmap.
 - **Environment management:** env-vars only (`JENTIC_API_KEY`, optional LLM provider keys). No `.env` file, no secret manager.
 - **Observability:** stderr for engine warnings + (eventual) host-side spinner phases. No metrics, no tracing, no telemetry — and no calls to Jentic's backend during scoring (see `docs/architecture.md` §9).
-- **Error handling / resilience:** structured exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`: `SUCCESS=0`, `GENERIC_ERROR=1`, `AUTH_INVALID_KEY=2`, `GATE_REJECTED=3`, `SPEC_FAILURE=5`, `ENGINE_FAILURE=6`). Engine exit code 2 is mapped to `SPEC_FAILURE`; any other non-zero is `ENGINE_FAILURE`. 300s engine timeout enforced in `score.py`.
+- **Error handling / resilience:** structured exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`: `SUCCESS=0`, `GENERIC_ERROR=1`, `AUTH_INVALID_KEY=2`, `GATE_REJECTED=3`, `SPEC_FAILURE=5`, `ENGINE_FAILURE=6`). Pipeline exceptions and `result.success == False` both map to `ENGINE_FAILURE`. `SPEC_FAILURE` (5) is reserved in the public contract and currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code. The engine's own timeout knobs (`OASProcessConfiguration.conn_timeout` / `read_timeout`, default 300s each) bound network reads.
 
 ## Constraints and Conventions
 
 - **Gate before score (CRITICAL).** `docker/src/jentic_scorecard_runner/__main__.py:45-49` calls `check_gate(url)` before `run_score(...)`. Reordering lets anonymous inputs reach the engine, defeating the auth model. Symptom: `--url` to a non-allowlisted host returns a normal score instead of exit code 3.
 - **Anonymous URL allowlist is hard-coded regex.** `_ALLOWLIST_PATTERN` in `docker/src/jentic_scorecard_runner/gate.py:18-20` matches `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Do not extend the gate to add new accepted values until real auth ships (see `docs/architecture.md` §9).
 - **`JENTIC_API_KEY=mvp-preview` is the only non-anonymous accepted value.** Hard-coded as `_MVP_KEY` in `gate.py:16`. **Not a secret** — the image is public and the value is trivially extractable. Its purpose is to exercise auth plumbing now so swapping in a real validator is a one-function change.
-- **Engine invocation is rigid.** Always `--format json --include-diagnostics --quiet` (+ `--enable-llm-analysis` when applicable). The runner does not expose these on its own surface; the container always emits canonical JSON.
-- **Result JSON is engine-verbatim.** The runner does not invent a schema, rename keys, or restructure. The CLI consumes whatever `jentic-apitools score --format json` emits (minus `diagnostics` unless `--include-diagnostics` is set on the host CLI). See `docs/architecture.md` §7.
+- **Engine invocation is rigid.** Always `OASProcessConfiguration(enable_llm_analysis=<bool>, include_diagnostics_in_score=True)`. The runner does not expose these knobs on its own surface; the container always emits canonical JSON.
+- **Result JSON is engine-verbatim.** The runner does not invent a schema, rename keys, or restructure. The CLI consumes whatever the engine writes to `scorecard.json`, verbatim. See `docs/architecture.md` §7.
 - **Exit codes are public CLI contract.** Container codes 0/1/2/3/5/6 plus host code 4 (Docker missing) are documented in `docs/architecture.md` §5–§6. Changes break automation.
-- **No runtime package installs.** All Python wheels and JS tarballs are baked at build time; `RUN jentic-apitools score sample.yaml …` warms the npm cache. Any image change that re-introduces runtime installs is a Dockerfile bug.
+- **No runtime package installs.** All Python wheels and JS tarballs are baked at build time; the Dockerfile pipes `docker/.build/sample.yaml` into the runner with `JENTIC_API_KEY=mvp-preview` to warm the npm cache. Any image change that re-introduces runtime installs is a Dockerfile bug.
 - **Python tooling resolves only from `docker/`.** `pyproject.toml`, `uv.lock`, and `poethepoet` live there; `uv run poe …` from the repo root fails (`Failed to spawn: poe`). Always `cd docker &&` first. The root may host an npm workspaces tree later (see roadmap), but Python stays in `docker/`.
 - **Tests use no mocks.** Hit the real gate / real engine. Tests are the source of truth for the runner's contract; if a test passes it's because the real boundary works, not because a fake one does.
 - **Modern Python type syntax only.** `list[str]`, `dict[str, int]`, `X | None` (PEP 585 / PEP 604). No `typing.List` / `typing.Optional`. Top-level imports only (ruff `PLC0415`); no cross-module `_private` imports (ruff `PLC2701`). See `.claude/rules/python-code-style.md`.
@@ -111,6 +111,6 @@ These exist in `docs/architecture.md` but **not on disk**. Future phases will la
 
 ## Open Questions / Uncertain Areas
 
-- **`docker/uv.lock` re-pin cadence.** No documented schedule for refreshing the lock. Currently bound to the engine pin; we re-lock when bumping `jentic-apitools-cli`.
-- **Engine signal stability.** `jentic-apitools-cli` is `1.0.0a16` (alpha). Signal names and metadata shapes may change in breaking ways before 1.0; the formatter (when it lands) needs to tolerate unknown / missing keys per `docs/architecture.md` §7.
+- **`docker/uv.lock` re-pin cadence.** No documented schedule for refreshing the lock. Currently bound to the engine pins; we re-lock when bumping `jentic-apitools-pipelines` / `jentic-apitools-common`.
+- **Engine signal stability.** `jentic-apitools-pipelines` and `jentic-apitools-common` are `1.0.0aN` (alpha). Signal names, model fields, and metadata shapes may change in breaking ways before 1.0; the formatter (when it lands) needs to tolerate unknown / missing keys per `docs/architecture.md` §7.
 - **LLM provider selection logic.** Architecture.md §5 says the engine "picks a provider" when multiple LLM keys are forwarded. The selection algorithm is not documented here; defer to upstream engine docs.

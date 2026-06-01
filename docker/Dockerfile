@@ -47,7 +47,8 @@ USER runner
 
 # Warm npm cache: run a real score so npx-invoked validators get cached
 COPY --chown=runner:runner .build/sample.yaml /tmp/sample.yaml
-RUN jentic-apitools score /tmp/sample.yaml --format json --quiet > /dev/null && \
+RUN JENTIC_API_KEY=mvp-preview python -m jentic_scorecard_runner score \
+        < /tmp/sample.yaml > /dev/null && \
     rm /tmp/sample.yaml
 
 ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
