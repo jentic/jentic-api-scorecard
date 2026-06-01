@@ -4,7 +4,6 @@ import json
 import sys
 import tempfile
 from pathlib import Path
-from urllib.parse import urlparse
 
 from jentic.apitools.common.models import (
     OASJsonRequest,
@@ -26,22 +25,20 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
     stdin_tempfile: Path | None = None
     if url is not None:
         spec_url = url
-        label_source = url
     else:
         stdin_tempfile = _stdin_to_tempfile()
         if stdin_tempfile is None:
             return ExitCode.GENERIC_ERROR
         spec_url = stdin_tempfile.as_uri()
-        label_source = "stdin"
 
     try:
-        return _score(spec_url, label_source, with_llm)
+        return _score(spec_url, with_llm)
     finally:
         if stdin_tempfile is not None and stdin_tempfile.exists():
             stdin_tempfile.unlink()
 
 
-def _score(spec_url: str, label_source: str, with_llm: bool) -> ExitCode:
+def _score(spec_url: str, with_llm: bool) -> ExitCode:
     process_config = OASProcessConfiguration(
         enable_llm_analysis=with_llm,
         include_diagnostics_in_score=True,
@@ -50,7 +47,7 @@ def _score(spec_url: str, label_source: str, with_llm: bool) -> ExitCode:
         oas_request = OASJsonRequest(
             spec=SpecSourceUrl(kind="url", url=spec_url),
             meta=OASRequestMeta(
-                label=_infer_label(label_source),
+                label="jentic-scorecard/api",
                 output_dir=output_dir,
                 oas_process_configuration=process_config,
             ),
@@ -99,13 +96,3 @@ def _find_scorecard(result, output_dir: str) -> dict | None:
     for candidate in Path(output_dir).rglob("scorecard.json"):
         return json.loads(candidate.read_text(encoding="utf-8"))
     return None
-
-
-def _infer_label(source: str) -> str:
-    parsed = urlparse(source)
-    if parsed.scheme in ("http", "https"):
-        host = parsed.hostname or "unknown"
-        path_parts = [p for p in parsed.path.strip("/").split("/") if p]
-        api_name = path_parts[0] if path_parts else "api"
-        return f"{host}/{api_name}"
-    return f"{source}/api"
