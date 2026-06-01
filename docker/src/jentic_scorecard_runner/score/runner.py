@@ -65,7 +65,10 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             )
             return ExitCode.ENGINE_FAILURE
 
-        assert result.version_dir is not None  # noqa: S101 — engine contract on success
+        if result.version_dir is None:
+            print("error: engine returned no output directory", file=sys.stderr)
+            return ExitCode.ENGINE_FAILURE
+
         scorecard = json.loads(
             (Path(result.version_dir) / "scorecard.json").read_text(encoding="utf-8")
         )
