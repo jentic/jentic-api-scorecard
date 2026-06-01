@@ -42,14 +42,14 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Distribution | npm package `@jentic/api-scorecard-cli` (CLI) + GHCR image `ghcr.io/jentic/jentic-api-scorecard` |
 | JS language | TypeScript across all packages; `tsc` → ESM |
 | Lerna versioning | Fixed/locked: every package shares one version |
-| Version coupling | CLI npm version = image tag. Engine (`jentic-apitools-cli`) versions independently and is pinned exactly inside each image. Pinning one CLI version reproduces the full stack. |
+| Version coupling | CLI npm version = image tag. Engine (`jentic-apitools-pipelines` + `jentic-apitools-common`) versions independently and is pinned exactly inside each image. Pinning one CLI version reproduces the full stack. |
 | Image flow | CLI fully abstracts image management. It pulls `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` automatically. No user-facing image flags. |
 | Tagging | Exact-version GHCR tags only (e.g. `:1.0.0-alpha.3`). The CLI consumes only exact tags, so no floating `:alpha` / `:latest` is published. The one floating tag is `:unstable`, which rolls on every green `main` for direct `docker run` users. |
 | Docker mode | Shell out to `docker` CLI via `child_process.spawn`. No `dockerode`. |
 | Input dispatch | Local path → CLI bundles via Redocly → pipes to container stdin. URL → CLI passes `--url` to container, engine fetches directly. URL + `--bundle` → CLI fetches and bundles host-side, pipes via stdin (escape hatch for internal/auth-gated URLs). |
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
 | Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. MVP scaffolds the auth pipeline by checking against a documented public placeholder (`mvp-preview`); real validation lands in a follow-up. No login subcommand or creds file in MVP. |
-| Engine | [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) on PyPI. Image bundles Python 3.14 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
+| Engine | [`jentic-apitools-pipelines`](https://pypi.org/project/jentic-apitools-pipelines/) + [`jentic-apitools-common`](https://pypi.org/project/jentic-apitools-common/) on PyPI, called in-process from the runner. Image bundles Python 3.14 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
 | Usage tracking | Out of scope for Delivery 1. No container-side calls to Jentic. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
@@ -88,9 +88,9 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 │    ├── arg parse:  --url <url>  |  read stdin                                 │
 │    ├── gate check:  if no key, URL must match jentic-public-apis allowlist    │
 │    ├── prepare:    URL → pass through  |  stdin → write to tempfile           │
-│    ├── score:  `jentic-apitools score <url-or-path> --format json             │
-│                                  --include-diagnostics --quiet`               │
-│    └── stdout: result JSON                                                    │
+│    ├── score:  in-process call into                                           │
+│    │           jentic.apitools.pipelines.score_openapi(...)                   │
+│    └── stdout: scorecard.json contents                                        │
 │                                                                               │
 │  stderr: progress / engine warnings                                           │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -129,14 +129,14 @@ jentic-api-scorecard/
 ├── docker/                                   (image internals; not a deliverable on its own)
 │   ├── Dockerfile                            (python:3.14-slim + Node 24, uv install)
 │   ├── .dockerignore
-│   ├── pyproject.toml                        (uv; deps: jentic-apitools-cli)
+│   ├── pyproject.toml                        (uv; deps: jentic-apitools-pipelines + -common)
 │   ├── uv.lock
 │   ├── .build/
 │   │   └── sample.yaml                       (tiny OpenAPI doc, COPY'd into image at build to warm npm cache)
 │   └── src/jentic_scorecard_runner/
 │       ├── __main__.py                       (image entry inside container)
 │       ├── gate.py                           (URL allowlist enforcement)
-│       └── score.py                          (spawns `jentic-apitools score`; parses JSON)
+│       └── score/                            (in-process call into jentic.apitools.pipelines.score_openapi)
 └── .github/workflows/
     ├── ci.yml                                (lint + test on PRs; also callable via workflow_call)
     ├── docker-publish.yml                    (build + push :unstable to GHCR on main; gated on ci.yml)
@@ -165,15 +165,15 @@ The CLI exposes a single subcommand for Delivery 1: `score <input>`. Scoring an 
 | `--verbose` / `-v` | off | (deferred — Phase 7) Increase stderr logging verbosity. Shows engine progress, validator invocation details, timing breakdowns, and internal debug info. Does not affect the report payload (stdout) — use `--detail` for that. Orthogonal to `--quiet` (which suppresses the spinner). |
 | `--quiet` / `-q` | off | (deferred — Phase 9) Suppress stderr spinner. Engine warnings still pass through stderr (they're a small, bounded signal). Pretty/JSON stdout unchanged. The spinner ALSO auto-suppresses when stderr is not a TTY (CI logs, redirected stderr) — `--quiet` is the explicit override for interactive shells. |
 | `--output` / `-o` `<file>` | stdout | Write report output to `<file>` instead of stdout. Useful for CI artifacts, Windows scripts, and future HTML/Markdown outputs where shell redirection is awkward. When set, spinner still goes to stderr. |
-| `--with-llm` | off | Enable LLM-backed analysis in the engine (`jentic-apitools score --enable-llm-analysis`). Requires at least one supported provider credential (cloud) or `LLM_PROVIDER=OPENAI` + `OPENAI_API_URL` (local endpoint); CLI exits `1` with guidance if none are present. Forwards all detected credentials and routing variables to the container via `-e <NAME>` (passthrough form). See §5 "Bring your own LLM" for the full env-var contract. |
+| `--with-llm` | off | Enable LLM-backed analysis in the engine (sets `OASProcessConfiguration.enable_llm_analysis=True` on the in-process pipeline call). Requires at least one supported provider credential (cloud) or `LLM_PROVIDER=OPENAI` + `OPENAI_API_URL` (local endpoint); CLI exits `1` with guidance if none are present. Forwards all detected credentials and routing variables to the container via `-e <NAME>` (passthrough form). See §5 "Bring your own LLM" for the full env-var contract. |
 | `--bundle` | off | Force CLI-side bundling. For URL inputs, the CLI fetches the URL on the host and Redocly-bundles it before piping bundled JSON to the container via stdin — use this for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Implies key-required, since the anonymous allowlist does not apply once the source URL stops reaching the container. For local paths the flag is a no-op: bundling is always how local files are handled. Safe to leave on in scripts where `$INPUT` could be either type. **Note**: `--bundle` follows HTTP redirects from any URL the user types — this is the user's host doing the fetching, so this is not SSRF-relevant in the usual sense, but typing arbitrary URLs into a tool that fetches them is the user's responsibility. |
 
 ### Input dispatch
 
 The CLI inspects `<input>` and chooses one of three paths:
 
-- **Local mode** (path that exists). CLI bundles the spec with `@redocly/openapi-core` — resolving local `$ref`s and copying remote `$ref` content into a single self-contained JSON document — and writes that JSON string to the container's stdin via `docker run -i`. Inside the container, the runner reads stdin to a temp file and hands the path to `jentic-apitools score`. Local mode requires `JENTIC_API_KEY`.
-- **URL mode** (`http://` / `https://`, default for URLs). CLI does not fetch and does not bundle. It passes `--url <url>` to the container, which enforces the anonymous gate on the URL string and then invokes `jentic-apitools score <url>` directly — the engine handles fetching and `$ref` resolution. URL mode is anonymous-allowed for jentic-public-apis URLs, key-required for everything else.
+- **Local mode** (path that exists). CLI bundles the spec with `@redocly/openapi-core` — resolving local `$ref`s and copying remote `$ref` content into a single self-contained JSON document — and writes that JSON string to the container's stdin via `docker run -i`. Inside the container, the runner reads stdin to a temp file and forwards its `file://` URI to the engine. Local mode requires `JENTIC_API_KEY`.
+- **URL mode** (`http://` / `https://`, default for URLs). CLI does not fetch and does not bundle. It passes `--url <url>` to the container, which enforces the anonymous gate on the URL string and then forwards the URL to the engine — the engine handles fetching and `$ref` resolution. URL mode is anonymous-allowed for jentic-public-apis URLs, key-required for everything else.
 - **Bundled-URL mode** (`--bundle` set, input is a URL). CLI fetches the URL on the host, runs Redocly bundling, and pipes bundled JSON to the container's stdin — exactly like local mode, just with an HTTP source. Use this when the URL is only reachable from the host (internal network, VPN-gated, auth-required). Bundled-URL mode requires `JENTIC_API_KEY`; the anonymous allowlist does not apply because the source URL never reaches the container.
 
 The split is deliberate. The default URL path keeps the gate authoritative — the container scores the same URL string it gates on, no spoofable env-var coupling. Local mode and bundled-URL mode handle the cases where the container cannot reach the source.
@@ -387,10 +387,10 @@ exit 4
 ### Base + tooling
 
 - Base: `python:3.14-slim`.
-- Adds Node.js 24 LTS. Required by `jentic-apitools-cli`, which spawns Redocly / Spectral / Speclynx via `npx`. The engine documents Node ≥18 as the minimum; we ship the latest LTS so users get current security patches and modern V8 startup.
+- Adds Node.js 24 LTS. Required by the engine pipeline, which spawns Redocly / Spectral / Speclynx via `npx`. The engine documents Node ≥18 as the minimum; we ship the latest LTS so users get current security patches and modern V8 startup.
 - Build via `uv` (single-stage build is fine for MVP; can be split later).
-- Engine: [`jentic-apitools-cli`](https://pypi.org/project/jentic-apitools-cli/) installed from PyPI. Its `jentic-apitools score` command is the scoring engine.
-- Image entry point: `python -m jentic_scorecard_runner` — a thin wrapper that parses args, enforces the anonymous gate, and shells out to `jentic-apitools score`. It does not fetch URLs itself.
+- Engine: [`jentic-apitools-pipelines`](https://pypi.org/project/jentic-apitools-pipelines/) + [`jentic-apitools-common`](https://pypi.org/project/jentic-apitools-common/) installed from PyPI. The runner imports `jentic.apitools.pipelines.score_openapi` and calls it directly; there is no separate engine console script.
+- Image entry point: `python -m jentic_scorecard_runner` — a thin wrapper that parses args, enforces the anonymous gate, and calls `score_openapi(...)` in-process. It does not fetch URLs itself.
 
 ### Container entry point and process chain
 
@@ -411,9 +411,10 @@ host:        docker run -i --rm
                ghcr.io/jentic/jentic-api-scorecard:1.0.0
                score                         ← appended to ENTRYPOINT
 container 1: python -m jentic_scorecard_runner score
-               └─ runner: auth check, gate, stdin→tempfile, then spawn:
-container N: jentic-apitools score /tmp/spec.json --format json --include-diagnostics --quiet
-               └─ engine: spawn validators via npx, score, emit JSON
+               └─ runner: auth check, gate, stdin→tempfile, then call:
+                 jentic.apitools.pipelines.score_openapi(OASJsonRequest(...), spec_url=...)
+                 └─ engine: spawn validators via npx, score, write scorecard.json,
+                            runner reads it back and emits JSON to stdout
 ```
 
 This is why the container has its own argument grammar (`score [--url <url>] [--with-llm]`) parsed by the runner — without it, `docker run … <image> <args>` would have nothing on the inside to receive `<args>`. The runner is also where pre- and post-engine concerns live: auth, gate, I/O sizing, exit-code mapping. Putting these in the runner instead of the host CLI keeps the host-side TS code small and keeps anything that touches the spec inside the same security boundary as the engine.
@@ -431,16 +432,17 @@ This matters because the engine ships JS tools as bundled tarballs inside its Py
 
 ```
 ENV NPM_CONFIG_CACHE=/var/cache/npm
-RUN pip install --no-cache-dir jentic-apitools-cli==<pinned-version>
+# Engine deps installed via uv sync in an earlier builder stage; venv copied here.
 COPY .build/sample.yaml /tmp/sample.yaml
-RUN jentic-apitools score /tmp/sample.yaml --format json --quiet >/dev/null
+RUN JENTIC_API_KEY=mvp-preview python -m jentic_scorecard_runner score \
+        < /tmp/sample.yaml > /dev/null
 ```
 
 The score against a representative sample spec exercises every validator the engine will invoke at runtime, populating `/var/cache/npm` with extracted tarballs (`_npx/<hash>/`) and downloaded transitive deps (`_cacache/`). The cache lives in an image layer; every `--rm` container inherits it via the image's read-only layers. No network at runtime.
 
 Bonus: this doubles as a smoke test — if the engine is broken or the image is missing a system dep, `docker build` fails rather than every user's first score failing.
 
-Confirmed by direct test (2026-05-21, `jentic-apitools-cli==1.0.0a16`): `jentic-apitools score <url>` runs successfully without `JENTIC_API_KEY` set. The build-time score therefore does not require a key, and the engine never phones Jentic during scoring — both invariants we rely on for an offline-capable image.
+Confirmed by direct test (2026-05-21, `jentic-apitools-cli==1.0.0a16`, the OSS console-script equivalent at the time): the engine pipeline runs successfully without contacting Jentic during scoring — both invariants we rely on for an offline-capable image. The cache-warm `RUN` now sets `JENTIC_API_KEY=mvp-preview` because the runner's gate rejects stdin input without a key, not because the engine itself needs the key.
 
 **Per-`npx`-call overhead remains** (~500 ms–1 s for Node boot + npm CLI load + cache lookup, even on cache hits). For three validators that's ~1.5–3 s per score, which is acceptable on top of the actual analysis time.
 
@@ -454,14 +456,7 @@ Two large-data boundaries cross the wrapper. Both go through tempfiles, neither 
 
 **Stdin → tempfile (input side).** For local and bundled-URL modes, the wrapper reads `sys.stdin.buffer` in chunks and writes to a tempfile, then passes the path to the engine. `sys.stdin` has no hard size limit — it's a stream, kernel pipe buffers are just an in-flight window — but reading the whole spec into memory before persisting it is wasteful. Chunked read keeps RSS flat regardless of bundled-spec size.
 
-**Engine stdout → tempfile (output side).** The wrapper invokes `jentic-apitools score <spec> --format json --include-diagnostics --quiet` with `stdout=<tempfile>` rather than `stdout=PIPE`. Two reasons:
-
-1. **Pipe-full deadlock.** If the engine's combined stdout+stderr exceeds the kernel pipe buffer (~64 KB) faster than our reader drains, writes block and the process hangs. `subprocess.run` does drain, but only by buffering the entire stream in Python RSS. Redirecting to a file shifts buffering to the kernel + filesystem, which is unbounded.
-2. **Memory.** A JAIRF result tree on a large spec with `--with-llm` and full diagnostics can be several MB. There's no reason to hold it in Python RAM when we're about to copy it to the container's stdout anyway.
-
-The wrapper then streams the tempfile to its own stdout (the container's stdout, which the host CLI captures). Stderr stays on PIPE — it's only warnings, bounded in size, useful for inline forwarding.
-
-This pattern is borrowed from `jentic.apitools.openapi.common.subproc` upstream: `stdout=<file>` is the supported escape hatch for large-output children.
+**Engine output → scorecard.json on disk.** The runner gives `score_openapi(...)` an `output_dir` that points at a per-invocation `tempfile.TemporaryDirectory`. The pipeline writes its `scorecard.json` (and other artifacts) into that directory; the runner then reads `scorecard.json` back and writes its contents to stdout. There is no subprocess pipe to drain, so kernel pipe-buffer deadlocks and PIPE-vs-RSS tradeoffs no longer apply. Memory is still bounded: the only object the runner holds is the final scorecard dict, dumped to stdout once. The temp dir is removed by the `with` block when the runner returns.
 
 ### Container CLI
 
@@ -509,8 +504,8 @@ The runner always invokes the engine with `--format json --include-diagnostics -
                   URL, so the engine receives an authorized source.
      - stdin:     read sys.stdin.buffer in chunks to a tempfile, then pass
                   the path to the engine.
-5. Score: spawn `jentic-apitools score <url-or-path> --format json --include-diagnostics --quiet` (appending `--enable-llm-analysis` when our `--with-llm` is set) and capture its JSON output. `--format json`, `--include-diagnostics`, and `--quiet` are always passed: the container produces one canonical JSON payload regardless of host-side flags, with no log noise on stdout. Filtering for terminal output is the host CLI's job.
-6. Emit result JSON to stdout (engine output is forwarded verbatim).
+5. Score: call `jentic.apitools.pipelines.score_openapi(OASJsonRequest(...), spec_url=...)` in-process with `OASProcessConfiguration(enable_llm_analysis=<flag>, include_diagnostics_in_score=True)`. The pipeline writes `scorecard.json` plus other artifacts into a per-invocation temp directory. `include_diagnostics_in_score=True` is always set: the container produces one canonical JSON payload regardless of host-side flags. Filtering for terminal output is the host CLI's job.
+6. Emit `scorecard.json` to stdout (engine output is forwarded verbatim).
 ```
 
 ### Exit codes (container)
@@ -521,16 +516,16 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 | 1 | Generic error (including: invocation with no `--url` and no piped stdin). |
 | 2 | Auth: key set but not the recognized placeholder value. |
 | 3 | Anonymous gate rejected. |
-| 5 | Spec fetch / parse failure. |
-| 6 | Engine invocation failure. |
+| 5 | Reserved for spec-policy failure. Currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code; kept defined to preserve the public contract. |
+| 6 | Engine invocation failure (pipeline exception or `result.success == False`). |
 
 The CLI passes these through verbatim and adds its own codes for host-side concerns (4 = Docker missing). The user-facing exit-code contract is §5.
 
 ## 7. Result JSON schema
 
-The CLI does not invent a schema. It emits **whatever `jentic-apitools score --format json` emits, verbatim**, filtered by `--detail` level (see §5). The container always requests full output (`--include-diagnostics`) from the engine; the CLI strips fields the user didn't ask for based on `--detail`. Reformatting in the formatter (pretty output, Markdown) is a read-only projection — keys are not renamed, restructured, or filtered. The pretty/HTML/Markdown formatters tolerate unknown keys and absent optional keys, so engine bumps that add new fields don't break formatting.
+The CLI does not invent a schema. It emits **whatever the engine writes to `scorecard.json`, verbatim**, filtered by `--detail` level (see §5). The container always requests full output (`include_diagnostics_in_score=True`) from the engine; the CLI strips fields the user didn't ask for based on `--detail`. Reformatting in the formatter (pretty output, Markdown) is a read-only projection — keys are not renamed, restructured, or filtered. The pretty/HTML/Markdown formatters tolerate unknown keys and absent optional keys, so engine bumps that add new fields don't break formatting.
 
-The shape below was captured by running `jentic-apitools score https://petstore3.swagger.io/api/v3/openapi.json` against `jentic-apitools-cli==1.0.0a16`. Treat this as a sample, not a contract — the engine owns the schema.
+The shape below was captured by running the petstore spec through the engine pipeline at `jentic-apitools-cli==1.0.0a16` (the OSS console-script equivalent at the time). Treat this as a sample, not a contract — the engine owns the schema.
 
 ```jsonc
 {
@@ -633,19 +628,19 @@ The shape below was captured by running `jentic-apitools score https://petstore3
 
 ## 8. Versioning & release
 
-**Coupling**: CLI npm version = GHCR image tag. The Python engine package (`jentic-apitools-cli`) versions independently upstream; each image build pins one specific engine version.
+**Coupling**: CLI npm version = GHCR image tag. The Python engine packages (`jentic-apitools-pipelines` + `jentic-apitools-common`) version independently upstream; each image build pins one specific pair.
 
 **Channels**: today the project ships only an **alpha channel**. The first stable release (`@latest` npm dist-tag) is deferred until the flag surface settles and real auth replaces `mvp-preview` (§9). Until then, `@jentic/api-scorecard-cli@alpha` is the discovery entry point:
 
 - The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …).
 - npm `@jentic/api-scorecard-cli@1.0.0-alpha.<N>` publishes under the `alpha` dist-tag. `@jentic/api-scorecard-formatter-html` is `"private": true` and does not publish on alpha cuts; it joins the channel once its real implementation ships.
 - `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N>` — the exact alpha tag the CLI of that version consumes. No floating `:alpha` is published; the CLI never asks for one.
-- `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-cli==<exact-version>` (e.g. `1.0.0a16`).
+- `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-pipelines==<exact-version>` and `jentic-apitools-common==<exact-version>` (e.g. `1.0.0a17` for both).
 
 The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0-alpha.3`) — that pulls `:1.0.0-alpha.3`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
 
 When the engine releases an update we want to ship, we:
-1. Bump `jentic-apitools-cli` in `docker/pyproject.toml`.
+1. Bump `jentic-apitools-pipelines` and `jentic-apitools-common` in `docker/pyproject.toml`.
 2. Cut a new CLI version (e.g. `1.0.0-alpha.<N+1>`).
 3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N+1>` containing the new engine, and publishes `@jentic/api-scorecard-cli@1.0.0-alpha.<N+1>` under the `alpha` dist-tag.
 
