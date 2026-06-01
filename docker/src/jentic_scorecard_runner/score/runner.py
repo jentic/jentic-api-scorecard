@@ -68,9 +68,10 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             print("error: engine returned no output directory", file=sys.stderr)
             return ExitCode.ENGINE_FAILURE
 
-        sys.stdout.write((Path(result.version_dir) / "scorecard.json").read_text(encoding="utf-8"))
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        print(
+            (Path(result.version_dir) / "scorecard.json").read_text(encoding="utf-8"),
+            file=sys.stdout,
+        )
     return ExitCode.SUCCESS
 
 
