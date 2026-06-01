@@ -604,6 +604,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "jentic-apitools-score-cli-internal" },
+    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -615,7 +616,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "jentic-apitools-score-cli-internal", git = "https://github.com/jentic/jentic-apitools.git?subdirectory=packages%2Fscore-cli&tag=v1.0.0-alpha.17" }]
+requires-dist = [
+    { name = "jentic-apitools-score-cli-internal", git = "https://github.com/jentic/jentic-apitools.git?subdirectory=packages%2Fscore-cli&tag=v1.0.0-alpha.17" },
+    { name = "requests", specifier = ">=2.32,<3" },
+]
 
 [package.metadata.requires-dev]
 dev = [
