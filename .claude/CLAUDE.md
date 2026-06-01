@@ -35,13 +35,17 @@ The CLI hard-codes `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` with no e
 
 ### Auth and the gate (`docker/src/jentic_scorecard_runner/gate.py`)
 
-| `JENTIC_API_KEY` | Effect |
-|---|---|
-| Unset | Anonymous mode — only URLs matching `https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/` are allowed; stdin inputs are rejected. |
-| `mvp-preview` | All inputs allowed. This is the documented public placeholder for Delivery 1 — **not a secret**, see `docs/architecture.md` §9. |
-| Anything else | Rejected with a guidance message pointing back at `mvp-preview`. |
+The gate decides allow/deny in this order; the first match wins:
 
-The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The placeholder key value lives in `gate.py` as `_MVP_KEY`. Real key issuance (HTTP validation against `api.jentic.com`) is deferred to a follow-up delivery; until then, do not extend the gate to add new accepted values.
+| Condition | Effect |
+|---|---|
+| URL matches `_ALLOWLIST_PATTERN` (jentic-public-apis) | Free tier — allowed; validator is **not** called, regardless of whether a key is set. |
+| `JENTIC_API_KEY` unset/empty + URL mode | `GATE_REJECTED` (3) with allowlist hint. |
+| `JENTIC_API_KEY` unset/empty + stdin mode | `AUTH_INVALID_KEY` (2) with signup hint. |
+| `JENTIC_API_KEY=mvp-preview` | Allowed with stderr deprecation warning (alpha migration window only; removed in a follow-up minor release). |
+| Real key | `usage.check_usage(key)` POSTs to `https://api.jentic.com/api/v1/usage/api-scoring`. 2xx → allow; 429 → `RATE_LIMITED` (7) with `detail` + `Retry-After`; 401/403 → `AUTH_INVALID_KEY` (2) with `detail`; network/5xx/malformed → **fail open** with stderr warning. |
+
+The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The deprecated free-pass key value lives in `gate.py` as `_MVP_KEY`. The HTTP client lives in `docker/src/jentic_scorecard_runner/usage.py` and never raises — every failure path returns one of `UsageAllowed | UsageRateLimited | UsageInvalidKey | UsageUnverifiable`. The validator base URL is overridable for tests via `JENTIC_API_BASE_URL` (test-only; not user-facing).
 
 ### Scoring (`docker/src/jentic_scorecard_runner/score/`)
 
@@ -49,7 +53,7 @@ The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The placeholder 
 
 ### Exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`)
 
-`SUCCESS=0`, `GENERIC_ERROR=1`, `AUTH_INVALID_KEY=2`, `GATE_REJECTED=3`, `SPEC_FAILURE=5`, `ENGINE_FAILURE=6`. These are part of the public CLI contract — see `docs/architecture.md` §6 before changing values.
+`SUCCESS=0`, `GENERIC_ERROR=1`, `AUTH_INVALID_KEY=2`, `GATE_REJECTED=3`, `SPEC_FAILURE=5`, `ENGINE_FAILURE=6`, `RATE_LIMITED=7`. These are part of the public CLI contract — see `docs/architecture.md` §6 before changing values. The TS mirror lives in `packages/cli/src/exit-codes.ts`.
 
 ### Image build (`docker/Dockerfile`)
 
@@ -80,8 +84,8 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Build the image | `docker build -t jentic-scorecard:dev ./docker` |
 | Smoke an allowlisted URL via image | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
 | Smoke an allowlisted URL via CLI | `node packages/cli/bin/jentic-api-scorecard.mjs score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
-| Smoke a local file via CLI | `JENTIC_API_KEY=mvp-preview node packages/cli/bin/jentic-api-scorecard.mjs score docker/.build/sample.yaml` |
-| Smoke from stdin via image | `cat openapi.json \| docker run -i --rm -e JENTIC_API_KEY=mvp-preview jentic-scorecard:dev score` |
+| Smoke a local file via CLI | `JENTIC_API_KEY=<your-key> node packages/cli/bin/jentic-api-scorecard.mjs score docker/.build/sample.yaml` |
+| Smoke from stdin via image | `cat openapi.json \| docker run -i --rm -e JENTIC_API_KEY=<your-key> jentic-scorecard:dev score` |
 
 Tests use pytest, no mocking — `tests/test_main.py` and `tests/test_gate.py` exercise the runner directly; `tests/test_integration.py` exercises the engine end-to-end.
 

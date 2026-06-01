@@ -5,12 +5,12 @@
 
 ## 1. What this is
 
-A zero-install CLI that scores an OpenAPI document against JAIRF and prints a Jentic API Readiness Scorecard. Users run it via `npx`. The scoring engine is a Python implementation of JAIRF, packaged as a public Docker image. The CLI orchestrates the image; no backend service is in the loop. Auth is env-var only (`JENTIC_API_KEY`); usage tracking and rate-limiting calls to Jentic are out of scope for Delivery 1.
+A zero-install CLI that scores an OpenAPI document against JAIRF and prints a Jentic API Readiness Scorecard. Users run it via `npx`. The scoring engine is a Python implementation of JAIRF, packaged as a public Docker image. The CLI orchestrates the image. Auth is env-var only (`JENTIC_API_KEY`); the container validates real keys live against `api.jentic.com`, which doubles as the per-key usage / rate-limit accounting call (§9).
 
-During the MVP preview, key-required scoring works with `JENTIC_API_KEY=mvp-preview` (a documented public placeholder, not a secret — see §9). Real signup, real keys, and server-side validation land in a follow-up release.
+URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score for free without a key and bypass the validator entirely. `JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during the alpha migration window — it is removed in a follow-up minor release.
 
 ```
-$ JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://petstore3.swagger.io/api/v3/openapi.json
+$ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli score https://petstore3.swagger.io/api/v3/openapi.json
 # or with --format json -o report.json for machine output
 ⏳ Pulling ghcr.io/jentic/jentic-api-scorecard:1.0.0…
 ⏳ Scoring…
@@ -48,12 +48,12 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Docker mode | Shell out to `docker` CLI via `child_process.spawn`. No `dockerode`. |
 | Input dispatch | Local path → CLI bundles via Redocly → pipes to container stdin. URL → CLI passes `--url` to container, engine fetches directly. URL + `--bundle` → CLI fetches and bundles host-side, pipes via stdin (escape hatch for internal/auth-gated URLs). |
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
-| Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. MVP scaffolds the auth pipeline by checking against a documented public placeholder (`mvp-preview`); real validation lands in a follow-up. No login subcommand or creds file in MVP. |
+| Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`; jentic-public-apis URLs skip the call entirely (always free). `mvp-preview` is honored as a deprecated free-pass for the alpha migration window. No login subcommand or creds file. |
 | Engine | [`jentic-apitools-pipelines`](https://pypi.org/project/jentic-apitools-pipelines/) + [`jentic-apitools-common`](https://pypi.org/project/jentic-apitools-common/) on PyPI, called in-process from the runner. Image bundles Python 3.14 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
-| Usage tracking | Out of scope for Delivery 1. No container-side calls to Jentic. |
+| Usage tracking | The same `POST /api/v1/usage/api-scoring` call that authenticates a real key also increments the user's per-key scoring counter. Allowlisted (jentic-public-apis) URLs do not increment. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
-| Out of scope (MVP) | HTML formatter wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence; rate limiting beyond URL allowlist. |
+| Out of scope (MVP) | HTML formatter wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence. |
 
 ## 3. Component diagram
 
@@ -191,27 +191,24 @@ The split is deliberate. The default URL path keeps the gate authoritative — t
 The CLI reads `JENTIC_API_KEY` from its environment and forwards it to the container as `-e JENTIC_API_KEY=<value>`. If the env var is unset, the CLI runs in anonymous mode — only URL inputs matching the jentic-public-apis allowlist are accepted.
 
 ```
-export JENTIC_API_KEY=mvp-preview
+export JENTIC_API_KEY=<your-key>
 npx @jentic/api-scorecard-cli score ./openapi.yaml
 ```
 
-No `login` subcommand, no credentials file, no token persistence in MVP — those are post-MVP UX additions on top of an env-var foundation that already works.
+No `login` subcommand, no credentials file, no token persistence — those are post-MVP UX additions on top of an env-var foundation that already works.
 
-#### MVP key scheme (transitional)
+#### Key validation and rate limiting
 
-Real key issuance and server-side validation are deferred to a follow-up delivery. For Delivery 1, the container compares `JENTIC_API_KEY` against a single documented public placeholder value, hard-coded in the image:
+The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`, sending the key in the `X-Jentic-API-Key` header. The endpoint is the same call that increments the user's scoring counter, so a single round-trip both authenticates the request and enforces the per-key rate limit. Responses are interpreted as:
 
-- **Accepted**: `JENTIC_API_KEY=mvp-preview` → key-required paths work (local files, non-allowlisted URLs).
-- **Rejected** (any other non-empty value): container exits with a clear error: *"this key is not recognized. During the MVP preview, use `JENTIC_API_KEY=mvp-preview`. Real keys land in a follow-up release."*
-- **Unset**: anonymous mode, as above.
+- **2xx** — key valid and within quota; scoring proceeds.
+- **429** — key valid but the user is over quota. The body is a Jentic ProblemDetails JSON (per the [Jentic API problem-details domain](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml)); the container surfaces the `detail` string and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
+- **401 / 403** — server-side key rejection. Container exits with `AUTH_INVALID_KEY` (2) and prints the server's `detail`.
+- **Network error, timeout, 5xx, malformed body** — the container fails open: it prints a one-line warning to stderr and lets scoring proceed. This trades off strict enforcement for availability — an outage on Jentic's side does not block scoring.
 
-This is **not a secret**. The image is public; the value is trivially extractable from any image layer. Its purpose is purely to:
+URLs matching the jentic-public-apis allowlist (see "Anonymous gate" above) are always free and **skip the validation call entirely**, regardless of whether a key is set. This keeps OAK contributions zero-friction even after rate limits ship.
 
-1. Exercise the full auth plumbing now (CLI env resolution → `-e` forwarding → container check → branching), so swapping in a real validator is a one-function change.
-2. Give us a clean migration marker — when real auth ships, the placeholder check becomes a deprecation message pointing users to signup.
-3. Provide better error UX than "any non-empty value passes" (typos and stale envs surface as recognizable errors instead of false success).
-
-When real auth ships, the only changes inside the container are: replace the static comparison with `httpx.get("https://api.jentic.com/v1/validate", headers={"Authorization": f"Bearer {key}"})`, and rev the image. The CLI does not change.
+`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass for the alpha migration window: the container prints a one-line stderr warning ("`mvp-preview` is deprecated; sign up at https://jentic.com/signup for a real key") and proceeds without contacting the validator. The placeholder is removed in a follow-up minor release.
 
 ### LLM provider keys (only when `--with-llm` is set)
 
@@ -352,19 +349,20 @@ stdout stays clean so `--format json | jq` works without filtering.
 |---|---|
 | 0 | Scoring completed (regardless of the score itself). |
 | 1 | Generic error (input not found, bundling failed, container failed, etc.). |
-| 2 | Auth: `JENTIC_API_KEY` is set to an unrecognized value, or a local file / stdin input was used without the key set. Message points at `mvp-preview`. |
+| 2 | Auth: `JENTIC_API_KEY` is set to a value the Jentic backend does not recognize, or a local file / stdin input was used without the key set. |
 | 3 | Anonymous gate rejected: URL not in jentic-public-apis allowlist. Message includes allowlist index URL. |
 | 4 | Docker not installed or daemon unreachable. Message includes install hint. |
 | 5 | Spec fetch or parse failure (engine exit code 2, passed through). |
 | 6 | Engine invocation failure (any other non-zero engine exit, passed through). |
+| 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 
 ### Error UX examples
 
 ```
 $ npx @jentic/api-scorecard-cli score ./local.yaml         # no key
 error: scoring from stdin requires a Jentic API key.
-  Set the MVP preview key, then retry:
-    export JENTIC_API_KEY=mvp-preview
+  Sign up for a key at https://jentic.com/signup and retry:
+    export JENTIC_API_KEY=<your-key>
 exit 2
 
 $ npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml   # no key
@@ -372,14 +370,21 @@ error: anonymous scoring is restricted to OpenAPI documents hosted at:
   https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/
   Browse available documents:
     https://github.com/jentic/jentic-public-apis/tree/main/apis/openapi
-  Or set the MVP preview key:
-    export JENTIC_API_KEY=mvp-preview
+  Or sign up for a key:
+    https://jentic.com/signup
 exit 3
 
 $ npx @jentic/api-scorecard-cli score ./openapi.yaml      # docker not in PATH
 error: 'docker' command not found.
   Install Docker: https://docs.docker.com/get-docker/
 exit 4
+
+$ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli score ./local.yaml   # over quota
+error: rate limit reached for your Jentic API key.
+  monthly scoring quota exhausted
+  Retry-After: 3600
+  Manage your usage at https://jentic.com/account
+exit 7
 ```
 
 ## 6. Docker image specification
@@ -489,23 +494,29 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 1. Parse args. Exactly one of {--url, stdin} must be present. If --url is
    absent AND stdin is a TTY (no piped input), exit non-zero with a clear
    error rather than blocking on stdin EOF forever.
-2. Auth check on JENTIC_API_KEY:
-     - empty:        anonymous mode (proceed to step 3 anonymous-gate).
-     - "mvp-preview": authenticated; skip step 3.
-     - any other:     exit non-zero with placeholder-key error message.
-3. Anonymous gate (only when anonymous):
-     - URL mode: URL must match
-       ^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/
-       Else exit non-zero with a clear message.
-     - stdin mode: always reject; key is required.
-4. Prepare engine input:
+2. Gate (in this order):
+     a. If URL matches the jentic-public-apis allowlist, allow (free tier;
+        no validator call).
+     b. Else if JENTIC_API_KEY is empty:
+          - URL mode: reject (allowlist message), exit 3.
+          - stdin mode: reject (key required), exit 2.
+     c. Else if JENTIC_API_KEY == "mvp-preview": print deprecation warning
+        on stderr, allow.
+     d. Else POST to https://api.jentic.com/api/v1/usage/api-scoring with
+        X-Jentic-API-Key header. Interpret the response:
+          - 2xx        → allow (call also doubles as usage increment).
+          - 429        → exit 7 with server's ProblemDetails detail and
+                         Retry-After header.
+          - 401 / 403  → exit 2 with server's ProblemDetails detail.
+          - other / network error → fail open (warn on stderr, allow).
+3. Prepare engine input:
      - URL mode:  forward the URL string straight to the engine command line;
                   no fetch, no tempfile. The runner has already gated on the
                   URL, so the engine receives an authorized source.
      - stdin:     read sys.stdin.buffer in chunks to a tempfile, then pass
                   the path to the engine.
-5. Score: call `jentic.apitools.pipelines.score_openapi(OASJsonRequest(...), spec_url=...)` in-process with `OASProcessConfiguration(enable_llm_analysis=<flag>, include_diagnostics_in_score=True)`. The pipeline writes `scorecard.json` plus other artifacts into a per-invocation temp directory. `include_diagnostics_in_score=True` is always set: the container produces one canonical JSON payload regardless of host-side flags. Filtering for terminal output is the host CLI's job.
-6. Emit `scorecard.json` to stdout (engine output is forwarded verbatim).
+4. Score: call `jentic.apitools.pipelines.score_openapi(OASJsonRequest(...), spec_url=...)` in-process with `OASProcessConfiguration(enable_llm_analysis=<flag>, include_diagnostics_in_score=True)`. The pipeline writes `scorecard.json` plus other artifacts into a per-invocation temp directory. `include_diagnostics_in_score=True` is always set: the container produces one canonical JSON payload regardless of host-side flags. Filtering for terminal output is the host CLI's job.
+5. Emit `scorecard.json` to stdout (engine output is forwarded verbatim).
 ```
 
 ### Exit codes (container)
@@ -514,10 +525,11 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 |---|---|
 | 0 | Result emitted on stdout. |
 | 1 | Generic error (including: invocation with no `--url` and no piped stdin). |
-| 2 | Auth: key set but not the recognized placeholder value. |
+| 2 | Auth: key rejected by `api.jentic.com` validator (401 / 403). |
 | 3 | Anonymous gate rejected. |
 | 5 | Reserved for spec-policy failure. Currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code; kept defined to preserve the public contract. |
 | 6 | Engine invocation failure (pipeline exception or `result.success == False`). |
+| 7 | Rate limit reached (validator returned 429). |
 
 The CLI passes these through verbatim and adds its own codes for host-side concerns (4 = Docker missing). The user-facing exit-code contract is §5.
 
@@ -630,7 +642,7 @@ The shape below was captured by running the petstore spec through the engine pip
 
 **Coupling**: CLI npm version = GHCR image tag. The Python engine packages (`jentic-apitools-pipelines` + `jentic-apitools-common`) version independently upstream; each image build pins one specific pair.
 
-**Channels**: today the project ships only an **alpha channel**. The first stable release (`@latest` npm dist-tag) is deferred until the flag surface settles and real auth replaces `mvp-preview` (§9). Until then, `@jentic/api-scorecard-cli@alpha` is the discovery entry point:
+**Channels**: today the project ships only an **alpha channel**. The first stable release (`@latest` npm dist-tag) is deferred until the flag surface settles and the deprecated `mvp-preview` placeholder is fully retired (§9). Until then, `@jentic/api-scorecard-cli@alpha` is the discovery entry point:
 
 - The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …).
 - npm `@jentic/api-scorecard-cli@1.0.0-alpha.<N>` publishes under the `alpha` dist-tag. `@jentic/api-scorecard-formatter-html` is `"private": true` and does not publish on alpha cuts; it joins the channel once its real implementation ships.
@@ -656,19 +668,19 @@ When the engine releases an update we want to ship, we:
 
 ## 9. Foundation: registration & key
 
-For Delivery 1, the auth pipeline is wired end-to-end but the validator is a placeholder:
+The auth pipeline is wired end-to-end against the Jentic backend:
 
-- **Key value**: `JENTIC_API_KEY=mvp-preview`, documented in the README and CLI error messages. Not a secret — the image is public, the value is public.
-- **Container check**: hard-coded equality against the placeholder. Mismatched values are rejected with a guidance message; unset means anonymous.
-- **No backend calls**: nothing in the system phones Jentic. No signup, no validation, no usage accounting, no rate limiting beyond the static URL allowlist.
+- **Real keys**: issued at `jentic.com/signup`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
+- **Free tier**: URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score without contacting the validator at all, regardless of whether a key is set.
+- **`mvp-preview` (deprecated)**: honored as a free-pass for one minor version with a stderr deprecation warning, then removed.
+- **Fail-open**: when the validator is unreachable (DNS error, timeout, 5xx, malformed body) the container prints a one-line warning and lets scoring proceed. This trades strict enforcement for availability while the Jentic backend stabilizes.
 
-A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC_API_KEY` issuance, and replaces the static container check with an HTTP call to a Jentic validation endpoint. That swap is one function and a Dockerfile dep change; the CLI does not change.
+The 429 response body is a Jentic ProblemDetails JSON per the [api-problem-details domain schema](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml); the container surfaces the `detail` field and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 
 ## 10. Out of scope (Delivery 1)
 
 - HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
-- Server-side calls to Jentic from the container or CLI: usage tracking, key validation, and rate limiting (beyond the static URL allowlist) all defer to a follow-up delivery.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.
 - Multi-spec / portfolio scoring.
 - Plugins or custom rubrics.
@@ -681,13 +693,16 @@ A follow-up delivery introduces real signup at `jentic.com/signup`, real `JENTIC
 When the implementation lands, these acceptance checks validate the architecture end-to-end:
 
 **Anonymous / gate path:**
-- `npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` (no key) → success, scorecard printed.
+- `npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` (no key) → success, scorecard printed; no validator call.
 - `npx @jentic/api-scorecard-cli score https://example.com/openapi.yaml` (no key) → exit 3 with allowlist-index hint.
-- `npx @jentic/api-scorecard-cli score ./local.yaml` (no key) → exit 2 with `mvp-preview` hint.
+- `npx @jentic/api-scorecard-cli score ./local.yaml` (no key) → exit 2 with signup hint.
 
-**MVP key scheme:**
-- `JENTIC_API_KEY=garbage npx @jentic/api-scorecard-cli score ./local.yaml` → exit 2 with placeholder-key error message.
-- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score ./local.yaml` → success; spinner shows `Bundling ./local.yaml…`.
+**Real-key validation:**
+- `JENTIC_API_KEY=<unknown-key> npx @jentic/api-scorecard-cli score ./local.yaml` → exit 2 with the server's ProblemDetails detail (validator returned 401/403).
+- `JENTIC_API_KEY=<over-quota-key> npx @jentic/api-scorecard-cli score ./local.yaml` → exit 7 with the server's detail and the `Retry-After` header.
+- `JENTIC_API_KEY=<valid-key> npx @jentic/api-scorecard-cli score ./local.yaml` → success; spinner shows `Bundling ./local.yaml…`. The validator request increments the user's per-key counter.
+- `JENTIC_API_KEY=<valid-key> npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` → success; no validator call (free tier short-circuits before the network hit).
+- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score ./local.yaml` → success with deprecation warning on stderr.
 
 **Output formats and detail levels:**
 - `npx @jentic/api-scorecard-cli score <input> --format json | jq .summary.score` → numeric, no chrome on stdout.
@@ -699,7 +714,7 @@ When the implementation lands, these acceptance checks validate the architecture
 - `npx @jentic/api-scorecard-cli score <input> --verbose` → extra stderr logging (engine progress, timing), report payload unchanged. *(Phase 7)*
 
 **Bundle / LLM:**
-- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.
+- `JENTIC_API_KEY=<valid-key> npx @jentic/api-scorecard-cli score https://internal.example/openapi.yaml --bundle` → CLI fetches host-side, bundles, pipes to container; success.
 - `npx @jentic/api-scorecard-cli score <input> --with-llm` with no provider env vars set → exits `1` (`GENERIC_ERROR`) with a guidance message covering cloud and local recipes, BEFORE any docker invocation.
 
 **Container lifecycle:**

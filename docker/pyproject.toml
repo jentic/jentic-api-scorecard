@@ -6,11 +6,13 @@ requires-python = ">=3.12"
 dependencies = [
     "jentic-apitools-pipelines==1.0.0a17",
     "jentic-apitools-common==1.0.0a17",
+    "requests>=2.32,<3",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.3,<10",
+    "pytest-httpserver>=1.1,<2",
     "ruff>=0.14.1,<0.16.0",
     "poethepoet>=0.37,<0.47",
 ]

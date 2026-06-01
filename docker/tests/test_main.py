@@ -1,5 +1,6 @@
 """Unit tests for __main__.py arg parsing and dispatch."""
 
+import json
 import os
 import subprocess
 import sys
@@ -7,12 +8,14 @@ from pathlib import Path
 
 
 _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+_USAGE_PATH = "/api/v1/usage/api-scoring"
 
 
 def run_runner(*args, env_override=None, stdin_data=None):
     """Run the runner as a subprocess to test arg parsing and exit codes."""
     env = os.environ.copy()
     env.pop("JENTIC_API_KEY", None)
+    env.pop("JENTIC_API_BASE_URL", None)
     if env_override:
         env.update(env_override)
 
@@ -51,15 +54,44 @@ class TestArgParsing:
 
 
 class TestGateIntegration:
-    def test_bad_key_exits_2(self):
+    def test_unknown_key_exits_2(self, httpserver):
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            json.dumps({"detail": "unknown api key"}),
+            status=401,
+            content_type="application/problem+json",
+        )
         result = run_runner(
             "score",
             "--url",
             "https://example.com/spec.yaml",
-            env_override={"JENTIC_API_KEY": "wrong-key"},
+            env_override={
+                "JENTIC_API_KEY": "wrong-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
         )
         assert result.returncode == 2
         assert "not recognized" in result.stderr
+
+    def test_rate_limited_exits_7(self, httpserver):
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            json.dumps({"detail": "monthly quota exhausted"}),
+            status=429,
+            content_type="application/problem+json",
+            headers={"Retry-After": "120"},
+        )
+        result = run_runner(
+            "score",
+            "--url",
+            "https://example.com/spec.yaml",
+            env_override={
+                "JENTIC_API_KEY": "real-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
+        )
+        assert result.returncode == 7
+        assert "rate limit reached" in result.stderr
+        assert "monthly quota exhausted" in result.stderr
+        assert "Retry-After: 120" in result.stderr
 
     def test_anonymous_non_allowlisted_exits_3(self):
         result = run_runner(
