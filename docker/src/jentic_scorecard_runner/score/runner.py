@@ -1,31 +1,20 @@
 """Score an OpenAPI spec in-process and stream the scorecard JSON to stdout."""
 
 import json
-import logging
 import sys
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-
-# Pre-empt the engine's lazy stdout log handler before its imports run.
-# `jentic.apitools.common.utils.logging.get_module_logger` calls
-# `configure_root_logger()` (attaches a stdout INFO handler) when the root
-# logger has no handlers. Pipelines' import chain triggers `datadog.initialize`
-# at INFO, which would then emit a JSON line to stdout *before* our scorecard.
-# Attaching a NullHandler + raising root level here keeps that branch dormant.
-logging.getLogger().addHandler(logging.NullHandler())
-logging.getLogger().setLevel(logging.CRITICAL + 1)
-
-from jentic.apitools.common.models import (  # noqa: E402
+from jentic.apitools.common.models import (
     OASJsonRequest,
     OASProcessConfiguration,
     OASRequestMeta,
     SpecSourceUrl,
 )
-from jentic.apitools.pipelines import score_openapi  # noqa: E402
+from jentic.apitools.pipelines import score_openapi
 
-from jentic_scorecard_runner.exit_codes import ExitCode  # noqa: E402
+from jentic_scorecard_runner.exit_codes import ExitCode
 
 
 def run_score(url: str | None, with_llm: bool) -> ExitCode:
