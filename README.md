@@ -73,12 +73,12 @@ npx @jentic/api-scorecard-cli@alpha score \
 For URLs outside OAK or local files, set the API key:
 
 ```bash
-JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score \
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score \
   https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
 ```bash
-JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml
 ```
 
 That's it. The CLI pulls the scoring engine automatically on first run.
@@ -139,7 +139,7 @@ export LLM_PROVIDER=OPENAI
 export LIGHT_LLM_PROVIDER=OPENAI
 export LLM_LIGHT_MODEL=gpt-4o-mini
 
-JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
 ```
 
 Token cost is low — the engine uses a lightweight model (e.g. Claude Haiku, GPT-4o-mini),
@@ -153,14 +153,19 @@ troubleshooting.
 ## Anonymous vs keyed access
 
 OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis)
-score without any key. For everything else, set the MVP preview key:
+score without any key and stay on the free tier — those URLs bypass key validation entirely.
+For everything else (local files, URLs outside OAK), get a key at [jentic.com/signup](https://jentic.com/signup):
 
 ```bash
-export JENTIC_API_KEY=mvp-preview
+export JENTIC_API_KEY=<your-key>
 ```
 
-This is a documented public placeholder for the alpha preview — not a secret. Real key issuance
-arrives in a future release.
+Real keys are validated live by the container against `api.jentic.com`. The same call doubles
+as the per-key usage / rate-limit accounting hit. If you exceed your quota the CLI exits with
+code `7` and prints the `Retry-After` value.
+
+`JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during the alpha and prints
+a stderr warning; it is removed in a follow-up minor release.
 
 ## CLI reference
 
@@ -205,7 +210,7 @@ jentic-api-scorecard score <input> [options]
 
 | Variable | When | Purpose |
 |---|---|---|
-| `JENTIC_API_KEY` | URLs outside OAK and local files | Set to `mvp-preview` during alpha (see [Anonymous vs keyed access](#anonymous-vs-keyed-access)). |
+| `JENTIC_API_KEY` | URLs outside OAK and local files | Real key issued at [jentic.com/signup](https://jentic.com/signup); validated live against `api.jentic.com` (see [Anonymous vs keyed access](#anonymous-vs-keyed-access)). |
 | LLM provider + routing vars | With `--with-llm` | The CLI auto-detects credentials (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, AWS keys) and routing (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `*_API_URL`, `LLM_MAX_TOKENS`) and forwards them to the container; loopback URLs are rewritten so a host-side Ollama is reachable. Full reference: [LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md). |
 
 #### Exit codes
@@ -214,11 +219,12 @@ jentic-api-scorecard score <input> [options]
 |---|---|
 | 0 | Scoring completed (regardless of the score itself). |
 | 1 | Generic error (bad input, bundling failure, unexpected container failure). |
-| 2 | Auth: `JENTIC_API_KEY` is set to an unrecognized value, or a local file / stdin input was used without the key set. |
+| 2 | Auth: `JENTIC_API_KEY` is set to a value the Jentic backend does not recognize, or a local file / stdin input was used without the key set. |
 | 3 | Anonymous gate rejected: URL outside the OAK allowlist and no key set. |
 | 4 | Docker not installed or daemon unreachable. |
 | 5 | Spec fetch or parse failure. |
 | 6 | Engine invocation failure. |
+| 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 
 ## Prefer a browser?
 

@@ -188,19 +188,21 @@ The CLI version = image tag invariant (`docs/architecture.md` §2) holds in alph
 - Document the alpha release ritual: release branch → version bump → tag (`v1.0.0-alpha.<N>`) → workflow fires → image and packages land together.
 - Update `docs/architecture.md` §2 to document the alpha channel and the no-floating-docker-tag invariant. README adds the alpha disclaimer that flag surface is in flux until stable (`--format`, `--quiet`, `--verbose` arrive across Phases 6–9).
 
-## Phase 13 — Real auth: replace `mvp-preview` with an HTTP validator
+## Phase 13 — Real auth: replace `mvp-preview` with an HTTP validator ✅
 
 **Goal:** `JENTIC_API_KEY=<real-key>` validates against `api.jentic.com`; the placeholder check becomes a deprecation message pointing users to signup.
 **Depends on:** Phase 12 (so signup-driven onboarding can flow through the documented `npx` UX)
 **Priority:** High
 
-The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md` §9). The phase that ships real keys is a release-gate moment for the project — it's the difference between an MVP preview and a real product. **Not a `(blocker)` today**, because the placeholder system is documented and safe; this is forward-looking work that unblocks the next product phase.
+The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md` §9). The phase that ships real keys is a release-gate moment for the project — it's the difference between an MVP preview and a real product.
 
-- Replace the static comparison in `docker/src/jentic_scorecard_runner/gate.py` with `httpx.get("https://api.jentic.com/v1/validate", headers={"Authorization": f"Bearer {key}"})`.
-- Keep the `mvp-preview` value temporarily as a recognized placeholder with a deprecation message ("This MVP key is deprecated; sign up at https://jentic.com/signup for a real key.") for one minor version, then remove.
-- Add `httpx` to `docker/pyproject.toml`.
-- Bump the engine pin if needed and rebuild the image (CLI version bump rides along).
-- Update `docs/architecture.md` §9 to mark the MVP scheme as superseded.
+- Replace the static comparison in `docker/src/jentic_scorecard_runner/gate.py` with a live HTTP call to `https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit.
+- Keep the `mvp-preview` value temporarily as a recognized free-pass with a stderr deprecation message ("`mvp-preview` is deprecated; sign up at https://jentic.com/signup for a real key.") for one minor version, then remove.
+- Add a new exit code `7 — RATE_LIMITED` (validator returned 429) to the public CLI contract; map 401/403 to the existing `2 — AUTH_INVALID_KEY`.
+- Surface the ProblemDetails `detail` field and the `Retry-After` header (when present) on stderr.
+- Fail open on validator-side infrastructure errors (timeout, 5xx, malformed body): warn on stderr, allow scoring.
+- Allowlisted (jentic-public-apis) URLs short-circuit the validator entirely — they remain free and outside the rate limit.
+- Update `docs/architecture.md` §9 to describe live validation; mark `mvp-preview` as superseded.
 
 ## Phase 14 — HTML formatter implementation
 
@@ -235,7 +237,7 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 
 ## Later Phases (Not Yet Planned)
 
-- `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `7 — score below threshold`, documented in `docs/architecture.md` §6) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
+- `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `8 — score below threshold`; code `7` is taken by `RATE_LIMITED`) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
 - Markdown formatter (`--format markdown`) — a Markdown table projection of the scorecard for pasting into PR comments / status checks. Deferred until concrete CI-integrator demand surfaces; `--format json` (Phase 6) covers the machine-readable channel in the meantime.
 - Structured logger across `packages/cli/` — replace ad-hoc `process.stderr.write('error: …')` / `'warning: …'` calls with a level-based logger (likely `consola`). Not a phase on its own — refactor, no user-visible capability. The decision to introduce one (or not) belongs in Phase 7's `plan.md`, since `--verbose` is the first feature that makes log levels load-bearing. Listed here so the question isn't lost.
 - Native binary distribution via `curl -fsSL | bash` (self-extracting archive bundling Node + node_modules; platform-specific builds in CI; requires code signing for macOS/Windows)
@@ -243,6 +245,6 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 - Plugins / custom rubrics on top of JAIRF
 - `--cpus` / `--memory` flags + matching engine worker-pool hints (deferred until a concrete user-pain signal)
 - Login subcommand / persistent credentials file
-- Server-side calls to Jentic for usage tracking / rate limiting
+- Server-side analytics or telemetry beyond the existing usage-counter validator round-trip
 
 <!-- Items above are clearly out of current scope for the initial product trajectory. -->

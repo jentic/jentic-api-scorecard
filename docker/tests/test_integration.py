@@ -4,6 +4,13 @@ Run with: pytest tests/test_integration.py -v
 Prerequisite: docker build -t jentic-api-scorecard:dev .
 
 Set IMAGE env var to override: IMAGE=ghcr.io/jentic/jentic-api-scorecard:0.1.0 pytest ...
+
+Note: real-key paths (live `api.jentic.com` validation, 429 → exit 7, 401 → exit 2)
+are not covered here — they would couple CI to the live backend's quota state. Those
+paths are exercised at the runner level by `test_gate.py` / `test_main.py`, which
+spin up a local `pytest-httpserver` and hit it via the `JENTIC_API_BASE_URL`
+override. The container build does not expose that override on the public CLI
+surface.
 """
 
 import json
@@ -63,14 +70,10 @@ class TestAnonymousGatePath:
 
 
 class TestMVPKeyScheme:
-    def test_bad_key_exits_auth_invalid(self):
-        r = docker_run("score", "--url", PETSTORE_URL, env={"JENTIC_API_KEY": "garbage"})
-        assert r.returncode == ExitCode.AUTH_INVALID_KEY
-        assert "not recognized" in r.stderr
-
     def test_mvp_key_url_mode(self):
         r = docker_run("score", "--url", PETSTORE_URL, env={"JENTIC_API_KEY": "mvp-preview"})
         assert r.returncode == ExitCode.SUCCESS
+        assert "deprecated" in r.stderr
         data = json.loads(r.stdout)
         assert "summary" in data
         assert data["summary"]["score"] > 0

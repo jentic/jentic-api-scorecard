@@ -14,6 +14,7 @@ describe('ExitCode', function () {
       DOCKER_MISSING: 4,
       SPEC_FAILURE: 5,
       ENGINE_FAILURE: 6,
+      RATE_LIMITED: 7,
     });
   });
 });

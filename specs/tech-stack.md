@@ -81,11 +81,12 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 ## Constraints and Conventions
 
 - **Gate before score (CRITICAL).** `docker/src/jentic_scorecard_runner/__main__.py:45-49` calls `check_gate(url)` before `run_score(...)`. Reordering lets anonymous inputs reach the engine, defeating the auth model. Symptom: `--url` to a non-allowlisted host returns a normal score instead of exit code 3.
-- **Anonymous URL allowlist is hard-coded regex.** `_ALLOWLIST_PATTERN` in `docker/src/jentic_scorecard_runner/gate.py:18-20` matches `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Do not extend the gate to add new accepted values until real auth ships (see `docs/architecture.md` §9).
-- **`JENTIC_API_KEY=mvp-preview` is the only non-anonymous accepted value.** Hard-coded as `_MVP_KEY` in `gate.py:16`. **Not a secret** — the image is public and the value is trivially extractable. Its purpose is to exercise auth plumbing now so swapping in a real validator is a one-function change.
+- **Anonymous URL allowlist is hard-coded regex.** `_ALLOWLIST_PATTERN` in `docker/src/jentic_scorecard_runner/gate.py` matches `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. URLs matching this pattern always score for free and **bypass the validator**, regardless of whether a key is set.
+- **Real keys are validated live against `api.jentic.com`.** `docker/src/jentic_scorecard_runner/usage.py` POSTs to `/api/v1/usage/api-scoring` with header `X-Jentic-API-Key`. The same call doubles as the per-key usage / rate-limit accounting hit. 429 → exit 7 with `Retry-After`; 401/403 → exit 2; network error / 5xx → fail open with stderr warning. See `docs/architecture.md` §9.
+- **`JENTIC_API_KEY=mvp-preview` is a deprecated free-pass.** Hard-coded as `_MVP_KEY` in `gate.py`. Honored for the alpha migration window with a stderr deprecation warning; removed in a follow-up minor release. **Not a secret** — image is public, value is public.
 - **Engine invocation is rigid.** Always `--format json --include-diagnostics --quiet` (+ `--enable-llm-analysis` when applicable). The runner does not expose these on its own surface; the container always emits canonical JSON.
 - **Result JSON is engine-verbatim.** The runner does not invent a schema, rename keys, or restructure. The CLI consumes whatever `jentic-score score --format json` emits (minus `diagnostics` unless `--include-diagnostics` is set on the host CLI). See `docs/architecture.md` §7.
-- **Exit codes are public CLI contract.** Container codes 0/1/2/3/5/6 plus host code 4 (Docker missing) are documented in `docs/architecture.md` §5–§6. Changes break automation.
+- **Exit codes are public CLI contract.** Container codes 0/1/2/3/5/6/7 plus host code 4 (Docker missing) are documented in `docs/architecture.md` §5–§6. Changes break automation.
 - **No runtime package installs.** All Python wheels and JS tarballs are baked at build time; `RUN jentic-score score sample.yaml …` warms the npm cache. Any image change that re-introduces runtime installs is a Dockerfile bug.
 - **Python tooling resolves only from `docker/`.** `pyproject.toml`, `uv.lock`, and `poethepoet` live there; `uv run poe …` from the repo root fails (`Failed to spawn: poe`). Always `cd docker &&` first. The root may host an npm workspaces tree later (see roadmap), but Python stays in `docker/`.
 - **Tests use no mocks.** Hit the real gate / real engine. Tests are the source of truth for the runner's contract; if a test passes it's because the real boundary works, not because a fake one does.
@@ -97,7 +98,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **No FastAPI / web server.** This is a CLI, not a service. The architecture deliberately has no backend in the loop (`docs/architecture.md` §1).
 - **No database.** No persistent state; one spec per `docker run` invocation.
 - **No type checker (mypy / pyright).** Ruff handles Python linting; Python type checks are not enforced. TypeScript runs strict-mode `tsc --noEmit` for `packages/`.
-- **No usage tracking / telemetry / rate-limiting beyond the static URL allowlist.** Explicit non-goals (`docs/architecture.md` §10).
+- **No telemetry beyond the validator round-trip.** The container's only outbound call to Jentic is the `/api/v1/usage/api-scoring` validator hit, which doubles as the per-key usage counter. Allowlisted (jentic-public-apis) URLs do not increment. No Sentry, no analytics, no logs shipped off-host.
 - **No `dockerode` (Docker SDK).** When the npm CLI lands, it shells out to `docker` via `child_process.spawn`. Decision recorded in `docs/architecture.md` §2.
 
 ## Roadmap, not yet built
@@ -106,7 +107,7 @@ These exist in `docs/architecture.md` but **not on disk**. Future phases will la
 
 - **`.github/workflows/npm-publish.yml`** — publish npm packages on tag (Phase 12 of the roadmap).
 - **CLI surface knobs not yet built.** `--quiet` (Phase 9) and `--verbose` (Phase 7) are deferred. The Markdown formatter and `--format html` (Phase 14) remain deferred.
-- **Real auth validator.** Replaces the static `mvp-preview` check with an HTTP call to `api.jentic.com`. One-function change inside the container (Phase 13).
+- **Real signup flow at `jentic.com/signup`.** Issues real `JENTIC_API_KEY` values that the in-container validator (already shipped, see `usage.py`) accepts. The container side is done; the consumer-facing signup site is the remaining piece.
 - **HTML formatter implementation.** `@jentic/api-scorecard-formatter-html` ships as a stub today (per the architecture doc); the actual formatter lands in Phase 14.
 
 ## Open Questions / Uncertain Areas

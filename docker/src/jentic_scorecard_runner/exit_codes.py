@@ -10,3 +10,4 @@ class ExitCode(IntEnum):
     GATE_REJECTED = 3
     SPEC_FAILURE = 5
     ENGINE_FAILURE = 6
+    RATE_LIMITED = 7
