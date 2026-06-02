@@ -22,7 +22,7 @@
     "access": "public",
     "registry": "https://registry.npmjs.org",
     "provenance": true,
-    "tag": "alpha"
+    "tag": "latest"
   },
   "type": "module",
   "main": "./dist/index.js",
