@@ -10,7 +10,7 @@ export interface MockValidatorResponse {
 export function startMockValidatorServer(
   response: MockValidatorResponse,
 ): Promise<{ server: Server; port: number; baseUrl: string }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const server = createServer((_req, res) => {
       const headers: Record<string, string> = {};
       if (response.contentType !== undefined) {
@@ -22,6 +22,7 @@ export function startMockValidatorServer(
       res.writeHead(response.status, headers);
       res.end(response.body ?? '');
     });
+    server.once('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address();
       const port = typeof addr === 'object' && addr !== null ? addr.port : 0;

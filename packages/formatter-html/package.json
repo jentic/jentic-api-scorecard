@@ -20,8 +20,7 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org",
-    "provenance": true,
-    "tag": "latest"
+    "provenance": true
   },
   "type": "module",
   "main": "./dist/index.js",
