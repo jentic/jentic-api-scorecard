@@ -162,6 +162,28 @@ class TestStdinWithStubbedValidator:
         assert r.returncode == ExitCode.AUTH_INVALID_KEY
         assert "not recognized" in r.stderr
 
+    def test_stdin_with_substantial_spec_scores(self, httpserver):
+        """Mirror of the pre-1.0 mvp-preview stdin-mode test against a real spec."""
+        fetch = subprocess.run(
+            ["curl", "-fsSL", OAK_PETSTORE_URL],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert fetch.returncode == 0, fetch.stderr
+
+        httpserver.expect_request(USAGE_PATH, method="POST").respond_with_data("", status=204)
+        base_url = httpserver.url_for("").rstrip("/")
+        r = docker_run(
+            "score",
+            env={"JENTIC_API_KEY": "real-key", "JENTIC_API_BASE_URL": base_url},
+            stdin_data=fetch.stdout,
+            host_network=True,
+        )
+        assert r.returncode == ExitCode.SUCCESS, r.stderr
+        data = json.loads(r.stdout)
+        assert data["summary"]["score"] > 0
+
     def test_stdin_with_rate_limited_key_exits_7(self, httpserver):
         httpserver.expect_request(USAGE_PATH, method="POST").respond_with_data(
             json.dumps({"detail": "monthly scoring quota exhausted"}),
