@@ -672,6 +672,8 @@ The auth pipeline is wired end-to-end against the Jentic backend:
 
 The 429 response body is a Jentic ProblemDetails JSON per the [api-problem-details domain schema](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml); the container surfaces the `detail` field and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 
+The validator endpoint is a Jentic-side usage-accounting hit, not the access-control mechanism. Access control is enforced inside the container by the allowlist regex and the no-key-in-stdin-mode reject — both run before any validator round-trip.
+
 ## 10. Out of scope (Delivery 1)
 
 - HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands in Phase 14.
