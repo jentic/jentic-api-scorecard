@@ -1,4 +1,4 @@
-# Jentic API Scorecard — Architecture (MVP / Delivery 1)
+# Jentic API Scorecard — Architecture (Delivery 1)
 
 > Status: Draft. Architecture for the initial public release.
 > Framework: Jentic API AI Readiness Framework (JAIRF) v0.2.0 — see https://github.com/jentic/api-ai-readiness-framework
@@ -53,7 +53,7 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
 | Usage tracking | The same `POST /api/v1/usage/api-scoring` call that authenticates a real key also increments the user's per-key scoring counter. Allowlisted (jentic-public-apis) URLs do not increment. |
 | Default output | Headline + dimensions on stdout; spinner phases on stderr. `--detail` controls payload depth (summary → dimensions → signals → diagnostics). `--format json` for machine-readable output. |
-| Out of scope (MVP) | HTML formatter wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence. |
+| Out of scope (Delivery 1) | HTML formatter wired in (formatter package scaffolded only); user-facing image flags (image management is fully abstracted by the CLI); subcommands beyond `score` (no `login` / `whoami` / etc.); creds file persistence. |
 
 ## 3. Component diagram
 
@@ -195,7 +195,7 @@ export JENTIC_API_KEY=<your-key>
 npx @jentic/api-scorecard-cli score ./openapi.yaml
 ```
 
-No `login` subcommand, no credentials file, no token persistence — those are post-MVP UX additions on top of an env-var foundation that already works.
+No `login` subcommand, no credentials file, no token persistence — those are post-Delivery-1 UX additions on top of an env-var foundation that already works (see §10).
 
 #### Key validation and rate limiting
 
@@ -672,14 +672,14 @@ The auth pipeline is wired end-to-end against the Jentic backend:
 
 - **Real keys**: issued at `jentic.com/signup`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
 - **Free tier**: URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score without contacting the validator at all, regardless of whether a key is set.
-- **`mvp-preview` (deprecated)**: honored as a free-pass for one minor version with a stderr deprecation warning, then removed.
-- **Fail-open**: when the validator is unreachable (DNS error, timeout, 5xx, malformed body) the container prints a one-line warning and lets scoring proceed. This trades strict enforcement for availability while the Jentic backend stabilizes.
+- **`mvp-preview` (deprecated)**: honored as a free-pass for one minor version with a `DEPRECATED:`-prefixed stderr warning, then removed.
+- **Fail-open**: when the validator is unreachable (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body) the container prints a one-line warning and lets scoring proceed. PO-confirmed policy — an outage on Jentic's side must not block scoring.
 
 The 429 response body is a Jentic ProblemDetails JSON per the [api-problem-details domain schema](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml); the container surfaces the `detail` field and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 
 ## 10. Out of scope (Delivery 1)
 
-- HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands post-MVP.
+- HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands in Phase 14.
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.
 - Multi-spec / portfolio scoring.
