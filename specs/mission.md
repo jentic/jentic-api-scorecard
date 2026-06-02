@@ -40,12 +40,12 @@ We:
 - A user with an OpenAPI spec and Docker installed can score it from one shell command and read a graded report in under 30 seconds.
 - Scoring is **reproducible**: pinning one CLI version pins one image tag pins one engine version. Two users with the same CLI version against the same spec get the same score (modulo LLM-backed signals, which are stochastic).
 - The result JSON is **stable enough to be consumed by automation** — verbatim engine output, no CLI-introduced schema, no envelope keys (see `docs/architecture.md` §7). CI integrators can `jq` the score field without paying attention to CLI version.
-- The **key scheme is real**: `JENTIC_API_KEY=<real-key>` is validated live against `api.jentic.com`; rate limits are enforced by the same call. `JENTIC_API_KEY=mvp-preview` remains as a deprecated free-pass during the alpha migration window and is removed in a follow-up minor release (see `docs/architecture.md` §9).
+- The **key scheme is real**: `JENTIC_API_KEY=<real-key>` is validated live against `api.jentic.com`; rate limits are enforced by the same call (see `docs/architecture.md` §9).
 - Anonymous use is **safe by default**: only specs in the documented allowlist can be scored without a key. The container enforces this; the host CLI cannot bypass it.
 
 ## Assumptions & Unknowns
 
 - **`jentic-apitools-pipelines` + `jentic-apitools-common` are the engine.** The mission assumes the upstream engine remains the JAIRF reference implementation. If JAIRF and the engine diverge, the constitution will need to revisit which one the mission describes.
-- **Real-key validation is live.** The container POSTs to `https://api.jentic.com/api/v1/usage/api-scoring` with header `X-Jentic-API-Key` to validate every real key, and the same call increments the per-key usage counter. `JENTIC_API_KEY=mvp-preview` is a deprecated free-pass kept around only for the alpha migration window. See `docs/architecture.md` §9.
+- **Real-key validation is live.** The container POSTs to `https://api.jentic.com/api/v1/usage/api-scoring` with header `X-Jentic-API-Key` to validate every real key, and the same call increments the per-key usage counter. See `docs/architecture.md` §9.
 - **The npm CLI is on the roadmap, not shipped today.** Delivery 1 ships only the Docker image. The user-facing `npx @jentic/api-scorecard-cli …` UX is the target; today's actual UX is `docker run …`. Both paths are documented in the README.
 - **Sandboxing assumption.** We assume `docker run --rm` provides sufficient isolation for arbitrary public OpenAPI specs to score safely. We do not currently sandbox further (no `--cpus`, no `--memory`, no network namespaces). Architecture.md §10 defers concurrency / CPU control to "concrete user pain."

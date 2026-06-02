@@ -29,7 +29,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 | Runtime (in image) | Python 3.14 + Node 24 LTS | `docker/Dockerfile:1, 11` (`python:3.14-slim` in both stages); Node copied from `node:24-slim` for engine's `npx` dispatch |
 | Scoring engine | `jentic-apitools-pipelines` + `jentic-apitools-common` (PyPI) | `docker/pyproject.toml` (pinned exactly); pipelines transitively pulls `analyze`, `llm`, `score`, `storage`, which spawn `npx`-launched Redocly / Spectral / Speclynx validators |
 | Dependency manager | uv (build-time only) | `docker/uv.lock`; `docker/Dockerfile` builder stage pins `ghcr.io/astral-sh/uv:0.8.5`; `[tool.uv]` in `docker/pyproject.toml:17-18` |
-| Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via `docker/.build/sample.yaml` |
+| Build / packaging | Docker multi-stage | `docker/Dockerfile`; builder stage materializes `.venv` via `uv sync`, runtime stage copies it and runs plain `python`; build-time `npx` cache warming via a real score against the OAK petstore URL (allowlisted, no key required) |
 | Test framework (Python) | pytest | `docker/pyproject.toml:12, 51`; tests in `docker/tests/` |
 | Test framework (JS/TS) | mocha | `packages/cli/package.json` devDep; `packages/cli/.mocharc.json`; tests in `packages/cli/test/`; ESLint flat config already wires `eslint-plugin-mocha` for `packages/*/test/**/*.ts` |
 | Lint / format (Python) | ruff | `docker/pyproject.toml:13, 20-31`; PostToolUse hook `.claude/hooks/ruff-fix.sh` runs on every Python edit |
@@ -50,7 +50,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **Primary storage:** NONE. The container processes a single spec per invocation and exits. No DB, no persistent state, no cache between runs. The build-time npm cache lives in image layers (read-only at runtime).
 - **Access pattern:** stdin → tempfile → engine; URL → engine (engine fetches). I/O is chunked (`read(65536)`) to avoid RSS blow-up on large specs.
 - **Migrations:** N/A.
-- **Caching:** image-layer npm cache (`/var/cache/npm`) populated by the build-time score against `docker/.build/sample.yaml`. **Invariant:** containers must perform no package installs at runtime — see `docs/architecture.md` §6 ("Pre-baked dependencies").
+- **Caching:** image-layer npm cache (`/var/cache/npm`) populated by the build-time score against the OAK petstore URL. **Invariant:** containers must perform no package installs at runtime — see `docs/architecture.md` §6 ("Pre-baked dependencies").
 
 ## Testing
 
@@ -84,11 +84,10 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **Gate before score (CRITICAL).** `docker/src/jentic_scorecard_runner/__main__.py:45-49` calls `check_gate(url)` before `run_score(...)`. Reordering lets anonymous inputs reach the engine, defeating the auth model. Symptom: `--url` to a non-allowlisted host returns a normal score instead of exit code 3.
 - **Anonymous URL allowlist is hard-coded regex.** `_ALLOWLIST_PATTERN` in `docker/src/jentic_scorecard_runner/gate.py` matches `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. URLs matching this pattern always score for free and **bypass the validator**, regardless of whether a key is set.
 - **Real keys are validated live against `api.jentic.com`.** `docker/src/jentic_scorecard_runner/usage.py` POSTs to `/api/v1/usage/api-scoring` with header `X-Jentic-API-Key`. The same call doubles as the per-key usage / rate-limit accounting hit. 429 → exit 7 with `Retry-After`; 401/403 → exit 2; network error / 5xx → fail open with stderr warning. See `docs/architecture.md` §9.
-- **`JENTIC_API_KEY=mvp-preview` is a deprecated free-pass.** Hard-coded as `_MVP_KEY` in `gate.py`. Honored for the alpha migration window with a stderr deprecation warning; removed in a follow-up minor release. **Not a secret** — image is public, value is public.
 - **Engine invocation is rigid.** Always `OASProcessConfiguration(enable_llm_analysis=<bool>, include_diagnostics_in_score=True)`. The runner does not expose these knobs on its own surface; the container always emits canonical JSON.
 - **Result JSON is engine-verbatim.** The runner does not invent a schema, rename keys, or restructure. The CLI consumes whatever the engine writes to `scorecard.json`, verbatim. See `docs/architecture.md` §7.
 - **Exit codes are public CLI contract.** Container codes 0/1/2/3/5/6/7 plus host code 4 (Docker missing) are documented in `docs/architecture.md` §5–§6. Changes break automation.
-- **No runtime package installs.** All Python wheels and JS tarballs are baked at build time; the Dockerfile pipes `docker/.build/sample.yaml` into the runner with `JENTIC_API_KEY=mvp-preview` to warm the npm cache. Any image change that re-introduces runtime installs is a Dockerfile bug.
+- **No runtime package installs.** All Python wheels and JS tarballs are baked at build time; the Dockerfile runs a real `score --url <oak-petstore>` invocation at build time to warm the npm cache. Any image change that re-introduces runtime installs is a Dockerfile bug.
 - **Python tooling resolves only from `docker/`.** `pyproject.toml`, `uv.lock`, and `poethepoet` live there; `uv run poe …` from the repo root fails (`Failed to spawn: poe`). Always `cd docker &&` first. The root may host an npm workspaces tree later (see roadmap), but Python stays in `docker/`.
 - **Tests use no mocks.** Hit the real gate / real engine. Tests are the source of truth for the runner's contract; if a test passes it's because the real boundary works, not because a fake one does.
 - **Modern Python type syntax only.** `list[str]`, `dict[str, int]`, `X | None` (PEP 585 / PEP 604). No `typing.List` / `typing.Optional`. Top-level imports only (ruff `PLC0415`); no cross-module `_private` imports (ruff `PLC2701`). See `.claude/rules/python-code-style.md`.

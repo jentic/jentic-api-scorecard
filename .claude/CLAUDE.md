@@ -42,10 +42,9 @@ The gate decides allow/deny in this order; the first match wins:
 | URL matches `_ALLOWLIST_PATTERN` (jentic-public-apis) | Free tier — allowed; validator is **not** called, regardless of whether a key is set. |
 | `JENTIC_API_KEY` unset/empty + URL mode | `GATE_REJECTED` (3) with allowlist hint. |
 | `JENTIC_API_KEY` unset/empty + stdin mode | `AUTH_INVALID_KEY` (2) with signup hint. |
-| `JENTIC_API_KEY=mvp-preview` | Allowed with stderr deprecation warning (alpha migration window only; removed in a follow-up minor release). |
-| Real key | `usage.check_usage(key)` POSTs to `https://api.jentic.com/api/v1/usage/api-scoring`. 2xx → allow; 429 → `RATE_LIMITED` (7) with `detail` + `Retry-After`; 401/403 → `AUTH_INVALID_KEY` (2) with `detail`; network/5xx/malformed → **fail open** with stderr warning. |
+| Any key | `usage.check_usage(key)` POSTs to `https://api.jentic.com/api/v1/usage/api-scoring`. 2xx → allow; 429 → `RATE_LIMITED` (7) with `detail` + `Retry-After`; 401/403 → `AUTH_INVALID_KEY` (2) with `detail`; network/5xx/malformed → **fail open** with stderr warning. |
 
-The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The deprecated free-pass key value lives in `gate.py` as `_MVP_KEY`. The HTTP client lives in `docker/src/jentic_scorecard_runner/usage.py` and never raises — every failure path returns one of `UsageAllowed | UsageRateLimited | UsageInvalidKey | UsageUnverifiable`. The validator base URL is overridable for tests via `JENTIC_API_BASE_URL` (test-only; not user-facing).
+The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The HTTP client lives in `docker/src/jentic_scorecard_runner/usage.py` and never raises — every failure path returns one of `UsageAllowed | UsageRateLimited | UsageInvalidKey | UsageUnverifiable`. The validator base URL is overridable for tests via `JENTIC_API_BASE_URL` (test-only; not user-facing).
 
 ### Scoring (`docker/src/jentic_scorecard_runner/score/`)
 
@@ -57,7 +56,7 @@ The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The deprecated f
 
 ### Image build (`docker/Dockerfile`)
 
-Multi-stage `python:3.14-slim` + `node:24-slim` (engine spawns Redocly / Spectral / Speclynx via `npx`). The builder stage runs `uv sync --frozen --no-dev --no-install-project` to materialize `/app/.venv`; the runtime stage copies the venv and prepends `/app/.venv/bin` to `PATH`, so uv is not present in the final image. The build runs a real score against `docker/.build/sample.yaml` (piped to the runner over stdin with `JENTIC_API_KEY=mvp-preview` so the gate accepts it) to warm the npm cache so the first user-facing run doesn't pay validator-download cost. Entrypoint: `python -m jentic_scorecard_runner`.
+Multi-stage `python:3.14-slim` + `node:24-slim` (engine spawns Redocly / Spectral / Speclynx via `npx`). The builder stage runs `uv sync --frozen --no-dev --no-install-project` to materialize `/app/.venv`; the runtime stage copies the venv and prepends `/app/.venv/bin` to `PATH`, so uv is not present in the final image. The build runs a real score against the OAK petstore URL (`raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json`) to warm the npm cache so the first user-facing run doesn't pay validator-download cost. The URL is allowlisted, so the gate accepts the request without a key. Entrypoint: `python -m jentic_scorecard_runner`.
 
 ## Common commands
 

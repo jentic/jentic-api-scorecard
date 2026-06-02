@@ -235,6 +235,14 @@ Today every `npx … score` is a fresh `docker run` — cold engine, cold valida
 
 This phase replaces the prior "Later Phases" entry "CLI connecting to remote docker instance with `--api-url` option" — removed in this change.
 
+## Phase 16 — Graduate to stable 1.0.0 ✅
+
+**Goal:** retire the alpha channel and ship `@jentic/api-scorecard-cli@1.0.0` under the npm `latest` dist-tag. Drop the `mvp-preview` placeholder. Switch the release workflow from prerelease bumps to Conventional Commits.
+**Depends on:** Phases 12 + 13.
+**Priority:** High
+
+The alpha era served its purpose — the flag surface is settled, real-key auth is live, and `mvp-preview` was always documented as transitional. Stable gives integrators a `latest` tag they can pin against.
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `8 — score below threshold`; code `7` is taken by `RATE_LIMITED`) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
