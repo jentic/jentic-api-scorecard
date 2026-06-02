@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import type { Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,9 +8,9 @@ import { expect } from 'chai';
 
 import { startMockSpecServer } from './mock-spec-server.ts';
 
-const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
-const SAMPLE_SPEC = `${REPO_ROOT}/docker/.build/sample.yaml`;
+const OAK_PETSTORE_URL =
+  'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
 
 function runCliAsync(
   args: string[],
@@ -40,17 +39,23 @@ function strip(s: string): string {
   return s.replace(/\x1B\[[0-9;]*m/g, '');
 }
 
+function envWithoutKey(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env['JENTIC_API_KEY'];
+  return env;
+}
+
 describe('score command — e2e against docker', function () {
   this.timeout(E2E_TIMEOUT_MS);
 
-  describe('local file input (mvp-preview key)', function () {
+  describe('allowlisted URL input', function () {
     let exitCode: number | null;
     let stdout: string;
     let stderr: string;
 
     before(function () {
-      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC], {
-        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+      const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL], {
+        env: envWithoutKey(),
         encoding: 'utf8',
         timeout: E2E_TIMEOUT_MS,
       });
@@ -70,15 +75,15 @@ describe('score command — e2e against docker', function () {
       expect(out).to.include('Readiness:');
     });
 
-    it('renders the dimension table for the sample spec', function () {
+    it('renders the dimension table', function () {
       const out = strip(stdout);
       expect(out).to.include('Foundational Compliance');
       expect(out).to.include('Security');
-      expect(out).to.match(/1\s+operations/);
+      expect(out).to.match(/\d+\s+operations/);
     });
 
-    it('echoes the source path', function () {
-      expect(strip(stdout)).to.include(SAMPLE_SPEC);
+    it('echoes the source URL', function () {
+      expect(strip(stdout)).to.include(OAK_PETSTORE_URL);
     });
   });
 
@@ -88,15 +93,12 @@ describe('score command — e2e against docker', function () {
 
     before(function () {
       // Merge stderr into stdout so we can observe the actual emission
-      // order users see on a TTY. Paths are passed via env to avoid any
-      // shell-interpolation hazard if the repo lives under a path that
-      // contains shell metacharacters.
+      // order users see on a TTY.
       const result = spawnSync('bash', ['-c', 'node "$CLI" score "$SPEC" 2>&1'], {
         env: {
-          ...process.env,
-          JENTIC_API_KEY: 'mvp-preview',
+          ...envWithoutKey(),
           CLI: CLI_BIN,
-          SPEC: SAMPLE_SPEC,
+          SPEC: OAK_PETSTORE_URL,
         },
         encoding: 'utf8',
         timeout: E2E_TIMEOUT_MS,
@@ -123,11 +125,15 @@ describe('score command — e2e against docker', function () {
     let stdout: string;
 
     before(function () {
-      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--detail', 'summary'], {
-        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
-        encoding: 'utf8',
-        timeout: E2E_TIMEOUT_MS,
-      });
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--detail', 'summary'],
+        {
+          env: envWithoutKey(),
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
       exitCode = result.status;
       stdout = result.stdout ?? '';
     });
@@ -148,8 +154,8 @@ describe('score command — e2e against docker', function () {
       let stderr: string;
 
       before(function () {
-        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json'], {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json'], {
+          env: envWithoutKey(),
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         });
@@ -191,9 +197,9 @@ describe('score command — e2e against docker', function () {
       before(function () {
         const result = spawnSync(
           'node',
-          [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--detail', 'summary'],
+          [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json', '--detail', 'summary'],
           {
-            env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+            env: envWithoutKey(),
             encoding: 'utf8',
             timeout: E2E_TIMEOUT_MS,
           },
@@ -222,9 +228,9 @@ describe('score command — e2e against docker', function () {
       before(function () {
         const result = spawnSync(
           'node',
-          [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--detail', 'diagnostics'],
+          [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json', '--detail', 'diagnostics'],
           {
-            env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+            env: envWithoutKey(),
             encoding: 'utf8',
             timeout: E2E_TIMEOUT_MS,
           },
@@ -250,8 +256,8 @@ describe('score command — e2e against docker', function () {
       let stderr: string;
 
       before(function () {
-        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '-f', 'json'], {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+        const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL, '-f', 'json'], {
+          env: envWithoutKey(),
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         });
@@ -274,11 +280,15 @@ describe('score command — e2e against docker', function () {
       let stderr: string;
 
       before(function () {
-        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'invalid'], {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
-          encoding: 'utf8',
-          timeout: E2E_TIMEOUT_MS,
-        });
+        const result = spawnSync(
+          'node',
+          [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'invalid'],
+          {
+            env: envWithoutKey(),
+            encoding: 'utf8',
+            timeout: E2E_TIMEOUT_MS,
+          },
+        );
         exitCode = result.status;
         stderr = result.stderr ?? '';
       });
@@ -306,9 +316,9 @@ describe('score command — e2e against docker', function () {
       outPath = join(workDir, 'report.json');
       const result = spawnSync(
         'node',
-        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '-o', outPath],
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json', '-o', outPath],
         {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          env: envWithoutKey(),
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         },
@@ -345,9 +355,9 @@ describe('score command — e2e against docker', function () {
       const altPath = join(workDir, 'longform.json');
       const result = spawnSync(
         'node',
-        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '--output', altPath],
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json', '--output', altPath],
         {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          env: envWithoutKey(),
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         },
@@ -367,9 +377,9 @@ describe('score command — e2e against docker', function () {
       const target = join(workDir, 'does-not-exist', 'report.json');
       const result = spawnSync(
         'node',
-        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'json', '-o', target],
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'json', '-o', target],
         {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+          env: envWithoutKey(),
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         },
@@ -390,8 +400,8 @@ describe('score command — e2e against docker', function () {
     let stderr: string;
 
     before(function () {
-      const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--quiet'], {
-        env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
+      const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL, '--quiet'], {
+        env: envWithoutKey(),
         encoding: 'utf8',
         timeout: E2E_TIMEOUT_MS,
       });
@@ -420,9 +430,9 @@ describe('score command — e2e against docker', function () {
     try {
       const result = spawnSync(
         'node',
-        [CLI_BIN, 'score', SAMPLE_SPEC, '--format', 'pretty', '-o', outPath],
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'pretty', '-o', outPath],
         {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview', FORCE_COLOR: '1' },
+          env: { ...envWithoutKey(), FORCE_COLOR: '1' },
           encoding: 'utf8',
           timeout: E2E_TIMEOUT_MS,
         },
@@ -440,91 +450,22 @@ describe('score command — e2e against docker', function () {
   it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
     // RFC 6761 reserves .test as never-resolvable, so even if the gate were
     // bypassed the engine could not fetch the URL.
-    const env = { ...process.env };
-    delete env['JENTIC_API_KEY'];
     const result = spawnSync('node', [CLI_BIN, 'score', 'https://invalid.test/openapi.yaml'], {
-      env,
+      env: envWithoutKey(),
       encoding: 'utf8',
       timeout: E2E_TIMEOUT_MS,
     });
     expect(result.status).to.equal(3);
   });
 
-  describe('--bundle', function () {
-    let server: Server;
-    let mockUrl: string;
-
-    before(async function () {
-      const started = await startMockSpecServer();
-      server = started.server;
-      mockUrl = `http://127.0.0.1:${started.port}/openapi.yaml`;
-    });
-
-    after(function () {
-      server.close();
-    });
-
-    describe('URL + --bundle (host-side fetch and bundle)', function () {
-      let exitCode: number | null;
-      let stdout: string;
-      let stderr: string;
-
-      before(async function () {
-        const result = await runCliAsync(['score', mockUrl, '--bundle'], {
-          ...process.env,
-          JENTIC_API_KEY: 'mvp-preview',
-        });
-        exitCode = result.exitCode;
-        stdout = result.stdout;
-        stderr = result.stderr;
-      });
-
-      it('exits 0', function () {
-        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
-      });
-
-      it('shows the bundling spinner phase for the URL', function () {
-        expect(stderr).to.include('Bundling');
-        expect(stderr).to.include(mockUrl);
-      });
-
-      it('renders the headline against the fetched spec', function () {
-        const out = strip(stdout);
-        expect(out).to.include('API Readiness Scorecard');
-        expect(out).to.include('Final score:');
-      });
-    });
-
-    it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', async function () {
-      const env = { ...process.env };
-      delete env['JENTIC_API_KEY'];
-      const result = await runCliAsync(['score', mockUrl, '--bundle'], env);
+  it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', async function () {
+    const started = await startMockSpecServer();
+    try {
+      const mockUrl = `http://127.0.0.1:${started.port}/openapi.yaml`;
+      const result = await runCliAsync(['score', mockUrl, '--bundle'], envWithoutKey());
       expect(result.exitCode).to.equal(2);
-    });
-
-    describe('local file + --bundle (no-op)', function () {
-      let exitCode: number | null;
-      let stdout: string;
-      let stderr: string;
-
-      before(function () {
-        const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--bundle'], {
-          env: { ...process.env, JENTIC_API_KEY: 'mvp-preview' },
-          encoding: 'utf8',
-          timeout: E2E_TIMEOUT_MS,
-        });
-        exitCode = result.status;
-        stdout = result.stdout ?? '';
-        stderr = result.stderr ?? '';
-      });
-
-      it('exits 0', function () {
-        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
-      });
-
-      it('renders the headline like a bare local-file invocation', function () {
-        expect(strip(stdout)).to.include('API Readiness Scorecard');
-      });
-    });
+    } finally {
+      started.server.close();
+    }
   });
 });

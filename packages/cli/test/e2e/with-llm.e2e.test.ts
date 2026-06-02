@@ -6,9 +6,9 @@ import { expect } from 'chai';
 
 import { startMockLlmServer } from './mock-llm-server.ts';
 
-const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url));
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
-const SAMPLE_SPEC = `${REPO_ROOT}/docker/.build/sample.yaml`;
+const OAK_PETSTORE_URL =
+  'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
 
 const E2E_TIMEOUT_MS = 120_000;
 
@@ -32,6 +32,12 @@ function runCliAsync(
   });
 }
 
+function envWithoutKey(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env['JENTIC_API_KEY'];
+  return env;
+}
+
 describe('--with-llm e2e against mock LLM server', function () {
   this.timeout(E2E_TIMEOUT_MS);
 
@@ -50,10 +56,9 @@ describe('--with-llm e2e against mock LLM server', function () {
 
   it('forwards env vars and produces semantic diagnostics', async function () {
     const result = await runCliAsync(
-      ['score', SAMPLE_SPEC, '--with-llm', '--detail', 'diagnostics'],
+      ['score', OAK_PETSTORE_URL, '--with-llm', '--detail', 'diagnostics'],
       {
-        ...process.env,
-        JENTIC_API_KEY: 'mvp-preview',
+        ...envWithoutKey(),
         LLM_PROVIDER: 'OPENAI',
         LIGHT_LLM_PROVIDER: 'OPENAI',
         OPENAI_API_KEY: 'mock-key',
@@ -68,7 +73,7 @@ describe('--with-llm e2e against mock LLM server', function () {
   });
 
   it('fail-fast exits 1 when no provider is configured', function () {
-    const env = { ...process.env };
+    const env = envWithoutKey();
     delete env['OPENAI_API_KEY'];
     delete env['ANTHROPIC_API_KEY'];
     delete env['GEMINI_API_KEY'];
@@ -85,9 +90,8 @@ describe('--with-llm e2e against mock LLM server', function () {
     delete env['LLM_MODEL'];
     delete env['LLM_LIGHT_MODEL'];
     delete env['LLM_MAX_TOKENS'];
-    env['JENTIC_API_KEY'] = 'mvp-preview';
 
-    const result = spawnSync('node', [CLI_BIN, 'score', SAMPLE_SPEC, '--with-llm'], {
+    const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL, '--with-llm'], {
       env,
       encoding: 'utf8',
       timeout: E2E_TIMEOUT_MS,
