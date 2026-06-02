@@ -114,15 +114,16 @@ jentic-api-scorecard/
 │   ├── cli/                                  (@jentic/api-scorecard-cli)
 │   │   ├── package.json                      (bin: jentic-api-scorecard)
 │   │   ├── tsconfig.json
-│   │   └── src/
-│   │       ├── index.ts                      (entry; subcommand dispatch)
-│   │       ├── commands/
-│   │       │   └── score.ts
-│   │       ├── auth.ts                       (read JENTIC_API_KEY env)
-│   │       ├── bundle.ts                     (@redocly/openapi-core)
-│   │       ├── docker.ts                     (spawn('docker', …))
-│   │       ├── formatters/                   (pretty / json / markdown formatters; --format + --detail)
-│   │       └── spinner.ts                    (stderr phase spinner)
+│   │   ├── src/
+│   │   │   ├── index.ts                      (entry; subcommand dispatch)
+│   │   │   ├── commands/
+│   │   │   │   └── score.ts
+│   │   │   ├── auth.ts                       (read JENTIC_API_KEY env)
+│   │   │   ├── bundle.ts                     (@redocly/openapi-core)
+│   │   │   ├── docker.ts                     (spawn('docker', …))
+│   │   │   ├── formatters/                   (pretty / json / markdown formatters; --format + --detail)
+│   │   │   └── spinner.ts                    (stderr phase spinner)
+│   │   └── test/fixtures/sample.yaml         (tiny OpenAPI doc used as an e2e test fixture)
 │   └── formatter-html/                       (@jentic/api-scorecard-formatter-html — stub)
 │       ├── package.json
 │       └── src/index.ts                      (export format(result): string — TODO)
@@ -131,8 +132,6 @@ jentic-api-scorecard/
 │   ├── .dockerignore
 │   ├── pyproject.toml                        (uv; deps: jentic-apitools-pipelines + -common)
 │   ├── uv.lock
-│   ├── .build/
-│   │   └── sample.yaml                       (tiny OpenAPI doc used as e2e fixture)
 │   └── src/jentic_scorecard_runner/
 │       ├── __main__.py                       (image entry inside container)
 │       ├── gate.py                           (URL allowlist enforcement)

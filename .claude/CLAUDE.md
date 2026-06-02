@@ -83,7 +83,7 @@ All Python tooling resolves from inside `docker/` — `pyproject.toml` and `poet
 | Build the image | `docker build -t jentic-scorecard:dev ./docker` |
 | Smoke an allowlisted URL via image | `docker run --rm jentic-scorecard:dev score --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
 | Smoke an allowlisted URL via CLI | `node packages/cli/bin/jentic-api-scorecard.mjs score https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/<path>` |
-| Smoke a local file via CLI | `JENTIC_API_KEY=<your-key> node packages/cli/bin/jentic-api-scorecard.mjs score docker/.build/sample.yaml` |
+| Smoke a local file via CLI | `JENTIC_API_KEY=<your-key> node packages/cli/bin/jentic-api-scorecard.mjs score packages/cli/test/fixtures/sample.yaml` |
 | Smoke from stdin via image | `cat openapi.json \| docker run -i --rm -e JENTIC_API_KEY=<your-key> jentic-scorecard:dev score` |
 
 Tests use pytest, no mocking — `tests/test_main.py` and `tests/test_gate.py` exercise the runner directly; `tests/test_integration.py` exercises the engine end-to-end.

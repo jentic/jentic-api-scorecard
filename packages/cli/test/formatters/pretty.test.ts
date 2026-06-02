@@ -11,7 +11,7 @@ import { ScorecardResult } from '../../src/result.ts';
 const fixturePath = fileURLToPath(new URL('../fixtures/scorecard.sample.json', import.meta.url));
 const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as ScorecardResult;
 
-const SOURCE = 'docker/.build/sample.yaml';
+const SOURCE = 'packages/cli/test/fixtures/sample.yaml';
 
 function strip(s: string): string {
   // chalk.level=0 already disables ANSI in the formatter's chalk instance, but

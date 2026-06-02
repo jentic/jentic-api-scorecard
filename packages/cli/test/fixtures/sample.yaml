@@ -2,7 +2,7 @@ openapi: "3.0.3"
 info:
   title: Sample API
   version: "0.0.1"
-  description: Minimal spec used at image build time to warm npm/npx caches.
+  description: Minimal spec used as an e2e test fixture.
 paths:
   /health:
     get:

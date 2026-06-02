@@ -2,9 +2,7 @@ import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const SAMPLE_SPEC_PATH = fileURLToPath(
-  new URL('../../../../docker/.build/sample.yaml', import.meta.url),
-);
+const SAMPLE_SPEC_PATH = fileURLToPath(new URL('../fixtures/sample.yaml', import.meta.url));
 const SAMPLE_SPEC_BODY = readFileSync(SAMPLE_SPEC_PATH, 'utf8');
 
 export function startMockSpecServer(): Promise<{ server: Server; port: number }> {
