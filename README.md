@@ -82,7 +82,7 @@ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.ya
 ```
 
 > [!IMPORTANT]
-> Free keys come with **100 scorings**. See [Anonymous vs keyed access](#anonymous-vs-keyed-access) for signup and quota details.
+> Free keys come with **100 scorings per month** (resets at the start of each calendar month). See [Anonymous vs keyed access](#anonymous-vs-keyed-access) for signup and quota details.
 
 That's it. The CLI pulls the scoring engine automatically on first run.
 
@@ -164,9 +164,9 @@ export JENTIC_API_KEY=<your-key>
 ```
 
 Real keys are validated live by the container against `api.jentic.com`. The same call doubles
-as the per-key usage / rate-limit accounting hit. **Each free key gets 100 scorings**; once
-that quota is exhausted the CLI exits with code `7` and prints the `Retry-After` value along
-with a link to upgrade your plan.
+as the per-key usage / rate-limit accounting hit. **Each free key gets 100 scorings per month**,
+resetting at the start of each calendar month. Once that quota is exhausted the CLI exits with
+code `7` and prints the `Retry-After` value along with a link to upgrade your plan.
 
 `JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass during the alpha and prints
 a `DEPRECATED:`-prefixed stderr warning; it is removed in a follow-up minor release.
