@@ -5,12 +5,9 @@ Order of decisions in `check_gate`:
 1. URLs under `jentic-public-apis` are always free — score without contacting
    the Jentic backend, regardless of whether a key is set.
 2. Without a key, only allowlisted URLs are accepted; stdin is rejected.
-3. `JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during
-   the alpha (one-minor-version migration window per `specs/roadmap.md`
-   Phase 13). A deprecation warning is printed to stderr.
-4. Any other key is validated live against `api.jentic.com`. The container
-   fails open if the validator is unreachable so an outage on Jentic's side
-   does not block scoring.
+3. Any key is validated live against `api.jentic.com`. The container fails
+   open if the validator is unreachable so an outage on Jentic's side does
+   not block scoring.
 """
 
 import os
@@ -27,8 +24,6 @@ from jentic_scorecard_runner.usage import (
     check_usage,
 )
 
-
-_MVP_KEY = "mvp-preview"
 
 _ALLOWLIST_PATTERN = re.compile(
     r"^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/"
@@ -61,14 +56,6 @@ def check_gate(url: str | None) -> ExitCode:
             file=sys.stderr,
         )
         return ExitCode.GATE_REJECTED
-
-    if key == _MVP_KEY:
-        print(
-            "DEPRECATED: JENTIC_API_KEY=mvp-preview will stop working in a future release; "
-            "sign up at https://jentic.com/signup for a real key.",
-            file=sys.stderr,
-        )
-        return ExitCode.SUCCESS
 
     result = check_usage(key)
 

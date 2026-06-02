@@ -1,4 +1,4 @@
-"""Unit tests for the anonymous gate, mvp-preview deprecation, and live key validation.
+"""Unit tests for the anonymous gate and live key validation.
 
 Live-validation tests use `pytest-httpserver` to spin up a real HTTP server in the
 test process, then point the runner at it via `JENTIC_API_BASE_URL`. No mocking.
@@ -64,32 +64,6 @@ class TestAllowlistFreeTier:
         url = "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/petstore/openapi.yaml"
         assert check_gate(url=url) == ExitCode.SUCCESS
         # Validator must not have been called.
-        assert base_url.log == []
-
-    def test_allowlisted_url_with_mvp_key_skips_warning(self, monkeypatch, capsys):
-        monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
-        url = "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/petstore/openapi.yaml"
-        assert check_gate(url=url) == ExitCode.SUCCESS
-        # Allowlist short-circuit also skips the deprecation warning.
-        assert capsys.readouterr().err == ""
-
-
-class TestMvpDeprecation:
-    def test_mvp_key_allows_url_with_warning(self, monkeypatch, capsys):
-        monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
-        assert check_gate(url="https://example.com/openapi.yaml") == ExitCode.SUCCESS
-        err = capsys.readouterr().err
-        assert "DEPRECATED:" in err
-        assert "jentic.com/signup" in err
-
-    def test_mvp_key_allows_stdin_with_warning(self, monkeypatch, capsys):
-        monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
-        assert check_gate(url=None) == ExitCode.SUCCESS
-        assert "DEPRECATED:" in capsys.readouterr().err
-
-    def test_mvp_key_does_not_call_validator(self, monkeypatch, base_url):
-        monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
-        assert check_gate(url=None) == ExitCode.SUCCESS
         assert base_url.log == []
 
 
