@@ -262,15 +262,17 @@ verifies an artifact end-to-end before you install it:
   per-platform SBOMs, dual-store attestations (BuildKit OCI referrers + Sigstore), and
   verification via either `docker buildx imagetools inspect` or `gh attestation verify`.
 
-### Runs anywhere, calls home nowhere
+### Runs anywhere, minimal phone-home
 
 The image is a closed system at scoring time: every Python wheel, Node.js
 binary, and validator tarball it needs is baked in at build time. Scoring does
-not call PyPI, npmjs, a Jentic backend, or any external service. Local-file
-inputs and bundled-URL inputs run fully offline; URL inputs reach the network
-only to fetch the OpenAPI document and resolve any external `$ref`s it points
-at. `--with-llm` optionally sends spec context to an LLM provider of the
-user's choice; a local endpoint (Ollama) keeps everything on-machine. Multi-arch images
+not call PyPI or npmjs and pulls no runtime packages. The **only** outbound
+call to Jentic is a small validator round-trip that authenticates your key
+and increments the per-key usage counter; OAK URLs (jentic-public-apis) skip
+even that. URL inputs additionally reach the network to fetch the OpenAPI
+document and resolve any external `$ref`s it points at. `--with-llm`
+optionally sends spec context to an LLM provider of your choice; a local
+endpoint (Ollama) keeps everything on-machine. Multi-arch images
 (linux/amd64 + linux/arm64) ship from the same release, so the same guarantees
 hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
 
