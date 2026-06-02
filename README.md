@@ -168,7 +168,7 @@ as the per-key usage / rate-limit accounting hit. **Each free key gets 100 scori
 that quota is exhausted the CLI exits with code `7` and prints the `Retry-After` value along
 with a link to upgrade your plan.
 
-`JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during the alpha and prints
+`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass during the alpha and prints
 a `DEPRECATED:`-prefixed stderr warning; it is removed in a follow-up minor release.
 
 ## CLI reference
