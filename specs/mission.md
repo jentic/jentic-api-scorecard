@@ -19,7 +19,7 @@ Jentic API Scorecard is a CLI tool that scores an OpenAPI document against JAIRF
 We:
 
 - **Score an OpenAPI spec by URL or piped JSON** — six JAIRF dimensions (FC, DXJ, ARAX, AU, SEC, AID) with overall score, level (`ai-aware`, etc.), and grade (A+ … F).
-- **Run scoring locally** in an isolated Docker container — no spec content leaves the user's machine. The only outbound call to Jentic is a small validator round-trip that authenticates the key and increments the per-key usage counter; allowlisted (jentic-public-apis) URLs skip even that.
+- **Run scoring locally** in an isolated Docker container — no spec content leaves the user's machine. The only outbound call to Jentic is a small key-check round-trip against `api.jentic.com` that authenticates the key and increments the per-key usage counter; allowlisted (jentic-public-apis) URLs skip even that.
 - **Gate anonymous use** to specs in [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) (which always score for free); other inputs require a real `JENTIC_API_KEY` issued at [jentic.com/signup](https://jentic.com/signup), validated live against `api.jentic.com` (see `docs/architecture.md` §9).
 - **Emit machine-readable JSON** verbatim from the engine, plus pretty / Markdown projections for human readers (deferred to the npm CLI; today the image emits JSON only).
 - **Optionally invoke LLM-backed analysis** via `--with-llm` when an LLM provider key (OpenAI / Anthropic / Gemini / AWS Bedrock) is forwarded by the host.

@@ -245,6 +245,6 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 - Plugins / custom rubrics on top of JAIRF
 - `--cpus` / `--memory` flags + matching engine worker-pool hints (deferred until a concrete user-pain signal)
 - Login subcommand / persistent credentials file
-- Server-side analytics or telemetry beyond the existing usage-counter validator round-trip
+- Server-side analytics or telemetry beyond the existing usage-counter key-check round-trip
 
 <!-- Items above are clearly out of current scope for the initial product trajectory. -->

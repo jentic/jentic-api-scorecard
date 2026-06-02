@@ -208,6 +208,8 @@ The container validates real keys live against `POST https://api.jentic.com/api/
 
 URLs matching the jentic-public-apis allowlist (see "Anonymous gate" above) are always free and **skip the validation call entirely**, regardless of whether a key is set. This keeps OAK contributions zero-friction even after rate limits ship.
 
+**Free quota**: 100 scorings per calendar month per key, resetting at the start of each month. Keys exceeding the quota receive a 429 with the upgrade link in the ProblemDetails `detail` field. Subscribed keys carry their own quota terms surfaced by the same endpoint.
+
 `JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass for the alpha migration window: the container prints a one-line `DEPRECATED:`-prefixed stderr warning ("`DEPRECATED: JENTIC_API_KEY=mvp-preview will stop working in a future release; sign up at https://jentic.com/signup for a real key.`") and proceeds without contacting the validator. The placeholder is removed in a follow-up minor release.
 
 ### LLM provider keys (only when `--with-llm` is set)
@@ -673,7 +675,7 @@ The auth pipeline is wired end-to-end against the Jentic backend:
 - **Real keys**: issued at `jentic.com/signup`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
 - **Free tier**: URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score without contacting the validator at all, regardless of whether a key is set.
 - **`mvp-preview` (deprecated)**: honored as a free-pass for one minor version with a `DEPRECATED:`-prefixed stderr warning, then removed.
-- **Fail-open**: when the validator is unreachable (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body) the container prints a one-line warning and lets scoring proceed. PO-confirmed policy — an outage on Jentic's side must not block scoring.
+- **Fail-open**: when `api.jentic.com` is unreachable (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body) the container prints a one-line warning and lets scoring proceed. PO-confirmed policy — an outage on Jentic's side must not block scoring.
 
 The 429 response body is a Jentic ProblemDetails JSON per the [api-problem-details domain schema](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml); the container surfaces the `detail` field and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 
