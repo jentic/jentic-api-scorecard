@@ -81,6 +81,7 @@ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score \
 JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml
 ```
 
+> [!IMPORTANT]
 > Free keys come with **100 scorings**. See [Anonymous vs keyed access](#anonymous-vs-keyed-access) for signup and quota details.
 
 That's it. The CLI pulls the scoring engine automatically on first run.
