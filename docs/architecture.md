@@ -199,16 +199,16 @@ No `login` subcommand, no credentials file, no token persistence — those are p
 
 #### Key validation and rate limiting
 
-The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`, sending the key in the `X-Jentic-API-Key` header. The endpoint is the same call that increments the user's scoring counter, so a single round-trip both authenticates the request and enforces the per-key rate limit. Responses are interpreted as:
+The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`, sending the key in the `X-Jentic-API-Key` header. The HTTP client sets `allow_redirects=False` so a 3xx response cannot bounce the request — and the `X-Jentic-API-Key` header — to a different host than the one the runner intended to reach (`requests` does not strip custom headers on cross-host redirects). The endpoint is the same call that increments the user's scoring counter, so a single round-trip both authenticates the request and enforces the per-key rate limit. Responses are interpreted as:
 
 - **2xx** — key valid and within quota; scoring proceeds.
 - **429** — key valid but the user is over quota. The body is a Jentic ProblemDetails JSON (per the [Jentic API problem-details domain](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml)); the container surfaces the `detail` string and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 - **401 / 403** — server-side key rejection. Container exits with `AUTH_INVALID_KEY` (2) and prints the server's `detail`.
-- **Network error, timeout, 5xx, malformed body** — the container fails open: it prints a one-line warning to stderr and lets scoring proceed. This trades off strict enforcement for availability — an outage on Jentic's side does not block scoring.
+- **Anything else (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body)** — the container fails open: it prints a one-line warning to stderr and lets scoring proceed. This trades off strict enforcement for availability — an outage on Jentic's side does not block scoring.
 
 URLs matching the jentic-public-apis allowlist (see "Anonymous gate" above) are always free and **skip the validation call entirely**, regardless of whether a key is set. This keeps OAK contributions zero-friction even after rate limits ship.
 
-`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass for the alpha migration window: the container prints a one-line stderr warning ("`mvp-preview` is deprecated; sign up at https://jentic.com/signup for a real key") and proceeds without contacting the validator. The placeholder is removed in a follow-up minor release.
+`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass for the alpha migration window: the container prints a one-line `DEPRECATED:`-prefixed stderr warning ("`DEPRECATED: JENTIC_API_KEY=mvp-preview will stop working in a future release; sign up at https://jentic.com/signup for a real key.`") and proceeds without contacting the validator. The placeholder is removed in a follow-up minor release.
 
 ### LLM provider keys (only when `--with-llm` is set)
 

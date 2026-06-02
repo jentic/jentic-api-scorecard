@@ -165,7 +165,7 @@ as the per-key usage / rate-limit accounting hit. If you exceed your quota the C
 code `7` and prints the `Retry-After` value.
 
 `JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during the alpha and prints
-a stderr warning; it is removed in a follow-up minor release.
+a `DEPRECATED:`-prefixed stderr warning; it is removed in a follow-up minor release.
 
 ## CLI reference
 

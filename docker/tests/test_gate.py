@@ -79,13 +79,13 @@ class TestMvpDeprecation:
         monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
         assert check_gate(url="https://example.com/openapi.yaml") == ExitCode.SUCCESS
         err = capsys.readouterr().err
-        assert "deprecated" in err
+        assert "DEPRECATED:" in err
         assert "jentic.com/signup" in err
 
     def test_mvp_key_allows_stdin_with_warning(self, monkeypatch, capsys):
         monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
         assert check_gate(url=None) == ExitCode.SUCCESS
-        assert "deprecated" in capsys.readouterr().err
+        assert "DEPRECATED:" in capsys.readouterr().err
 
     def test_mvp_key_does_not_call_validator(self, monkeypatch, base_url):
         monkeypatch.setenv("JENTIC_API_KEY", "mvp-preview")
@@ -104,6 +104,26 @@ class TestRealKeyValidation:
         monkeypatch.setenv("JENTIC_API_KEY", "real-key")
         assert check_gate(url=None) == ExitCode.SUCCESS
 
+    def test_allowed_when_200_body_is_empty(self, base_url, monkeypatch):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data("", status=200)
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+
+    def test_allowed_when_200_body_is_non_dict(self, base_url, monkeypatch):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "[1, 2, 3]", status=200, content_type="application/json"
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+
+    def test_post_has_no_request_body(self, base_url, monkeypatch):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data("", status=204)
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        assert len(base_url.log) == 1
+        request, _ = base_url.log[0]
+        assert request.data == b""
+
     def test_forwards_api_key_header(self, base_url, monkeypatch):
         base_url.expect_request(
             _USAGE_PATH,
@@ -111,6 +131,24 @@ class TestRealKeyValidation:
             headers={"X-Jentic-API-Key": "real-key"},
         ).respond_with_data("", status=204)
         monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+
+    def test_forwards_user_agent_header(self, base_url, monkeypatch):
+        base_url.expect_request(
+            _USAGE_PATH,
+            method="POST",
+            headers={"User-Agent": "jentic-api-scorecard-runner"},
+        ).respond_with_data("", status=204)
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+
+    def test_strips_whitespace_from_key(self, base_url, monkeypatch):
+        base_url.expect_request(
+            _USAGE_PATH,
+            method="POST",
+            headers={"X-Jentic-API-Key": "real-key"},
+        ).respond_with_data("", status=204)
+        monkeypatch.setenv("JENTIC_API_KEY", "  real-key\n")
         assert check_gate(url=None) == ExitCode.SUCCESS
 
     def test_rate_limited_returns_exit_7(self, base_url, monkeypatch, capsys):
@@ -182,6 +220,26 @@ class TestFailOpen:
         err = capsys.readouterr().err
         assert "could not reach api.jentic.com" in err
         assert "HTTP 503" in err
+
+    def test_unexpected_4xx_fails_open(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "bad request", status=400
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        err = capsys.readouterr().err
+        assert "could not reach api.jentic.com" in err
+        assert "HTTP 400" in err
+
+    def test_3xx_redirect_not_followed_fails_open(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=302, headers={"Location": "https://evil.example.com/"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        err = capsys.readouterr().err
+        assert "could not reach api.jentic.com" in err
+        assert "HTTP 302" in err
 
     def test_unreachable_host_fails_open(self, monkeypatch, capsys):
         # Port 1 on localhost reliably refuses connections in CI.

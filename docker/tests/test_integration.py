@@ -73,7 +73,7 @@ class TestMVPKeyScheme:
     def test_mvp_key_url_mode(self):
         r = docker_run("score", "--url", PETSTORE_URL, env={"JENTIC_API_KEY": "mvp-preview"})
         assert r.returncode == ExitCode.SUCCESS
-        assert "deprecated" in r.stderr
+        assert "DEPRECATED:" in r.stderr
         data = json.loads(r.stdout)
         assert "summary" in data
         assert data["summary"]["score"] > 0
