@@ -6,7 +6,8 @@ and maps the response to a `UsageResult` variant:
 - 2xx → UsageAllowed (valid, within quota)
 - 429 → UsageRateLimited (valid, over quota)
 - 401 / 403 → UsageInvalidKey (unknown key)
-- network error / 5xx / malformed → UsageUnverifiable (caller fails open)
+- anything else (3xx, unexpected 4xx, 5xx, network error, timeout,
+  malformed body) → UsageUnverifiable (caller fails open)
 
 The function never raises.
 """
