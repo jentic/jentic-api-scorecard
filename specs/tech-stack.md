@@ -76,7 +76,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 - **Deployment target:** GHCR (`ghcr.io/jentic/jentic-api-scorecard`). Manual today; automated via `docker-image.yml` on the roadmap.
 - **Environment management:** env-vars only (`JENTIC_API_KEY`, optional LLM provider keys). No `.env` file, no secret manager.
 - **Observability:** stderr for engine warnings + (eventual) host-side spinner phases. No metrics, no tracing, no telemetry.
-- **Outbound calls from the container:** limited to the per-invocation key-check round-trip (`POST api.jentic.com/api/v1/usage/api-scoring`), which authenticates the key and increments the per-key usage counter. Allowlisted (jentic-public-apis) URLs skip even that. See `docs/architecture.md` §9.
+- **Outbound calls to Jentic:** limited to the per-invocation key-check round-trip (`POST https://api.jentic.com/api/v1/usage/api-scoring`), which authenticates the key and increments the per-key usage counter. Allowlisted (jentic-public-apis) URLs skip even that. URL-mode scoring additionally fetches the target OpenAPI document and any external `$ref`s; `--with-llm` forwards spec context to the user-selected LLM provider. See `docs/architecture.md` §9.
 - **Error handling / resilience:** structured exit codes (`docker/src/jentic_scorecard_runner/exit_codes.py`: `SUCCESS=0`, `GENERIC_ERROR=1`, `AUTH_INVALID_KEY=2`, `GATE_REJECTED=3`, `SPEC_FAILURE=5`, `ENGINE_FAILURE=6`, `RATE_LIMITED=7`). Pipeline exceptions and `result.success == False` both map to `ENGINE_FAILURE`. `SPEC_FAILURE` (5) is reserved in the public contract and currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code. `RATE_LIMITED` (7) is returned when the validator at `api.jentic.com` answers 429. The engine's own timeout knobs (`OASProcessConfiguration.conn_timeout` / `read_timeout`, default 300s each) bound network reads.
 
 ## Constraints and Conventions
@@ -96,7 +96,7 @@ The current state, grounded in repository evidence. Planned-but-not-built items 
 
 ## What We Are Not Using
 
-- **No FastAPI / web server.** This is a CLI, not a service. We do not operate any backend in the scoring orchestration loop (`docs/architecture.md` §1). The one outbound call to Jentic is the per-invocation key-check round-trip described in `Outbound calls from the container` above.
+- **No FastAPI / web server.** This is a CLI, not a service. We do not operate any backend in the scoring orchestration loop (`docs/architecture.md` §1). The one outbound call to Jentic is the per-invocation key-check round-trip described in `Outbound calls to Jentic` above.
 - **No database.** No persistent state; one spec per `docker run` invocation.
 - **No type checker (mypy / pyright).** Ruff handles Python linting; Python type checks are not enforced. TypeScript runs strict-mode `tsc --noEmit` for `packages/`.
 - **No telemetry beyond the key-check round-trip.** The container's only outbound call to Jentic is the `/api/v1/usage/api-scoring` hit, which doubles as the per-key usage counter. Allowlisted (jentic-public-apis) URLs do not increment. No Sentry, no analytics, no logs shipped off-host.
