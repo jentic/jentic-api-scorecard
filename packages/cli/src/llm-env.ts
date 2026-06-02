@@ -1,4 +1,4 @@
-import { platform } from 'node:os';
+import { needsDockerHostRewrite, rewriteUrlForContainer } from './docker-host.ts';
 
 const CLOUD_PROVIDER_KEYS: string[] = [
   'OPENAI_API_KEY',
@@ -33,37 +33,6 @@ export interface LlmEnvDetection {
 function isPresent(env: NodeJS.ProcessEnv, name: string): boolean {
   const val = env[name];
   return val !== undefined && val !== '';
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
-}
-
-function needsDockerHostRewrite(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return isLoopbackHostname(url.hostname) || url.hostname === 'host.docker.internal';
-  } catch {
-    return false;
-  }
-}
-
-function rewriteUrlForContainer(value: string): string {
-  try {
-    const url = new URL(value);
-    if (platform() === 'linux') {
-      if (url.hostname === 'host.docker.internal') {
-        url.hostname = 'localhost';
-      }
-    } else {
-      if (isLoopbackHostname(url.hostname)) {
-        url.hostname = 'host.docker.internal';
-      }
-    }
-    return url.toString();
-  } catch {
-    return value;
-  }
 }
 
 function hasAwsCredentials(env: NodeJS.ProcessEnv): boolean {
