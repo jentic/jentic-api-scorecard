@@ -36,7 +36,7 @@ export LLM_PROVIDER=OPENAI
 export LIGHT_LLM_PROVIDER=OPENAI
 export LLM_LIGHT_MODEL=gpt-4o-mini
 
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --with-llm
 ```
 
 ### Cloud provider (Anthropic example)
@@ -47,7 +47,7 @@ export LLM_PROVIDER=ANTHROPIC
 export LIGHT_LLM_PROVIDER=ANTHROPIC
 export LLM_LIGHT_MODEL=claude-haiku-4-5-20251001
 
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --with-llm
 ```
 
 ### Cloud provider (AWS Bedrock)
@@ -61,7 +61,7 @@ export AWS_SECRET_ACCESS_KEY=...
 export AWS_REGION=eu-west-1
 export LLM_LIGHT_MODEL=eu.anthropic.claude-haiku-4-5-20251001-v1:0
 
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --with-llm
 ```
 
 The engine defaults to `global.anthropic.claude-haiku-4-5-20251001-v1:0` for `LLM_LIGHT_MODEL`
@@ -89,7 +89,7 @@ export OPENAI_API_KEY=ollama
 export LLM_MODEL=llama3.1:8b
 export LLM_LIGHT_MODEL=llama3.1:8b
 
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --with-llm
 ```
 
 For GPU acceleration, add `--gpus all` to the `docker run` command.

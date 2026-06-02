@@ -10,7 +10,7 @@ For the architectural context, see [architecture.md §8](./architecture.md#8-ver
 
 ## What is published
 
-Every alpha release publishes one tarball plus two independently-signed
+Every release publishes one tarball plus two independently-signed
 attestations bound to the tarball's SHA-256 digest:
 
 | Artifact | Predicate type | Stored in | Tells you |
@@ -56,7 +56,7 @@ steps:
   - uses: actions/setup-node@v6
     with:
       registry-url: https://registry.npmjs.org   # tells npm CLI where to authenticate
-  - run: npx lerna publish from-package --no-private --yes --dist-tag alpha
+  - run: npx lerna publish from-package --no-private --yes
 ```
 
 `actions/setup-node` configures the npm CLI to request an OIDC token from
@@ -85,7 +85,7 @@ separate Sigstore client install.
 
 ```bash
 # 1. Download the published tarball
-npm pack @jentic/api-scorecard-cli@alpha
+npm pack @jentic/api-scorecard-cli@latest
 
 # 2. Verify the npm provenance (gh's default predicate type)
 gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic
@@ -144,7 +144,7 @@ installing or running the CLI:
 ```yaml
 - name: Verify and install scorecard CLI
   run: |
-    npm pack @jentic/api-scorecard-cli@alpha
+    npm pack @jentic/api-scorecard-cli@latest
     gh attestation verify ./jentic-api-scorecard-cli-*.tgz --owner jentic \
       --signer-workflow jentic/jentic-api-scorecard/.github/workflows/release.yml
     npm install -g ./jentic-api-scorecard-cli-*.tgz

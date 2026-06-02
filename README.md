@@ -41,10 +41,10 @@ per-dimension scores, and rolls those up into a single weighted score and grade.
 ## Install
 
 ```bash
-npm install -g @jentic/api-scorecard-cli@alpha
+npm install -g @jentic/api-scorecard-cli
 ```
 
-This installs the latest alpha of the CLI globally. The scoring engine (Docker image) is downloaded automatically
+This installs the CLI globally. The scoring engine (Docker image) is downloaded automatically
 the first time you run `score` — allow a minute or two on a typical connection.
 
 For local files or non-OAK URLs you'll also need a `JENTIC_API_KEY` — see
@@ -57,11 +57,10 @@ jentic-api-scorecard --version
 ```
 
 > **Prefer zero-install?** You can skip the global install and use `npx` — every example in
-> this README works with `npx @jentic/api-scorecard-cli@alpha` in place of
-> `jentic-api-scorecard`. Pin to a specific release with
-> `npx @jentic/api-scorecard-cli@<version>` (e.g. `@1.0.0-alpha.18`); the `@alpha` tag
-> resolves to the latest alpha on each invocation, while `npm install -g` pins you to the
-> installed version until you explicitly update.
+> this README works with `npx @jentic/api-scorecard-cli` in place of `jentic-api-scorecard`.
+> Pin to a specific release with `npx @jentic/api-scorecard-cli@<version>` (e.g. `@1.0.0`);
+> the unpinned form resolves to whatever the `latest` dist-tag points at on each invocation,
+> while `npm install -g` pins you to the installed version until you explicitly update.
 
 ## Try it now
 
@@ -69,19 +68,19 @@ OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jent
 score without any key, uncapped — no signup, no config:
 
 ```bash
-npx @jentic/api-scorecard-cli@alpha score \
+npx @jentic/api-scorecard-cli@latest score \
   https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json
 ```
 
 For URLs outside OAK or local files, set the API key:
 
 ```bash
-JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score \
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@latest score \
   https://petstore3.swagger.io/api/v3/openapi.json
 ```
 
 ```bash
-JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
 ```
 
 > [!IMPORTANT]
@@ -99,16 +98,16 @@ The `--detail` flag lets you zoom in:
 
 ```bash
 # Just the headline score and grade
-npx @jentic/api-scorecard-cli@alpha score --detail summary ./openapi.yaml
+npx @jentic/api-scorecard-cli@latest score --detail summary ./openapi.yaml
 
 # Per-dimension breakdown (default)
-npx @jentic/api-scorecard-cli@alpha score --detail dimensions ./openapi.yaml
+npx @jentic/api-scorecard-cli@latest score --detail dimensions ./openapi.yaml
 
 # Individual signals within each dimension
-npx @jentic/api-scorecard-cli@alpha score --detail signals ./openapi.yaml
+npx @jentic/api-scorecard-cli@latest score --detail signals ./openapi.yaml
 
 # Full diagnostics with top 5 findings per severity
-npx @jentic/api-scorecard-cli@alpha score --detail diagnostics ./openapi.yaml
+npx @jentic/api-scorecard-cli@latest score --detail diagnostics ./openapi.yaml
 ```
 
 ## Machine-readable output
@@ -120,10 +119,10 @@ or LLM-assisted review.
 
 ```bash
 # Gate on the headline score in CI
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --format json | jq .summary.score
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --format json | jq .summary.score
 
 # Capture the full evidence bundle to a file
-npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml \
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
   --format json --detail diagnostics --output report.json
 ```
 
@@ -145,7 +144,7 @@ export LLM_PROVIDER=OPENAI
 export LIGHT_LLM_PROVIDER=OPENAI
 export LLM_LIGHT_MODEL=gpt-4o-mini
 
-JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@alpha score ./openapi.yaml --with-llm
+JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --with-llm
 ```
 
 Token cost is low — the engine uses a lightweight model (e.g. Claude Haiku, GPT-4o-mini),
@@ -170,9 +169,6 @@ Real keys are validated live by the container against `api.jentic.com`. The same
 as the per-key usage / rate-limit accounting hit. **Each free key gets 100 scorings per month**,
 resetting at the start of each calendar month. Once that quota is exhausted the CLI exits with
 code `7` and prints the `Retry-After` value along with a link to upgrade your plan.
-
-`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass during the alpha and prints
-a `DEPRECATED:`-prefixed stderr warning; it is removed in a follow-up minor release.
 
 ## CLI reference
 
@@ -288,11 +284,12 @@ month's score is reproducible from last month's pin.
 
 ## Status
 
-This project is in **alpha**. Track progress in
+The CLI ships **stable** under the `latest` npm dist-tag — release cadence is driven by
+[Conventional Commits](https://www.conventionalcommits.org/). Track in-flight work in
 [`specs/roadmap.md`](https://github.com/jentic/jentic-api-scorecard/blob/main/specs/roadmap.md).
 
 The `:unstable` Docker image is rebuilt on every push to `main` for direct `docker run` users.
-Versioned images are published alongside each alpha CLI release.
+Versioned images are published alongside each CLI release.
 
 ### Scoring engine signal status
 

@@ -7,7 +7,7 @@
 
 A zero-install CLI that scores an OpenAPI document against JAIRF and prints a Jentic API Readiness Scorecard. Users run it via `npx`. The scoring engine is a Python implementation of JAIRF, packaged as a public Docker image. The CLI orchestrates the image. Auth is env-var only (`JENTIC_API_KEY`); the container validates real keys live against `api.jentic.com`, which doubles as the per-key usage / rate-limit accounting call (§9).
 
-URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score for free without a key and bypass the validator entirely. `JENTIC_API_KEY=mvp-preview` is honored as a deprecated free-pass during the alpha migration window — it is removed in a follow-up minor release.
+URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score for free without a key and bypass the validator entirely.
 
 ```
 $ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli score https://petstore3.swagger.io/api/v3/openapi.json
@@ -44,11 +44,11 @@ Source: https://petstore3.swagger.io/api/v3/openapi.json
 | Lerna versioning | Fixed/locked: every package shares one version |
 | Version coupling | CLI npm version = image tag. Engine (`jentic-apitools-pipelines` + `jentic-apitools-common`) versions independently and is pinned exactly inside each image. Pinning one CLI version reproduces the full stack. |
 | Image flow | CLI fully abstracts image management. It pulls `ghcr.io/jentic/jentic-api-scorecard:<cli-version>` automatically. No user-facing image flags. |
-| Tagging | Exact-version GHCR tags only (e.g. `:1.0.0-alpha.3`). The CLI consumes only exact tags, so no floating `:alpha` / `:latest` is published. The one floating tag is `:unstable`, which rolls on every green `main` for direct `docker run` users. |
+| Tagging | Exact-version GHCR tags only (e.g. `:1.0.0`). The CLI consumes only exact tags, so no floating `:latest` is published on the docker side. The one floating tag is `:unstable`, which rolls on every green `main` for direct `docker run` users. |
 | Docker mode | Shell out to `docker` CLI via `child_process.spawn`. No `dockerode`. |
 | Input dispatch | Local path → CLI bundles via Redocly → pipes to container stdin. URL → CLI passes `--url` to container, engine fetches directly. URL + `--bundle` → CLI fetches and bundles host-side, pipes via stdin (escape hatch for internal/auth-gated URLs). |
 | Anonymous gate | URL must match `^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/`. Enforced container-side. Local files require a key. |
-| Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`; jentic-public-apis URLs skip the call entirely (always free). `mvp-preview` is honored as a deprecated free-pass for the alpha migration window. No login subcommand or creds file. |
+| Auth | `JENTIC_API_KEY` env var only. CLI forwards it to the container as `-e JENTIC_API_KEY`. The container validates real keys live against `POST https://api.jentic.com/api/v1/usage/api-scoring`; jentic-public-apis URLs skip the call entirely (always free). No login subcommand or creds file. |
 | Engine | [`jentic-apitools-pipelines`](https://pypi.org/project/jentic-apitools-pipelines/) + [`jentic-apitools-common`](https://pypi.org/project/jentic-apitools-common/) on PyPI, called in-process from the runner. Image bundles Python 3.14 + Node 24 (engine spawns Redocly / Spectral / Speclynx via npx). |
 | LLM analysis | Off by default. Opt-in via `--with-llm`; CLI forwards present provider credentials and routing variables (OpenAI / Anthropic / Gemini / AWS cloud, or OpenAI-compatible local endpoints via `OPENAI_API_URL`) to the container, which passes `--enable-llm-analysis` to the engine. See §5 "Bring your own LLM". |
 | Usage tracking | The same `POST /api/v1/usage/api-scoring` call that authenticates a real key also increments the user's per-key scoring counter. Allowlisted (jentic-public-apis) URLs do not increment. |
@@ -132,7 +132,7 @@ jentic-api-scorecard/
 │   ├── pyproject.toml                        (uv; deps: jentic-apitools-pipelines + -common)
 │   ├── uv.lock
 │   ├── .build/
-│   │   └── sample.yaml                       (tiny OpenAPI doc, COPY'd into image at build to warm npm cache)
+│   │   └── sample.yaml                       (tiny OpenAPI doc used as e2e fixture)
 │   └── src/jentic_scorecard_runner/
 │       ├── __main__.py                       (image entry inside container)
 │       ├── gate.py                           (URL allowlist enforcement)
@@ -140,7 +140,7 @@ jentic-api-scorecard/
 └── .github/workflows/
     ├── ci.yml                                (lint + test on PRs; also callable via workflow_call)
     ├── docker-publish.yml                    (build + push :unstable to GHCR on main; gated on ci.yml)
-    └── alpha-publish.yml                     (alpha-tagged image + npm publish on v*-alpha.* tag — future)
+    └── release.yml                           (workflow_dispatch — bump via Conventional Commits, build versioned image, npm publish at @latest)
 ```
 
 A few layout notes worth calling out:
@@ -209,8 +209,6 @@ The container validates real keys live against `POST https://api.jentic.com/api/
 URLs matching the jentic-public-apis allowlist (see "Anonymous gate" above) are always free and **skip the validation call entirely**, regardless of whether a key is set. This keeps OAK contributions zero-friction even after rate limits ship.
 
 **Free quota**: 100 scorings per calendar month per key, resetting at the start of each month. Keys exceeding the quota receive a 429 with the upgrade link in the ProblemDetails `detail` field. Subscribed keys carry their own quota terms surfaced by the same endpoint.
-
-`JENTIC_API_KEY=mvp-preview` is honored as a **deprecated** free-pass for the alpha migration window: the container prints a one-line `DEPRECATED:`-prefixed stderr warning ("`DEPRECATED: JENTIC_API_KEY=mvp-preview will stop working in a future release; sign up at https://jentic.com/signup for a real key.`") and proceeds without contacting the validator. The placeholder is removed in a follow-up minor release.
 
 ### LLM provider keys (only when `--with-llm` is set)
 
@@ -440,16 +438,16 @@ This matters because the engine ships JS tools as bundled tarballs inside its Py
 ```
 ENV NPM_CONFIG_CACHE=/var/cache/npm
 # Engine deps installed via uv sync in an earlier builder stage; venv copied here.
-COPY .build/sample.yaml /tmp/sample.yaml
-RUN JENTIC_API_KEY=mvp-preview python -m jentic_scorecard_runner score \
-        < /tmp/sample.yaml > /dev/null
+RUN python -m jentic_scorecard_runner score \
+        --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json \
+        > /dev/null
 ```
 
-The score against a representative sample spec exercises every validator the engine will invoke at runtime, populating `/var/cache/npm` with extracted tarballs (`_npx/<hash>/`) and downloaded transitive deps (`_cacache/`). The cache lives in an image layer; every `--rm` container inherits it via the image's read-only layers. No network at runtime.
+The score against the OAK petstore exercises every validator the engine will invoke at runtime, populating `/var/cache/npm` with extracted tarballs (`_npx/<hash>/`) and downloaded transitive deps (`_cacache/`). The cache lives in an image layer; every `--rm` container inherits it via the image's read-only layers. No network at runtime.
 
 Bonus: this doubles as a smoke test — if the engine is broken or the image is missing a system dep, `docker build` fails rather than every user's first score failing.
 
-Confirmed by direct test (2026-05-21, `jentic-apitools-cli==1.0.0a16`, the OSS console-script equivalent at the time): the engine pipeline runs successfully without contacting Jentic during scoring — both invariants we rely on for an offline-capable image. The cache-warm `RUN` now sets `JENTIC_API_KEY=mvp-preview` because the runner's gate rejects stdin input without a key, not because the engine itself needs the key.
+Confirmed by direct test (2026-05-21, `jentic-apitools-cli==1.0.0a16`, the OSS console-script equivalent at the time): the engine pipeline runs successfully without contacting Jentic during scoring — both invariants we rely on for an offline-capable image. The cache-warm `RUN` uses an allowlisted (jentic-public-apis) URL so the gate accepts the request without a key.
 
 **Per-`npx`-call overhead remains** (~500 ms–1 s for Node boot + npm CLI load + cache lookup, even on cache hits). For three validators that's ~1.5–3 s per score, which is acceptable on top of the actual analysis time.
 
@@ -502,9 +500,7 @@ The runner always invokes the engine with `--format json --include-diagnostics -
      b. Else if JENTIC_API_KEY is empty:
           - URL mode: reject (allowlist message), exit 3.
           - stdin mode: reject (key required), exit 2.
-     c. Else if JENTIC_API_KEY == "mvp-preview": print deprecation warning
-        on stderr, allow.
-     d. Else POST to https://api.jentic.com/api/v1/usage/api-scoring with
+     c. Else POST to https://api.jentic.com/api/v1/usage/api-scoring with
         X-Jentic-API-Key header. Interpret the response:
           - 2xx        → allow (call also doubles as usage increment).
           - 429        → exit 7 with server's ProblemDetails detail and
@@ -644,25 +640,24 @@ The shape below was captured by running the petstore spec through the engine pip
 
 **Coupling**: CLI npm version = GHCR image tag. The Python engine packages (`jentic-apitools-pipelines` + `jentic-apitools-common`) version independently upstream; each image build pins one specific pair.
 
-**Channels**: today the project ships only an **alpha channel**. The first stable release (`@latest` npm dist-tag) is deferred until the flag surface settles and the deprecated `mvp-preview` placeholder is fully retired (§9). Until then, `@jentic/api-scorecard-cli@alpha` is the discovery entry point:
+**Channels**: the CLI ships **stable** under the `@jentic/api-scorecard-cli@latest` npm dist-tag. There is no separate alpha or beta channel. The pre-1.0 alpha cuts (`1.0.0-alpha.0` through `1.0.0-alpha.29`) remain on npm under the legacy `alpha` dist-tag for historical reproducibility but receive no further updates.
 
-- The first cut is `1.0.0-alpha.0`; subsequent cuts increment the prerelease counter (`1.0.0-alpha.1`, `1.0.0-alpha.2`, …).
-- npm `@jentic/api-scorecard-cli@1.0.0-alpha.<N>` publishes under the `alpha` dist-tag. `@jentic/api-scorecard-formatter-html` is `"private": true` and does not publish on alpha cuts; it joins the channel once its real implementation ships.
-- `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N>` — the exact alpha tag the CLI of that version consumes. No floating `:alpha` is published; the CLI never asks for one.
-- `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-pipelines==<exact-version>` and `jentic-apitools-common==<exact-version>` (e.g. `1.0.0a17` for both).
+- Each cut publishes `@jentic/api-scorecard-cli@<version>` under `latest` and `ghcr.io/jentic/jentic-api-scorecard:<version>` at the matching exact tag. No floating `:latest` is published on the docker side; the CLI consumes only exact tags.
+- `@jentic/api-scorecard-formatter-html` is `"private": true` and does not publish until Phase 14 lands its real implementation.
+- `docker/pyproject.toml` (used at image build time) pins `jentic-apitools-pipelines==<exact-version>` and `jentic-apitools-common==<exact-version>`.
 
-The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0-alpha.3`) — that pulls `:1.0.0-alpha.3`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
+The CLI hard-codes the image tag matching its own npm version. Users who want to reproduce yesterday's score install yesterday's CLI version (`npx @jentic/api-scorecard-cli@1.0.0`) — that pulls `:1.0.0`, which has the engine version pinned exactly. **Reproducibility = pin one CLI version**; the engine version it transitively carries is recorded in `metadata.engine.version` of the result JSON (the engine emits this directly).
 
 When the engine releases an update we want to ship, we:
 1. Bump `jentic-apitools-pipelines` and `jentic-apitools-common` in `docker/pyproject.toml`.
-2. Cut a new CLI version (e.g. `1.0.0-alpha.<N+1>`).
-3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:1.0.0-alpha.<N+1>` containing the new engine, and publishes `@jentic/api-scorecard-cli@1.0.0-alpha.<N+1>` under the `alpha` dist-tag.
+2. Cut a new CLI version. Release cadence is driven by [Conventional Commits](https://www.conventionalcommits.org/): `lerna version --conventional-commits` reads the `feat:` / `fix:` / `BREAKING CHANGE:` markers since the last tag and computes the next version (patch / minor / major). The release workflow exposes a `release_version` `workflow_dispatch` input as an explicit override for cuts where Conventional Commits is the wrong driver.
+3. CI builds and pushes `ghcr.io/jentic/jentic-api-scorecard:<new-version>` containing the new engine, and publishes `@jentic/api-scorecard-cli@<new-version>` under the `latest` dist-tag.
 
-**Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64). Merging to `main` does **not** publish a CLI version or an alpha tag — it makes the change available to the next alpha cut.
+**Continuous delivery** (CI): every push to `main` triggers `docker-publish.yml`, which gates on `ci.yml` (lint + test) and then builds and pushes `ghcr.io/jentic/jentic-api-scorecard:unstable` (multi-arch: linux/amd64 + linux/arm64). Merging to `main` does **not** publish a CLI version — it makes the change available to the next release cut.
 
-**Release pipeline** (CI): pushing a git tag `v1.0.0-alpha.<N>` triggers an image build + push to GHCR with the exact `:1.0.0-alpha.<N>` tag (no floating `:alpha`/`:latest`) and an `npm publish --tag alpha --provenance` for `packages/cli`. `packages/formatter-html` is skipped automatically while it remains `"private": true`. The stable pipeline (`@latest` dist-tag, `:latest` not used) lands when the project cuts its first stable release.
+**Release pipeline** (CI): a `workflow_dispatch` on `release.yml` runs CI, bumps the version (Conventional Commits or `release_version` input), cuts a GitHub release marked `latest`, builds and pushes `ghcr.io/jentic/jentic-api-scorecard:<version>` to GHCR (no floating `:latest` on the docker side), and runs `lerna publish from-package` for `packages/cli` under the `latest` npm dist-tag. `packages/formatter-html` is skipped automatically while it remains `"private": true`.
 
-**Supply chain attestations**: the alpha release also emits an SPDX 2.3 SBOM for `@jentic/api-scorecard-cli` and attaches it to the registry-served tarball as a Sigstore-signed in-toto attestation via `actions/attest@v4`. The tarball that gets attested is downloaded from npm with `npm pack @jentic/api-scorecard-cli@<version>` immediately after `lerna publish` (with a retry loop to cover registry CDN propagation lag), guaranteeing the attestation digest matches the bytes consumers actually receive — `lerna publish` injects a `gitHead` field into the manifest before its internal pack, so locally re-packing produces a different digest than what the registry serves. The SBOM is generated from the CLI's `dependencies` resolved by `npm install --omit=dev` in an isolated staging directory (the CLI's `package.json` only — no monorepo root, no workspace hoisting), so it mirrors the runtime closure of the published tarball and excludes dev tooling. The image side mirrors this — every push to `ghcr.io/jentic/jentic-api-scorecard` carries SLSA v1 provenance (against the manifest list) and per-platform SPDX 2.3 SBOMs (against each child manifest digest), via both BuildKit-native OCI referrers and Sigstore-signed equivalents in GitHub's attestation store. Operationally both pipelines authenticate via OIDC: npm publishing uses [trusted publishing](https://docs.npmjs.com/trusted-publishers) (no `NPM_TOKEN`), and image publishing uses the workflow's automatic `GITHUB_TOKEN` (no PAT) — there are no long-lived publish secrets in the repository.
+**Supply chain attestations**: each release emits an SPDX 2.3 SBOM for `@jentic/api-scorecard-cli` and attaches it to the registry-served tarball as a Sigstore-signed in-toto attestation via `actions/attest@v4`. The tarball that gets attested is downloaded from npm with `npm pack @jentic/api-scorecard-cli@<version>` immediately after `lerna publish` (with a retry loop to cover registry CDN propagation lag), guaranteeing the attestation digest matches the bytes consumers actually receive — `lerna publish` injects a `gitHead` field into the manifest before its internal pack, so locally re-packing produces a different digest than what the registry serves. The SBOM is generated from the CLI's `dependencies` resolved by `npm install --omit=dev` in an isolated staging directory (the CLI's `package.json` only — no monorepo root, no workspace hoisting), so it mirrors the runtime closure of the published tarball and excludes dev tooling. The image side mirrors this — every push to `ghcr.io/jentic/jentic-api-scorecard` carries SLSA v1 provenance (against the manifest list) and per-platform SPDX 2.3 SBOMs (against each child manifest digest), via both BuildKit-native OCI referrers and Sigstore-signed equivalents in GitHub's attestation store. Operationally both pipelines authenticate via OIDC: npm publishing uses [trusted publishing](https://docs.npmjs.com/trusted-publishers) (no `NPM_TOKEN`), and image publishing uses the workflow's automatic `GITHUB_TOKEN` (no PAT) — there are no long-lived publish secrets in the repository.
 
 > **See also**: [supply-chain-npm.md](./supply-chain-npm.md) and [supply-chain-docker.md](./supply-chain-docker.md) — verification recipes (`gh attestation verify`, `docker buildx imagetools inspect`), per-platform SBOM extraction, downstream-pipeline integration, and the threat-model framing.
 
@@ -674,7 +669,6 @@ The auth pipeline is wired end-to-end against the Jentic backend:
 
 - **Real keys**: issued at `jentic.com/signup`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
 - **Free tier**: URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score without contacting the validator at all, regardless of whether a key is set.
-- **`mvp-preview` (deprecated)**: honored as a free-pass for one minor version with a `DEPRECATED:`-prefixed stderr warning, then removed.
 - **Fail-open**: when `api.jentic.com` is unreachable (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body) the container prints a one-line warning and lets scoring proceed. PO-confirmed policy — an outage on Jentic's side must not block scoring.
 
 The 429 response body is a Jentic ProblemDetails JSON per the [api-problem-details domain schema](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml); the container surfaces the `detail` field and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
@@ -704,7 +698,6 @@ When the implementation lands, these acceptance checks validate the architecture
 - `JENTIC_API_KEY=<over-quota-key> npx @jentic/api-scorecard-cli score ./local.yaml` → exit 7 with the server's detail and the `Retry-After` header.
 - `JENTIC_API_KEY=<valid-key> npx @jentic/api-scorecard-cli score ./local.yaml` → success; spinner shows `Bundling ./local.yaml…`. The validator request increments the user's per-key counter.
 - `JENTIC_API_KEY=<valid-key> npx @jentic/api-scorecard-cli score <jentic-public-apis-url>` → success; no validator call (free tier short-circuits before the network hit).
-- `JENTIC_API_KEY=mvp-preview npx @jentic/api-scorecard-cli score ./local.yaml` → success with deprecation warning on stderr.
 
 **Output formats and detail levels:**
 - `npx @jentic/api-scorecard-cli score <input> --format json | jq .summary.score` → numeric, no chrome on stdout.
