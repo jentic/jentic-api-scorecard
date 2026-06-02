@@ -45,10 +45,10 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER runner
 
-# Warm npm cache: run a real score so npx-invoked validators get cached
-COPY --chown=runner:runner .build/sample.yaml /tmp/sample.yaml
-RUN JENTIC_API_KEY=mvp-preview python -m jentic_scorecard_runner score \
-        < /tmp/sample.yaml > /dev/null && \
-    rm /tmp/sample.yaml
+# Warm npm cache: run a real score so npx-invoked validators get cached.
+# The OAK petstore URL is on the gate's allowlist, so no key is required.
+RUN python -m jentic_scorecard_runner score \
+        --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json \
+        > /dev/null
 
 ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
