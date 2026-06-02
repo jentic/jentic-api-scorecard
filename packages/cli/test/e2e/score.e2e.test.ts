@@ -7,8 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 
 import { startMockSpecServer } from './mock-spec-server.ts';
+import { startMockValidatorServer } from './mock-validator-server.ts';
 
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
+const SAMPLE_SPEC = fileURLToPath(new URL('../fixtures/sample.yaml', import.meta.url));
 const OAK_PETSTORE_URL =
   'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
 
@@ -467,5 +469,64 @@ describe('score command — e2e against docker', function () {
     } finally {
       started.server.close();
     }
+  });
+
+  describe('stdin + JENTIC_API_BASE_URL (validator stub)', function () {
+    it('exits 0 when the validator returns 204', async function () {
+      const validator = await startMockValidatorServer({ status: 204 });
+      try {
+        const result = await runCliAsync(['score', SAMPLE_SPEC], {
+          ...process.env,
+          JENTIC_API_KEY: 'fake-real-key',
+          JENTIC_API_BASE_URL: validator.baseUrl,
+        });
+        expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
+        expect(strip(result.stdout)).to.include('API Readiness Scorecard');
+      } finally {
+        validator.server.close();
+      }
+    });
+
+    it('exits 2 (AUTH_INVALID_KEY) when the validator returns 401', async function () {
+      const validator = await startMockValidatorServer({
+        status: 401,
+        body: JSON.stringify({ detail: 'unknown api key' }),
+        contentType: 'application/problem+json',
+      });
+      try {
+        const result = await runCliAsync(['score', SAMPLE_SPEC], {
+          ...process.env,
+          JENTIC_API_KEY: 'garbage',
+          JENTIC_API_BASE_URL: validator.baseUrl,
+        });
+        expect(result.exitCode).to.equal(2);
+        expect(result.stderr).to.include('not recognized');
+        expect(result.stderr).to.include('unknown api key');
+      } finally {
+        validator.server.close();
+      }
+    });
+
+    it('exits 7 (RATE_LIMITED) when the validator returns 429', async function () {
+      const validator = await startMockValidatorServer({
+        status: 429,
+        body: JSON.stringify({ detail: 'monthly scoring quota exhausted' }),
+        contentType: 'application/problem+json',
+        retryAfter: '3600',
+      });
+      try {
+        const result = await runCliAsync(['score', SAMPLE_SPEC], {
+          ...process.env,
+          JENTIC_API_KEY: 'fake-real-key',
+          JENTIC_API_BASE_URL: validator.baseUrl,
+        });
+        expect(result.exitCode).to.equal(7);
+        expect(result.stderr).to.include('rate limit reached');
+        expect(result.stderr).to.include('monthly scoring quota exhausted');
+        expect(result.stderr).to.include('Retry-After: 3600');
+      } finally {
+        validator.server.close();
+      }
+    });
   });
 });
