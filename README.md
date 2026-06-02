@@ -267,9 +267,9 @@ verifies an artifact end-to-end before you install it:
 The image is a closed system at scoring time: every Python wheel, Node.js
 binary, and validator tarball it needs is baked in at build time. Scoring does
 not call PyPI or npmjs and pulls no runtime packages. The **only** outbound
-call to Jentic is a small validator round-trip that authenticates your key
-and increments the per-key usage counter; OAK URLs (jentic-public-apis) skip
-even that. URL inputs additionally reach the network to fetch the OpenAPI
+call to Jentic is a small key-check round-trip against `api.jentic.com` that
+authenticates your key and increments the per-key usage counter; OAK URLs
+(jentic-public-apis) skip even that. URL inputs additionally reach the network to fetch the OpenAPI
 document and resolve any external `$ref`s it points at. `--with-llm`
 optionally sends spec context to an LLM provider of your choice; a local
 endpoint (Ollama) keeps everything on-machine. Multi-arch images
