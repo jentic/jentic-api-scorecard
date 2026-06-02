@@ -1,15 +1,6 @@
 name: Release monorepo packages
 on:
   workflow_dispatch:
-    inputs:
-      release_version:
-        description: |
-          Optional explicit version (without v prefix, e.g. 1.0.0). When set,
-          overrides the conventional-commits computation — use this for the
-          first stable cut after the alpha graduation. Leave blank to let
-          lerna pick the bump from commit history.
-        required: false
-        type: string
 
 env:
   CPU_CORES: 2
@@ -73,14 +64,9 @@ jobs:
         run: |
           git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
           git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
-          if [ -n "${RELEASE_VERSION}" ]; then
-            npx lerna version "${RELEASE_VERSION}" --no-private --yes --force-publish
-          else
-            npx lerna version --conventional-commits --no-private --yes --force-publish
-          fi
+          npx lerna version --conventional-commits --no-private --yes --force-publish
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          RELEASE_VERSION: ${{ inputs.release_version }}
       - name: Mark release as latest
         run: |
           VERSION=$(node -p "require('./lerna.json').version")

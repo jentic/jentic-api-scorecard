@@ -237,11 +237,11 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 
 ## Phase 16 — Graduate to stable 1.0.0 ✅
 
-**Goal:** retire the alpha channel and ship `@jentic/api-scorecard-cli@1.0.0` under the npm `latest` dist-tag. Drop the `mvp-preview` placeholder. Switch the release workflow from prerelease bumps to Conventional Commits.
+**Goal:** retire the alpha channel and ship `@jentic/api-scorecard-cli` under the npm `latest` dist-tag. Drop the `mvp-preview` placeholder. Switch the release workflow from prerelease bumps to Conventional Commits.
 **Depends on:** Phases 12 + 13.
 **Priority:** High
 
-The alpha era served its purpose — the flag surface is settled, real-key auth is live, and `mvp-preview` was always documented as transitional. Stable gives integrators a `latest` tag they can pin against.
+The alpha era served its purpose — the flag surface is settled, real-key auth is live, and `mvp-preview` was always documented as transitional. Stable gives integrators a `latest` tag they can pin against. Releases are driven entirely by Conventional Commits — `lerna version --conventional-commits --force-publish` reads `feat:` / `fix:` / `BREAKING CHANGE:` markers since the last tag and computes the bump.
 
 ## Later Phases (Not Yet Planned)
 
