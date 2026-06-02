@@ -157,7 +157,7 @@ troubleshooting.
 
 OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis)
 score without any key and stay on the free tier — those URLs bypass key validation entirely.
-For everything else (local files, URLs outside OAK), get a key at [jentic.com/signup](https://jentic.com/signup):
+For everything else (local files, URLs outside OAK), get a key at [jentic.com/signup](https://jentic.com/signup) — once signed in, click **Score → CLI & Keys** to issue your key:
 
 ```bash
 export JENTIC_API_KEY=<your-key>
