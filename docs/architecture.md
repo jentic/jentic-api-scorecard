@@ -204,7 +204,7 @@ The container validates real keys live against `POST https://api.jentic.com/api/
 - **2xx** — key valid and within quota; scoring proceeds.
 - **429** — key valid but the user is over quota. The body is a Jentic ProblemDetails JSON (per the [Jentic API problem-details domain](https://raw.githubusercontent.com/jentic/api-problem-details/refs/heads/main/openapi-domain.yaml)); the container surfaces the `detail` string and the `Retry-After` header (when present) on stderr and exits with `RATE_LIMITED` (7).
 - **401 / 403** — server-side key rejection. Container exits with `AUTH_INVALID_KEY` (2) and prints the server's `detail`.
-- **Anything else (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body)** — the container fails open: it prints a one-line warning to stderr and lets scoring proceed. This trades off strict enforcement for availability — an outage on Jentic's side does not block scoring.
+- **Anything else (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body)** — the container fails open: it prints a one-line warning to stderr and lets scoring proceed. **Policy**: validator unreachability fails open. This is intentional and PO-confirmed — an outage on Jentic's side must not block scoring.
 
 URLs matching the jentic-public-apis allowlist (see "Anonymous gate" above) are always free and **skip the validation call entirely**, regardless of whether a key is set. This keeps OAK contributions zero-friction even after rate limits ship.
 
