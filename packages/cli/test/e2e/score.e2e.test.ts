@@ -471,6 +471,80 @@ describe('score command — e2e against docker', function () {
     }
   });
 
+  describe('URL + --bundle (host-side fetch and bundle)', function () {
+    let spec: Awaited<ReturnType<typeof startMockSpecServer>>;
+    let validator: Awaited<ReturnType<typeof startMockValidatorServer>>;
+    let mockUrl: string;
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(async function () {
+      spec = await startMockSpecServer();
+      validator = await startMockValidatorServer({ status: 204 });
+      mockUrl = `http://127.0.0.1:${spec.port}/openapi.yaml`;
+      const result = await runCliAsync(['score', mockUrl, '--bundle'], {
+        ...process.env,
+        JENTIC_API_KEY: 'fake-real-key',
+        JENTIC_API_BASE_URL: validator.baseUrl,
+      });
+      exitCode = result.exitCode;
+      stdout = result.stdout;
+      stderr = result.stderr;
+    });
+
+    after(function () {
+      spec.server.close();
+      validator.server.close();
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('shows the bundling spinner phase for the URL', function () {
+      expect(stderr).to.include('Bundling');
+      expect(stderr).to.include(mockUrl);
+    });
+
+    it('renders the headline against the fetched spec', function () {
+      const out = strip(stdout);
+      expect(out).to.include('API Readiness Scorecard');
+      expect(out).to.include('Final score:');
+    });
+  });
+
+  describe('local file + --bundle (no-op)', function () {
+    let validator: Awaited<ReturnType<typeof startMockValidatorServer>>;
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(async function () {
+      validator = await startMockValidatorServer({ status: 204 });
+      const result = await runCliAsync(['score', SAMPLE_SPEC, '--bundle'], {
+        ...process.env,
+        JENTIC_API_KEY: 'fake-real-key',
+        JENTIC_API_BASE_URL: validator.baseUrl,
+      });
+      exitCode = result.exitCode;
+      stdout = result.stdout;
+      stderr = result.stderr;
+    });
+
+    after(function () {
+      validator.server.close();
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('renders the headline like a bare local-file invocation', function () {
+      expect(strip(stdout)).to.include('API Readiness Scorecard');
+    });
+  });
+
   describe('stdin + JENTIC_API_BASE_URL (validator stub)', function () {
     it('exits 0 when the validator returns 204', async function () {
       const validator = await startMockValidatorServer({ status: 204 });
