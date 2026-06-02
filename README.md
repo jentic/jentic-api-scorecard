@@ -47,6 +47,9 @@ npm install -g @jentic/api-scorecard-cli@alpha
 This installs the latest alpha of the CLI globally. The scoring engine (Docker image) is downloaded automatically
 the first time you run `score` — allow a minute or two on a typical connection.
 
+For local files or non-OAK URLs you'll also need a `JENTIC_API_KEY` — see
+[Anonymous vs keyed access](#anonymous-vs-keyed-access).
+
 Verify the install:
 
 ```bash
@@ -63,7 +66,7 @@ jentic-api-scorecard --version
 ## Try it now
 
 OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis)
-score without any key or limit — no signup, no config:
+score without any key, uncapped — no signup, no config:
 
 ```bash
 npx @jentic/api-scorecard-cli@alpha score \
@@ -157,7 +160,7 @@ troubleshooting.
 
 OpenAPI documents from [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis)
 score without any key and stay on the free tier — those URLs bypass key validation entirely.
-For everything else (local files, URLs outside OAK), get a key at [jentic.com/signup](https://jentic.com/signup) — once signed in, click **Score → CLI & Keys** to issue your key:
+For everything else (local files, URLs outside OAK), get a key at [jentic.com/signup](https://jentic.com/signup) — once signed in, click **Score → CLI & Keys** to issue your key. Then set it:
 
 ```bash
 export JENTIC_API_KEY=<your-key>
@@ -214,7 +217,7 @@ jentic-api-scorecard score <input> [options]
 
 | Variable | When | Purpose |
 |---|---|---|
-| `JENTIC_API_KEY` | URLs outside OAK and local files | Real key issued at [jentic.com/signup](https://jentic.com/signup); validated live against `api.jentic.com` (see [Anonymous vs keyed access](#anonymous-vs-keyed-access)). |
+| `JENTIC_API_KEY` | URLs outside OAK and local files | Real key issued at [jentic.com/signup](https://jentic.com/signup); validated live against `api.jentic.com` (see [Anonymous vs keyed access](#anonymous-vs-keyed-access)). **Free quota: 100 scorings per calendar month.** |
 | LLM provider + routing vars | With `--with-llm` | The CLI auto-detects credentials (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, AWS keys) and routing (`LLM_PROVIDER`, `LIGHT_LLM_PROVIDER`, `LLM_MODEL`, `LLM_LIGHT_MODEL`, `*_API_URL`, `LLM_MAX_TOKENS`) and forwards them to the container; loopback URLs are rewritten so a host-side Ollama is reachable. Full reference: [LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md). |
 
 #### Exit codes
