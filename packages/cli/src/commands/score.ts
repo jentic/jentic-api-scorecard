@@ -133,10 +133,7 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     forwardEnvVars.push('JENTIC_API_BASE_URL');
     if (needsDockerHostRewrite(baseUrl)) {
       needsHostNetwork = true;
-      const rewritten = rewriteUrlForContainer(baseUrl);
-      if (rewritten !== baseUrl) {
-        forwardEnvOverrides.set('JENTIC_API_BASE_URL', rewritten);
-      }
+      forwardEnvOverrides.set('JENTIC_API_BASE_URL', rewriteUrlForContainer(baseUrl));
     }
   }
 
