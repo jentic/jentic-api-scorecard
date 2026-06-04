@@ -142,6 +142,9 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       });
     }
 
+    // Buffer stderr instead of inheriting it: live writes during the run
+    // would interleave with the ora spinner caption (issue #107). The
+    // container emits stderr at end-of-run, so the buffer stays bounded.
     if (child.stderr) {
       child.stderr.on('data', (chunk: Buffer) => {
         stderrChunks.push(chunk);

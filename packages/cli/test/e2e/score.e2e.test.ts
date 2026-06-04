@@ -449,23 +449,13 @@ describe('score command — e2e against docker', function () {
 
   describe('GATE_REJECTED (3) for a non-allowlisted URL with no key (regression: #107)', function () {
     let exitCode: number | null;
-    let stderr: string;
     let merged: string;
 
     before(function () {
       // RFC 6761 reserves .test as never-resolvable, so even if the gate were
-      // bypassed the engine could not fetch the URL.
-      const result = spawnSync('node', [CLI_BIN, 'score', 'https://invalid.test/openapi.yaml'], {
-        env: envWithoutKey(),
-        encoding: 'utf8',
-        timeout: E2E_TIMEOUT_MS,
-      });
-      exitCode = result.status;
-      stderr = strip(result.stderr ?? '');
-
-      // Merge stderr into stdout so we can observe the actual emission
-      // order users see on a TTY.
-      const mergedResult = spawnSync(
+      // bypassed the engine could not fetch the URL. Merge stderr into stdout
+      // via 2>&1 so we can observe the emission order users see on a TTY.
+      const result = spawnSync(
         'bash',
         ['-c', 'node "$CLI" score "https://invalid.test/openapi.yaml" 2>&1'],
         {
@@ -474,31 +464,38 @@ describe('score command — e2e against docker', function () {
           timeout: E2E_TIMEOUT_MS,
         },
       );
-      merged = strip(mergedResult.stdout ?? '');
+      exitCode = result.status;
+      merged = strip(result.stdout ?? '');
     });
 
     it('exits 3', function () {
       expect(exitCode).to.equal(3);
     });
 
-    it('writes the gate error to stderr intact', function () {
-      expect(stderr).to.include('anonymous scoring is restricted');
-      expect(stderr).to.include('jentic-public-apis');
+    it('writes the gate error intact', function () {
+      expect(merged).to.include('anonymous scoring is restricted');
+      expect(merged).to.include('jentic-public-apis');
     });
 
-    it('does not collide the gate error with the Scoring spinner caption', function () {
-      // The bug: stderr was inherited live, so the container's error
-      // interleaved with the still-animating ora 'Scoring…' line. After
-      // the fix, every line of the gate error stands alone — no line
-      // contains both 'Scoring' and 'error:'.
+    it('emits the gate error on its own line, after every spinner frame', function () {
+      // Two regressions to defend against:
+      //   1. The original bug — stderr inherited live, so the error's
+      //      first line shared a row with the ora 'Scoring…' caption.
+      //      Caught by the per-line check: no line contains both.
+      //   2. A future regression that moves the spinner below the error.
+      //      Caught by the index check: 'error:' lands after the last
+      //      'Scoring' frame.
       for (const line of merged.split('\n')) {
-        const hasSpinnerText = line.includes('Scoring');
-        const hasErrorText = line.includes('error:');
         expect(
-          hasSpinnerText && hasErrorText,
+          line.includes('Scoring') && line.includes('error:'),
           `spinner and gate error share a line: ${JSON.stringify(line)}`,
         ).to.equal(false);
       }
+      const errorIdx = merged.indexOf('error:');
+      const lastSpinnerIdx = merged.lastIndexOf('Scoring');
+      expect(errorIdx, 'gate error missing').to.be.greaterThan(-1);
+      expect(lastSpinnerIdx, 'spinner caption missing').to.be.greaterThan(-1);
+      expect(errorIdx).to.be.greaterThan(lastSpinnerIdx);
     });
   });
 

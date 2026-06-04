@@ -243,6 +243,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       writeReport(output, options.output, format);
     } catch (err) {
       clearSpinner();
+      if (result.stderr) {
+        process.stderr.write(result.stderr);
+      }
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(`error: ${message}\n`);
       return ExitCode.GENERIC_ERROR;
