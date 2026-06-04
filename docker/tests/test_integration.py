@@ -163,7 +163,15 @@ class TestStdinWithStubbedValidator:
         assert "not recognized" in r.stderr
 
     def test_stdin_with_substantial_spec_scores(self, httpserver):
-        """Mirror of the pre-1.0 mvp-preview stdin-mode test against a real spec."""
+        """Mirror of the pre-1.0 mvp-preview stdin-mode test against a real spec.
+
+        Also stands in for the CLI-side `--bundle` end-to-end success coverage
+        that lived in `packages/cli/test/e2e/score.e2e.test.ts` until the
+        `JENTIC_API_BASE_URL` CLI passthrough was removed: fetch + pipe through
+        stdin is structurally what `--bundle` does host-side, so this case
+        exercises the same container-side scoring path against a substantial
+        spec.
+        """
         fetch = subprocess.run(
             ["curl", "-fsSL", OAK_PETSTORE_URL],
             capture_output=True,

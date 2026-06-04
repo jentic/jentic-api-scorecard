@@ -7,7 +7,6 @@ import { ExitCode } from '../exit-codes.ts';
 import { DEFAULT_FORMAT, Format } from '../format.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
-import { needsDockerHostRewrite, rewriteUrlForContainer } from '../docker-host.ts';
 import { detectLlmEnv } from '../llm-env.ts';
 import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
@@ -126,15 +125,6 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     forwardEnvVars = detection.forwardEnvVars;
     forwardEnvOverrides = detection.forwardEnvOverrides;
     needsHostNetwork = detection.needsHostNetwork;
-  }
-
-  const baseUrl = process.env['JENTIC_API_BASE_URL'];
-  if (baseUrl !== undefined && baseUrl !== '') {
-    forwardEnvVars.push('JENTIC_API_BASE_URL');
-    if (needsDockerHostRewrite(baseUrl)) {
-      needsHostNetwork = true;
-      forwardEnvOverrides.set('JENTIC_API_BASE_URL', rewriteUrlForContainer(baseUrl));
-    }
   }
 
   let stdinPayload: string | undefined;

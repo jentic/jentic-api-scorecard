@@ -63,7 +63,10 @@ export interface DockerRunResult {
 
 const FORWARDED_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
-export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
+export function buildDockerArgs(
+  opts: DockerRunOptions,
+  plat: NodeJS.Platform = platform(),
+): string[] {
   const dockerArgs: string[] = ['run', '--rm'];
 
   if (opts.stdinPayload !== undefined) {
@@ -84,7 +87,7 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
   }
 
   if (opts.needsHostNetwork) {
-    if (platform() === 'linux') {
+    if (plat === 'linux') {
       dockerArgs.push('--network', 'host');
     } else {
       dockerArgs.push('--add-host=host.docker.internal:host-gateway');
@@ -93,6 +96,12 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
   dockerArgs.push(imageRef());
   dockerArgs.push(...opts.args);
+
+  return dockerArgs;
+}
+
+export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
+  const dockerArgs = buildDockerArgs(opts);
 
   return new Promise((resolve, reject) => {
     const child = spawn('docker', dockerArgs, {

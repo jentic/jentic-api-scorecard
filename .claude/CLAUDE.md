@@ -44,7 +44,7 @@ The gate decides allow/deny in this order; the first match wins:
 | `JENTIC_API_KEY` unset/empty + stdin mode | `AUTH_INVALID_KEY` (2) with signup hint. |
 | Any key | `usage.check_usage(key)` POSTs to `https://api.jentic.com/api/v1/usage/api-scoring`. 2xx → allow; 429 → `RATE_LIMITED` (7) with `detail` + `Retry-After`; 401/403 → `AUTH_INVALID_KEY` (2) with `detail`; network/5xx/malformed → **fail open** with stderr warning. |
 
-The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The HTTP client lives in `docker/src/jentic_scorecard_runner/usage.py` and never raises — every failure path returns one of `UsageAllowed | UsageRateLimited | UsageInvalidKey | UsageUnverifiable`. The validator base URL is overridable for tests via `JENTIC_API_BASE_URL` (test-only; not user-facing).
+The allowlist regex lives in `gate.py` as `_ALLOWLIST_PATTERN`. The HTTP client lives in `docker/src/jentic_scorecard_runner/usage.py` and never raises — every failure path returns one of `UsageAllowed | UsageRateLimited | UsageInvalidKey | UsageUnverifiable`. The validator base URL is overridable inside the runner via `JENTIC_API_BASE_URL` (consumed by `usage.py` only; exercised by `docker/tests/`). The CLI does **not** forward this var into the container — keeping the seam runner-side prevents a one-line `export JENTIC_API_BASE_URL=…` from redirecting the validator from a stock npm install.
 
 ### Scoring (`docker/src/jentic_scorecard_runner/score/`)
 

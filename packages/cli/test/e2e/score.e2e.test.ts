@@ -7,10 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 
 import { startMockSpecServer } from './mock-spec-server.ts';
-import { startMockValidatorServer } from './mock-validator-server.ts';
 
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
-const SAMPLE_SPEC = fileURLToPath(new URL('../fixtures/sample.yaml', import.meta.url));
 const OAK_PETSTORE_URL =
   'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
 
@@ -466,141 +464,10 @@ describe('score command — e2e against docker', function () {
       const mockUrl = `http://127.0.0.1:${started.port}/openapi.yaml`;
       const result = await runCliAsync(['score', mockUrl, '--bundle'], envWithoutKey());
       expect(result.exitCode).to.equal(2);
+      expect(result.stderr).to.include('Bundling');
+      expect(result.stderr).to.include(mockUrl);
     } finally {
       started.server.close();
     }
-  });
-
-  describe('URL + --bundle (host-side fetch and bundle)', function () {
-    let spec: Awaited<ReturnType<typeof startMockSpecServer>>;
-    let validator: Awaited<ReturnType<typeof startMockValidatorServer>>;
-    let mockUrl: string;
-    let exitCode: number | null;
-    let stdout: string;
-    let stderr: string;
-
-    before(async function () {
-      spec = await startMockSpecServer();
-      validator = await startMockValidatorServer({ status: 204 });
-      mockUrl = `http://127.0.0.1:${spec.port}/openapi.yaml`;
-      const result = await runCliAsync(['score', mockUrl, '--bundle'], {
-        ...process.env,
-        JENTIC_API_KEY: 'fake-real-key',
-        JENTIC_API_BASE_URL: validator.baseUrl,
-      });
-      exitCode = result.exitCode;
-      stdout = result.stdout;
-      stderr = result.stderr;
-    });
-
-    after(function () {
-      spec.server.close();
-      validator.server.close();
-    });
-
-    it('exits 0', function () {
-      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
-    });
-
-    it('shows the bundling spinner phase for the URL', function () {
-      expect(stderr).to.include('Bundling');
-      expect(stderr).to.include(mockUrl);
-    });
-
-    it('renders the headline against the fetched spec', function () {
-      const out = strip(stdout);
-      expect(out).to.include('API Readiness Scorecard');
-      expect(out).to.include('Final score:');
-    });
-  });
-
-  describe('local file + --bundle (no-op)', function () {
-    let validator: Awaited<ReturnType<typeof startMockValidatorServer>>;
-    let exitCode: number | null;
-    let stdout: string;
-    let stderr: string;
-
-    before(async function () {
-      validator = await startMockValidatorServer({ status: 204 });
-      const result = await runCliAsync(['score', SAMPLE_SPEC, '--bundle'], {
-        ...process.env,
-        JENTIC_API_KEY: 'fake-real-key',
-        JENTIC_API_BASE_URL: validator.baseUrl,
-      });
-      exitCode = result.exitCode;
-      stdout = result.stdout;
-      stderr = result.stderr;
-    });
-
-    after(function () {
-      validator.server.close();
-    });
-
-    it('exits 0', function () {
-      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
-    });
-
-    it('renders the headline like a bare local-file invocation', function () {
-      expect(strip(stdout)).to.include('API Readiness Scorecard');
-    });
-  });
-
-  describe('stdin + JENTIC_API_BASE_URL (validator stub)', function () {
-    it('exits 0 when the validator returns 204', async function () {
-      const validator = await startMockValidatorServer({ status: 204 });
-      try {
-        const result = await runCliAsync(['score', SAMPLE_SPEC], {
-          ...process.env,
-          JENTIC_API_KEY: 'fake-real-key',
-          JENTIC_API_BASE_URL: validator.baseUrl,
-        });
-        expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
-        expect(strip(result.stdout)).to.include('API Readiness Scorecard');
-      } finally {
-        validator.server.close();
-      }
-    });
-
-    it('exits 2 (AUTH_INVALID_KEY) when the validator returns 401', async function () {
-      const validator = await startMockValidatorServer({
-        status: 401,
-        body: JSON.stringify({ detail: 'unknown api key' }),
-        contentType: 'application/problem+json',
-      });
-      try {
-        const result = await runCliAsync(['score', SAMPLE_SPEC], {
-          ...process.env,
-          JENTIC_API_KEY: 'garbage',
-          JENTIC_API_BASE_URL: validator.baseUrl,
-        });
-        expect(result.exitCode).to.equal(2);
-        expect(result.stderr).to.include('not recognized');
-        expect(result.stderr).to.include('unknown api key');
-      } finally {
-        validator.server.close();
-      }
-    });
-
-    it('exits 7 (RATE_LIMITED) when the validator returns 429', async function () {
-      const validator = await startMockValidatorServer({
-        status: 429,
-        body: JSON.stringify({ detail: 'monthly scoring quota exhausted' }),
-        contentType: 'application/problem+json',
-        retryAfter: '3600',
-      });
-      try {
-        const result = await runCliAsync(['score', SAMPLE_SPEC], {
-          ...process.env,
-          JENTIC_API_KEY: 'fake-real-key',
-          JENTIC_API_BASE_URL: validator.baseUrl,
-        });
-        expect(result.exitCode).to.equal(7);
-        expect(result.stderr).to.include('rate limit reached');
-        expect(result.stderr).to.include('monthly scoring quota exhausted');
-        expect(result.stderr).to.include('Retry-After: 3600');
-      } finally {
-        validator.server.close();
-      }
-    });
   });
 });
