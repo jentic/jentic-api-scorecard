@@ -59,6 +59,7 @@ export interface DockerRunOptions {
 export interface DockerRunResult {
   exitCode: number;
   stdout: string;
+  stderr: string;
 }
 
 const FORWARDED_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
@@ -105,12 +106,13 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
   return new Promise((resolve, reject) => {
     const child = spawn('docker', dockerArgs, {
-      stdio: [opts.stdinPayload !== undefined ? 'pipe' : 'inherit', 'pipe', 'inherit'],
+      stdio: [opts.stdinPayload !== undefined ? 'pipe' : 'inherit', 'pipe', 'pipe'],
     });
 
     let settled = false;
     const signalHandlers = new Map<NodeJS.Signals, () => void>();
     const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
 
     const cleanup = (): void => {
       for (const [sig, handler] of signalHandlers) {
@@ -140,13 +142,19 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       });
     }
 
+    if (child.stderr) {
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderrChunks.push(chunk);
+      });
+    }
+
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {
         process.stderr.write(
           "error: 'docker' command not found.\n" +
             '  Install Docker: https://docs.docker.com/get-docker/\n',
         );
-        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING, stdout: '' }));
+        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING, stdout: '', stderr: '' }));
         return;
       }
       settle(() => reject(err));
@@ -154,12 +162,13 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
     child.on('close', (code, signal) => {
       const stdout = Buffer.concat(stdoutChunks).toString('utf8');
+      const stderr = Buffer.concat(stderrChunks).toString('utf8');
       if (signal !== null) {
         const signo = osConstants.signals[signal] ?? 0;
-        settle(() => resolve({ exitCode: 128 + signo, stdout }));
+        settle(() => resolve({ exitCode: 128 + signo, stdout, stderr }));
         return;
       }
-      settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR, stdout }));
+      settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR, stdout, stderr }));
     });
 
     if (opts.stdinPayload !== undefined && child.stdin) {

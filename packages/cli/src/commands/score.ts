@@ -199,6 +199,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   if (result.exitCode !== 0) {
     clearSpinner();
+    if (result.stderr) {
+      process.stderr.write(result.stderr);
+    }
     if (result.stdout) {
       process.stdout.write(result.stdout);
     }
@@ -248,6 +251,10 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   } else {
     done(`Scoring done in ${elapsed}s`);
     process.stdout.write(output);
+  }
+
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
   }
 
   return ExitCode.SUCCESS;

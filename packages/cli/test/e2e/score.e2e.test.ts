@@ -447,15 +447,59 @@ describe('score command — e2e against docker', function () {
     }
   });
 
-  it('exits with GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
-    // RFC 6761 reserves .test as never-resolvable, so even if the gate were
-    // bypassed the engine could not fetch the URL.
-    const result = spawnSync('node', [CLI_BIN, 'score', 'https://invalid.test/openapi.yaml'], {
-      env: envWithoutKey(),
-      encoding: 'utf8',
-      timeout: E2E_TIMEOUT_MS,
+  describe('GATE_REJECTED (3) for a non-allowlisted URL with no key (regression: #107)', function () {
+    let exitCode: number | null;
+    let stderr: string;
+    let merged: string;
+
+    before(function () {
+      // RFC 6761 reserves .test as never-resolvable, so even if the gate were
+      // bypassed the engine could not fetch the URL.
+      const result = spawnSync('node', [CLI_BIN, 'score', 'https://invalid.test/openapi.yaml'], {
+        env: envWithoutKey(),
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      exitCode = result.status;
+      stderr = strip(result.stderr ?? '');
+
+      // Merge stderr into stdout so we can observe the actual emission
+      // order users see on a TTY.
+      const mergedResult = spawnSync(
+        'bash',
+        ['-c', 'node "$CLI" score "https://invalid.test/openapi.yaml" 2>&1'],
+        {
+          env: { ...envWithoutKey(), CLI: CLI_BIN },
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      merged = strip(mergedResult.stdout ?? '');
     });
-    expect(result.status).to.equal(3);
+
+    it('exits 3', function () {
+      expect(exitCode).to.equal(3);
+    });
+
+    it('writes the gate error to stderr intact', function () {
+      expect(stderr).to.include('anonymous scoring is restricted');
+      expect(stderr).to.include('jentic-public-apis');
+    });
+
+    it('does not collide the gate error with the Scoring spinner caption', function () {
+      // The bug: stderr was inherited live, so the container's error
+      // interleaved with the still-animating ora 'Scoring…' line. After
+      // the fix, every line of the gate error stands alone — no line
+      // contains both 'Scoring' and 'error:'.
+      for (const line of merged.split('\n')) {
+        const hasSpinnerText = line.includes('Scoring');
+        const hasErrorText = line.includes('error:');
+        expect(
+          hasSpinnerText && hasErrorText,
+          `spinner and gate error share a line: ${JSON.stringify(line)}`,
+        ).to.equal(false);
+      }
+    });
   });
 
   it('URL + --bundle without a key exits with AUTH_INVALID_KEY (2)', async function () {
