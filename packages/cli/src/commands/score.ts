@@ -213,6 +213,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const parseResult = tryParseEngineOutput(result.stdout, format);
   if (!parseResult.ok) {
     clearSpinner();
+    if (result.stderr) {
+      process.stderr.write(result.stderr);
+    }
     process.stderr.write(parseResult.stderr);
     if (parseResult.stdout) {
       if (options.output !== undefined) {

@@ -153,11 +153,15 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
 
     child.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ENOENT') {
-        process.stderr.write(
-          "error: 'docker' command not found.\n" +
-            '  Install Docker: https://docs.docker.com/get-docker/\n',
+        settle(() =>
+          resolve({
+            exitCode: ExitCode.DOCKER_MISSING,
+            stdout: '',
+            stderr:
+              "error: 'docker' command not found.\n" +
+              '  Install Docker: https://docs.docker.com/get-docker/\n',
+          }),
         );
-        settle(() => resolve({ exitCode: ExitCode.DOCKER_MISSING, stdout: '', stderr: '' }));
         return;
       }
       settle(() => reject(err));
