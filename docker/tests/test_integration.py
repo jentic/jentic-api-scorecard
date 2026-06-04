@@ -7,9 +7,10 @@ Set IMAGE env var to override: IMAGE=ghcr.io/jentic/jentic-api-scorecard:0.1.0 p
 
 Stdin-mode coverage uses `pytest-httpserver` to stub the validator and
 `docker run --network host` so the container can reach the host-bound stub
-via `JENTIC_API_BASE_URL=http://127.0.0.1:<port>`. `--network host` is
-Linux-only — these tests are skipped on macOS/Windows where Docker Desktop
-runs the daemon in a VM.
+via `JENTIC_API_BASE_URL=<httpserver.url_for("")>` (a loopback URL — the
+exact host depends on pytest-httpserver's bind, typically `localhost`).
+`--network host` is Linux-only — these tests are skipped on macOS/Windows
+where Docker Desktop runs the daemon in a VM.
 """
 
 import json
