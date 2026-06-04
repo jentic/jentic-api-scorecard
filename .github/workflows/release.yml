@@ -61,6 +61,24 @@ jobs:
           node-version: 24.10.0
       - name: Install monorepo dependencies
         run: npm ci --engine-strict=false --ignore-scripts
+      # Guard against a race between `workflow_dispatch` queue time
+      # and the lerna step: if another commit lands on main while the
+      # runner is starting up or installing deps, `lerna version` sees
+      # the local checkout behind upstream and bails with a non-fatal
+      # `EBEHIND` warning (exit 0). Downstream `publish-docker` then
+      # rebuilds GHCR at the existing tag with post-graduation bytes,
+      # violating tag-immutability. We `git fetch` so we see the same
+      # upstream state lerna will, then fail fast — placed immediately
+      # before lerna so the gap is milliseconds. See issue #119.
+      - name: Fail if main moved during workflow startup
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          BEHIND=$(git rev-list --count HEAD..origin/main)
+          if [ "$BEHIND" -gt 0 ]; then
+            echo "::error::main moved $BEHIND commit(s) during workflow startup. Re-run release.yml."
+            exit 1
+          fi
       - name: Version bump & GitHub release
         run: |
           git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
