@@ -13,7 +13,7 @@ dependencies = [
 dev = [
     "pytest>=9.0.3,<10",
     "pytest-httpserver>=1.1,<2",
-    "ruff>=0.14.1,<0.16.0",
+    "ruff>=0.15.15,<0.16.0",
     "poethepoet>=0.37,<0.47",
 ]
 
