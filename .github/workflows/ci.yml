@@ -173,4 +173,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run e2e mocha
+        env:
+          JENTIC_API_KEY: ${{ secrets.JENTIC_API_KEY }}
         run: npx lerna run test:e2e
