@@ -55,9 +55,10 @@ export default function SummaryCard({ apiMetadata, summary, metadata }: SummaryC
           </div>
         </div>
 
-        {/* Dimension circles - horizontal row */}
+        {/* Dimension circles - horizontal row. `dimensions` is absent at --detail
+            summary, so guard the map. */}
         <div className="flex justify-between items-start mb-8 gap-2">
-          {summary.dimensions.map((dim) => (
+          {(summary.dimensions ?? []).map((dim) => (
             <div key={dim.kind} className="flex flex-col items-center text-center flex-1">
               <CircularProgress score={dim.score} size={90} strokeWidth={7} labelSize="text-2xl" />
               <span className="mt-3 text-xs text-gray-600 leading-tight max-w-[100px]">

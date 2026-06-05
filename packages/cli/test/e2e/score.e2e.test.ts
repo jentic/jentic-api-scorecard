@@ -395,6 +395,45 @@ describe('score command — e2e against docker', function () {
     }
   });
 
+  describe('--format html', function () {
+    let workDir: string;
+    let outPath: string;
+
+    before(function () {
+      workDir = mkdtempSync(join(tmpdir(), 'jentic-e2e-html-'));
+      outPath = join(workDir, 'scorecard.html');
+    });
+
+    after(function () {
+      rmSync(workDir, { recursive: true, force: true });
+    });
+
+    it('writes a self-contained HTML document with -o', function () {
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'html', '-o', outPath],
+        { env: envWithoutKey(), encoding: 'utf8', timeout: E2E_TIMEOUT_MS },
+      );
+      expect(result.status, `stderr: ${result.stderr}`).to.equal(0);
+      const html = readFileSync(outPath, 'utf8');
+      expect(html).to.match(/^<!doctype html>/i);
+      expect(html, 'injects the result').to.include('window.__SCORECARD__ = {');
+      expect(html, 'no external script src').to.not.match(/<script[^>]+src="(?!data:)[^"]+"/i);
+      expect(result.stdout, 'report not echoed to stdout').to.equal('');
+    });
+
+    it('streams HTML to stdout when piped (non-TTY)', function () {
+      const result = spawnSync('node', [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'html'], {
+        env: envWithoutKey(),
+        encoding: 'utf8',
+        timeout: E2E_TIMEOUT_MS,
+      });
+      expect(result.status, `stderr: ${result.stderr}`).to.equal(0);
+      expect(result.stdout).to.match(/^<!doctype html>/i);
+      expect(result.stdout).to.include('window.__SCORECARD__ = {');
+    });
+  });
+
   describe('--quiet', function () {
     let exitCode: number | null;
     let stdout: string;

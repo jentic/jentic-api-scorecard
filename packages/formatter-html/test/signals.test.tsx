@@ -49,7 +49,7 @@ const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as ScorecardData;
 
 // First-seen signal (with metadata) per kind, from the real engine capture.
 const signalsByKind = new Map<string, Signal>();
-for (const detail of fixture.details) {
+for (const detail of fixture.details ?? []) {
   for (const dimension of detail.dimensions) {
     for (const signal of dimension.signals ?? []) {
       if (!signalsByKind.has(signal.kind) && signal.metadata) {

@@ -2,7 +2,9 @@ import { Command, Option } from 'commander';
 
 import { runScore } from './commands/score.ts';
 import { DEFAULT_DETAIL, DETAIL_LEVELS, DetailLevel } from './detail.ts';
+import { ExitCode } from './exit-codes.ts';
 import { DEFAULT_FORMAT, FORMATS, Format } from './format.ts';
+import { validateScoreOptions } from './validate.ts';
 import { cliVersion } from './version.ts';
 
 export async function main(argv: string[] = process.argv): Promise<void> {
@@ -47,6 +49,16 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           quiet?: boolean;
         },
       ) => {
+        const validationError = validateScoreOptions(
+          { format: opts.format, output: opts.output },
+          process.stdout.isTTY === true,
+        );
+        if (validationError !== null) {
+          process.stderr.write(`error: ${validationError}\n`);
+          process.exitCode = ExitCode.GENERIC_ERROR;
+          return;
+        }
+
         const exitCode = await runScore(input, {
           withLlm: opts.withLlm,
           bundle: opts.bundle,

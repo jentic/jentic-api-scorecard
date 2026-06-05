@@ -131,6 +131,24 @@ npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
 `--quiet` (`-q`) suppresses the stderr spinner even in interactive terminals (the spinner already
 auto-suppresses when stderr isn't a TTY). Engine warnings still pass through stderr.
 
+## HTML report
+
+Add `--format html` to render an interactive, self-contained HTML scorecard — a single file
+with all JS and CSS inlined (no external CDN, works offline), suitable for CI artifacts and
+dashboards. It honours `--detail`, so `--detail diagnostics` embeds the full evidence bundle.
+
+Because the output is a full HTML document, the CLI refuses to print it straight into an
+interactive terminal — redirect it or use `-o`:
+
+```bash
+# Redirect to a file
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --format html > scorecard.html
+
+# Or write it with -o, at full detail
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
+  --format html --detail diagnostics -o scorecard.html
+```
+
 ## LLM analysis
 
 Add `--with-llm` to unlock LLM-backed signals — deeper semantic reasoning about whether your API
@@ -204,7 +222,7 @@ jentic-api-scorecard score <input> [options]
 | `--with-llm` | off | — | Enable LLM-backed analysis. Requires an LLM provider (see [LLM analysis](#llm-analysis)). |
 | `--bundle` | off | — | Force CLI-side bundling for URL inputs: the CLI fetches the URL on the host, bundles with Redocly, and pipes to the container via stdin. Use for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Requires `JENTIC_API_KEY`. No-op for local files. |
 | `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see [Control output depth](#control-output-depth)). |
-| `-f, --format <fmt>` | `pretty` | `pretty`, `json` | Output encoding (see [Machine-readable output](#machine-readable-output)). |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html` | Output encoding (see [Machine-readable output](#machine-readable-output) and [HTML report](#html-report)). |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
 | `-h, --help` | — | — | Show usage for `score`. |

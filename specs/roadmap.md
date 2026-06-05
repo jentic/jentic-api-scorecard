@@ -204,7 +204,7 @@ The `mvp-preview` placeholder is explicitly transitional (`docs/architecture.md`
 - Allowlisted (jentic-public-apis) URLs short-circuit the validator entirely — they remain free and outside the rate limit.
 - Update `docs/architecture.md` §9 to describe live validation; mark `mvp-preview` as superseded.
 
-## Phase 14 — HTML formatter implementation
+## Phase 14 — HTML formatter implementation ✅
 
 **Goal:** `@jentic/api-scorecard-formatter-html`'s `format(result): string` ships a real HTML scorecard suitable for embedding in CI artifacts and dashboards.
 **Depends on:** Phase 5 (so the input shape — engine-verbatim JSON minus `diagnostics` unless requested — is settled)

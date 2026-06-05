@@ -21,8 +21,7 @@ describe('App graceful degradation', function () {
   const malformed: [string, unknown][] = [
     ['null', null],
     ['empty object', {}],
-    ['summary only', { summary: {} }],
-    ['details not an array', { details: 'x', summary: {}, apiMetadata: {} }],
+    ['summary without apiMetadata', { summary: {} }],
     ['a number', 42],
   ];
 
@@ -45,5 +44,60 @@ describe('App graceful degradation', function () {
       },
     };
     expect(renderWith(valid)).to.not.contain(EMPTY_STATE);
+  });
+
+  it('tolerates a non-array details field (renders, does not crash)', function () {
+    const junkDetails = {
+      details: 'unexpected',
+      summary: { score: 1, level: 'ai-aware', grade: 'A' },
+      apiMetadata: {
+        name: 'n',
+        operationCount: 0,
+        schemaCount: 0,
+        tagCount: 0,
+        securitySchemeCount: 0,
+      },
+    };
+    expect(renderWith(junkDetails)).to.not.contain(EMPTY_STATE);
+    expect(renderWith(junkDetails)).to.contain('n');
+  });
+
+  // The CLI's --detail filter produces progressively richer payloads: summary and
+  // dimensions levels omit `details`; signals/diagnostics include it. The formatter
+  // must render at EVERY level, not just the richest — regression guard for the
+  // "No scorecard data" bug where requiring details[] broke the default level.
+  it('renders at every --detail shape (with and without details/diagnostics)', function () {
+    const base = {
+      summary: {
+        score: 66,
+        level: 'ai-aware',
+        grade: 'B',
+        dimensions: [{ kind: 'FC', name: 'Foundational', score: 70, grade: 'A-' }],
+      },
+      apiMetadata: {
+        name: 'Sample',
+        operationCount: 1,
+        schemaCount: 2,
+        tagCount: 0,
+        securitySchemeCount: 0,
+      },
+    };
+    const shapes: Record<string, object> = {
+      summary: { ...base, summary: { ...base.summary, dimensions: undefined } },
+      dimensions: { ...base },
+      signals: {
+        ...base,
+        details: [{ kind: 'FDX', name: 'F', score: 70, grade: 'A-', dimensions: [] }],
+      },
+      diagnostics: {
+        ...base,
+        details: [{ kind: 'FDX', name: 'F', score: 70, grade: 'A-', dimensions: [] }],
+        diagnostics: [{ source: 's', severity: 1, message: 'm', code: 'C' }],
+      },
+    };
+    for (const [level, payload] of Object.entries(shapes)) {
+      expect(renderWith(payload), `${level} renders`).to.not.contain(EMPTY_STATE);
+      expect(renderWith(payload), `${level} shows headline`).to.contain('Sample');
+    }
   });
 });

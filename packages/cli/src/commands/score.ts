@@ -5,6 +5,7 @@ import { DEFAULT_DETAIL, DetailLevel, filterByDetail } from '../detail.ts';
 import { imageExists, imageRef, pullImage, runDocker } from '../docker.ts';
 import { ExitCode } from '../exit-codes.ts';
 import { DEFAULT_FORMAT, Format } from '../format.ts';
+import { formatHtml } from '../formatters/html.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
@@ -237,7 +238,11 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const detail = options.detail ?? DEFAULT_DETAIL;
   const filtered = filterByDetail(parsed, detail);
   const output =
-    format === Format.JSON ? formatJson(filtered) : formatPretty(filtered, input, { detail });
+    format === Format.HTML
+      ? formatHtml(filtered)
+      : format === Format.JSON
+        ? formatJson(filtered)
+        : formatPretty(filtered, input, { detail });
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 

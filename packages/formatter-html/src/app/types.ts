@@ -32,7 +32,8 @@ export interface Summary {
   score: number;
   level: string;
   grade: string;
-  dimensions: SummaryDimension[];
+  // Absent at --detail summary; present from dimensions level up.
+  dimensions?: SummaryDimension[];
 }
 
 // Provenance drives which diagnostics a signal's expandable panel surfaces.
@@ -89,6 +90,7 @@ export interface ScorecardData {
   metadata?: EngineMetadata;
   apiMetadata: ApiMetadata;
   summary: Summary;
-  details: DetailGroup[];
+  // Absent at the lower --detail levels (summary/dimensions); present at signals+.
+  details?: DetailGroup[];
   diagnostics?: Diagnostic[];
 }
