@@ -432,6 +432,28 @@ describe('score command — e2e against docker', function () {
       expect(result.stdout).to.match(/^<!doctype html>/i);
       expect(result.stdout).to.include('window.__SCORECARD__ = {');
     });
+
+    it('carries the full diagnostics payload through at --detail diagnostics', function () {
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'html', '--detail', 'diagnostics'],
+        { env: envWithoutKey(), encoding: 'utf8', timeout: E2E_TIMEOUT_MS },
+      );
+      expect(result.status, `stderr: ${result.stderr}`).to.equal(0);
+      expect(result.stdout).to.match(/^<!doctype html>/i);
+      // The richest --detail level embeds details + diagnostics in the injected
+      // payload; the shallower e2e cases never exercise these keys end-to-end.
+      const island = result.stdout.match(
+        /<script id="__SCORECARD_DATA__"[^>]*>([\s\S]*?)<\/script>/,
+      );
+      expect(island, 'data island present').to.not.equal(null);
+      const payload = (island?.[1] ?? '')
+        .replace(/^\s*window\.__SCORECARD__\s*=\s*/, '')
+        .replace(/;\s*$/, '');
+      const parsed = JSON.parse(payload) as { details?: unknown[]; diagnostics?: unknown[] };
+      expect(parsed.details, 'details present').to.be.an('array').with.length.greaterThan(0);
+      expect(parsed.diagnostics, 'diagnostics present').to.be.an('array');
+    });
   });
 
   describe('--quiet', function () {
