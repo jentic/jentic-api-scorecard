@@ -115,14 +115,20 @@ export default function DiagnosticsSection({ diagnostics }: DiagnosticsSectionPr
           {displayDiagnostics.length === 0 ? (
             <p className="text-gray-500 py-4">No diagnostics for this severity level.</p>
           ) : (
-            displayDiagnostics.map((diag, index) => (
-              <DiagnosticItem
-                key={index}
-                diagnostic={diag}
-                pathsExpanded={pathsExpanded[index]}
-                onTogglePaths={() => togglePaths(index)}
-              />
-            ))
+            displayDiagnostics.map((diag) => {
+              // Key by the diagnostic's index in the full, stable array (not the
+              // filtered list's index) so expand state stays bound to the right row
+              // when the severity filter changes.
+              const stableIndex = diagnostics.indexOf(diag);
+              return (
+                <DiagnosticItem
+                  key={stableIndex}
+                  diagnostic={diag}
+                  pathsExpanded={pathsExpanded[stableIndex]}
+                  onTogglePaths={() => togglePaths(stableIndex)}
+                />
+              );
+            })
           )}
         </div>
       </div>

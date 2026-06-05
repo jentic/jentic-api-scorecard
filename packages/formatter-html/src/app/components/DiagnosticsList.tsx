@@ -127,7 +127,12 @@ export default function DiagnosticsList({ diagnostics, provenance }: Diagnostics
         {displayDiagnostics.length === 0 ? (
           <div className="text-sm text-gray-500 py-2">No diagnostics for this severity level.</div>
         ) : (
-          displayDiagnostics.map((diag, index) => <DiagnosticItem key={index} diagnostic={diag} />)
+          displayDiagnostics.map((diag) => (
+            // Key by the diagnostic's index in the stable provenance-filtered array
+            // (not the severity-filtered list's index) so React keeps each item's
+            // local expand state bound to the right row across filter changes.
+            <DiagnosticItem key={filteredByProvenance.indexOf(diag)} diagnostic={diag} />
+          ))
         )}
       </div>
     </div>

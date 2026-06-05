@@ -127,7 +127,7 @@ jentic-api-scorecard/
 │   └── formatter-html/                       (@jentic/api-scorecard-formatter-html)
 │       ├── package.json                      (dual export: "." → format(); "./react" → components)
 │       ├── src/index.ts                      (export format(result): string — self-contained HTML)
-│       ├── app/                              (React SPA: ported scorecard components + react.ts entry)
+│       ├── src/app/                          (React SPA: ported scorecard components + react.ts entry)
 │       ├── index.html                        (Vite entry; window.__SCORECARD__ data island)
 │       └── vite.config.ts                    (singlefile build → dist/app/index.html, CSS inlined)
 ├── docker/                                   (image internals; not a deliverable on its own)
