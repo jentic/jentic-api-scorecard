@@ -24,6 +24,15 @@ function escapeForScript(json: string): string {
   return json.replace(/</g, '\\u003c');
 }
 
+/**
+ * Inject the result JSON into a template's data island. Pure (no I/O) so the
+ * injection + escaping contract is unit-testable without a built template.
+ */
+export function injectScorecard(template: string, result: ScorecardResult): string {
+  const payload = escapeForScript(JSON.stringify(result));
+  return template.replace(DATA_ISLAND_PATTERN, `$1window.__SCORECARD__ = ${payload};$3`);
+}
+
 let cachedTemplate: string | undefined;
 
 function loadTemplate(): string {
@@ -39,8 +48,5 @@ function loadTemplate(): string {
  * to `window.__SCORECARD__`. No external assets, works offline.
  */
 export function format(result: ScorecardResult): string {
-  const template = loadTemplate();
-  const payload = escapeForScript(JSON.stringify(result));
-
-  return template.replace(DATA_ISLAND_PATTERN, `$1window.__SCORECARD__ = ${payload};$3`);
+  return injectScorecard(loadTemplate(), result);
 }

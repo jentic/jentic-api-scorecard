@@ -51,9 +51,10 @@
     "clean": "rimraf dist *.tsbuildinfo",
     "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE .",
     "postpack": "rimraf NOTICE LICENSE",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "typescript:check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json"
+    "lint": "eslint src test",
+    "lint:fix": "eslint src test --fix",
+    "test": "TSX_TSCONFIG_PATH=test/tsconfig.json mocha",
+    "typescript:check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p test/tsconfig.json"
   },
   "engines": {
     "node": ">=22.12.0 || >=20.19.0 <21.0.0"
@@ -72,12 +73,17 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@vitejs/plugin-react": "^5.0.4",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.22.3",
     "vite": "^7.1.12",
     "vite-plugin-singlefile": "^2.3.0"
   }
