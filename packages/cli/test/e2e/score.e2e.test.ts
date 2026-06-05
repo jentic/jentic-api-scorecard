@@ -88,7 +88,7 @@ describe('score command — e2e against docker', function () {
     });
   });
 
-  describe('stream interleaving (regression: #84)', function () {
+  describe('stream interleaving', function () {
     let exitCode: number | null;
     let merged: string;
 
@@ -448,7 +448,7 @@ describe('score command — e2e against docker', function () {
     }
   });
 
-  describe('GATE_REJECTED (3) for a non-allowlisted URL with no key (regression: #107)', function () {
+  describe('GATE_REJECTED (3) for a non-allowlisted URL with no key', function () {
     let exitCode: number | null;
     let merged: string;
 
@@ -513,7 +513,7 @@ describe('score command — e2e against docker', function () {
     }
   });
 
-  describe('real JENTIC_API_KEY against the live validator (regression: #114)', function () {
+  describe('real JENTIC_API_KEY against the live validator', function () {
     beforeEach(function () {
       const realKey = process.env['JENTIC_API_KEY'];
       if (realKey === undefined || realKey === '') this.skip();
