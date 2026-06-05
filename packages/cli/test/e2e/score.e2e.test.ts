@@ -520,13 +520,19 @@ describe('score command — e2e against docker', function () {
     });
 
     it('local-file input exits 0', async function () {
-      const result = await runCliAsync(['score', SAMPLE_SPEC], process.env);
+      const result = await runCliAsync(['score', SAMPLE_SPEC], {
+        ...envWithoutKey(),
+        JENTIC_API_KEY: process.env['JENTIC_API_KEY'],
+      });
       expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
       expect(strip(result.stdout)).to.include('API Readiness Scorecard');
     });
 
     it('petstore URL + --bundle exits 0', async function () {
-      const result = await runCliAsync(['score', OAK_PETSTORE_URL, '--bundle'], process.env);
+      const result = await runCliAsync(['score', OAK_PETSTORE_URL, '--bundle'], {
+        ...envWithoutKey(),
+        JENTIC_API_KEY: process.env['JENTIC_API_KEY'],
+      });
       expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
       expect(strip(result.stdout)).to.include('API Readiness Scorecard');
       expect(result.stderr).to.include('Bundling');
