@@ -4,6 +4,10 @@ import type { Diagnostic, Provenance } from '../../types.ts';
 
 import DiagnosticsList from '../DiagnosticsList.tsx';
 
+import Icon from './shared/Icon.tsx';
+import { getColorClassesByType, getNormalizedScoreColor } from './shared/colors.ts';
+import { MetricGrid, type MetricRowProps } from './shared/primitives.tsx';
+
 interface OperationScored {
   operation_id: string;
   element_descriptive_score: number;
@@ -16,6 +20,7 @@ interface DescriptiveRichnessMeta {
   number_of_describable_elements: number;
   operations_with_issues: number;
   operations_without_issues: number;
+  sum_of_element_descriptive_scores?: number;
   operations_scored?: OperationScored[];
   provenance?: Provenance;
 }
@@ -33,87 +38,136 @@ export default function DescriptiveRichnessMetadata({
     number_of_describable_elements,
     operations_with_issues,
     operations_without_issues,
+    sum_of_element_descriptive_scores,
     operations_scored,
     provenance,
   } = metadata;
 
-  const [showOperations, setShowOperations] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const sortedOperations = operations_scored
+    ? [...operations_scored].sort(
+        (a, b) => a.element_descriptive_score - b.element_descriptive_score,
+      )
+    : [];
+
+  const metrics: MetricRowProps[] = [
+    { label: 'Describable Elements', value: number_of_describable_elements },
+  ];
+  if (sum_of_element_descriptive_scores !== undefined)
+    metrics.push({
+      label: 'Total Descriptive Score',
+      value: sum_of_element_descriptive_scores.toFixed(2),
+    });
+  metrics.push({
+    label: 'Ops without Issues',
+    value: operations_without_issues,
+    valueColor: 'green',
+  });
+  metrics.push({
+    label: 'Ops with Issues',
+    value: operations_with_issues,
+    valueColor: operations_with_issues > 0 ? 'yellow' : 'green',
+  });
+
+  const emptyText =
+    number_of_describable_elements === 0
+      ? 'No elements require descriptions'
+      : operations_with_issues === 0
+        ? 'All operations have good descriptions'
+        : 'No operations analyzed';
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default"
+      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-3"
       onClick={(e) => e.stopPropagation()}
     >
-      <dl className="text-xs text-gray-600 space-y-0.5">
-        <div className="flex gap-2">
-          <dt className="font-medium">Describable elements:</dt>
-          <dd className="font-mono">{number_of_describable_elements}</dd>
-        </div>
-        <div className="flex gap-2">
-          <dt className="font-medium">Operations with issues:</dt>
-          <dd
-            className={`font-mono ${operations_with_issues > 0 ? 'text-yellow-600' : 'text-green-600'}`}
-          >
-            {operations_with_issues}
-          </dd>
-        </div>
-        <div className="flex gap-2">
-          <dt className="font-medium">Operations without issues:</dt>
-          <dd className={`font-mono ${operations_without_issues > 0 ? 'text-green-600' : ''}`}>
-            {operations_without_issues}
-          </dd>
-        </div>
-      </dl>
+      <MetricGrid metrics={metrics} />
 
-      {operations_scored && operations_scored.length > 0 && (
-        <div className="mt-2">
+      {sortedOperations.length > 0 ? (
+        <div className="border border-gray-200 rounded-md overflow-hidden">
           <button
             type="button"
-            className="text-xs font-medium text-gray-600 hover:text-gray-900 underline cursor-pointer"
-            onClick={() => setShowOperations(!showOperations)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+            onClick={() => setExpanded(!expanded)}
           >
-            {showOperations ? 'Hide' : 'Show'} operation details ({operations_scored.length})
+            <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+              Operation Details ({sortedOperations.length})
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-500">
+              {expanded ? 'Hide' : 'Show'}
+              <Icon
+                name="chevron-down"
+                className={`h-3 w-3 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              />
+            </span>
           </button>
-
-          {showOperations && (
-            <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-              {operations_scored.map((op, index) => (
-                <div key={index} className="text-xs p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono font-medium text-gray-700">{op.operation_id}</span>
-                    <span
-                      className={`font-mono ${op.element_descriptive_score >= 1.5 ? 'text-green-600' : op.element_descriptive_score >= 1 ? 'text-yellow-600' : 'text-red-600'}`}
-                      title="Element descriptive score (clarity + depth)"
-                    >
-                      {op.element_descriptive_score.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-gray-500 flex gap-3">
-                    <span>Clarity: {op.clarity_score.toFixed(1)}</span>
-                    <span>Depth: {op.depth_score.toFixed(1)}</span>
-                  </div>
-                  {op.issues_found && op.issues_found.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {op.issues_found.map((issue, i) => (
-                        <span
-                          key={i}
-                          className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[10px]"
-                        >
-                          {issue.replace(/_/g, ' ')}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+          {expanded && (
+            <div className="overflow-y-auto p-2 space-y-1.5" style={{ maxHeight: '280px' }}>
+              {sortedOperations.map((op, index) => (
+                <OperationRow key={index} op={op} />
               ))}
             </div>
           )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg bg-emerald-50 px-3 py-2 border border-emerald-200">
+          <Icon name="check-circle" className="h-4 w-4 text-emerald-600" />
+          <span className="text-sm font-medium text-emerald-700">{emptyText}</span>
         </div>
       )}
 
       {diagnostics && provenance && (
         <DiagnosticsList diagnostics={diagnostics} provenance={provenance} />
       )}
+    </div>
+  );
+}
+
+function OperationRow({ op }: { op: OperationScored }) {
+  const scoreColor = getColorClassesByType(
+    getNormalizedScoreColor(op.element_descriptive_score, 2),
+  );
+  return (
+    <div className="bg-gray-50 rounded-md p-2.5">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[10px] text-gray-500 flex-shrink-0">Operation ID:</span>
+          <span className="font-mono text-xs font-medium truncate">{op.operation_id}</span>
+        </div>
+        <span className={`font-mono text-xs font-semibold flex-shrink-0 ${scoreColor.text}`}>
+          {op.element_descriptive_score.toFixed(2)}
+        </span>
+      </div>
+      <div className="flex items-center gap-4 mb-2">
+        <ScoreBadge label="Clarity" score={op.clarity_score} />
+        <ScoreBadge label="Depth" score={op.depth_score} />
+      </div>
+      {op.issues_found && op.issues_found.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {op.issues_found.map((issue, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded"
+            >
+              <Icon name="tag" className="h-2.5 w-2.5" />
+              {issue.replace(/_/g, ' ')}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScoreBadge({ label, score }: { label: string; score: number }) {
+  const color = getColorClassesByType(getNormalizedScoreColor(score, 1));
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] text-gray-500">{label}:</span>
+      <span className={`font-mono text-[10px] font-semibold ${color.text}`}>
+        {score.toFixed(2)}
+      </span>
     </div>
   );
 }

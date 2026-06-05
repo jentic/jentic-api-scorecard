@@ -38,8 +38,13 @@ const getScoreTextColor = (score: number): string => {
 };
 
 // Each metadata component types its own metadata shape; the registry erases those
-// differences, so cast to a common prop signature at the boundary.
-type MetadataComponent = ComponentType<{ metadata: never; diagnostics?: Diagnostic[] }>;
+// differences, so cast to a common prop signature at the boundary. `score` (the
+// signal's 0-1 score) is passed to every component; most ignore it.
+type MetadataComponent = ComponentType<{
+  metadata: never;
+  diagnostics?: Diagnostic[];
+  score?: number;
+}>;
 
 const SIGNAL_METADATA_COMPONENTS: Record<string, MetadataComponent> = {
   lint_results: LintResultsMetadata as MetadataComponent,
@@ -103,7 +108,11 @@ export default function SignalCard({ signal, diagnostics }: SignalCardProps) {
 
           {/* Render metadata component if expanded */}
           {expanded && MetadataComponent && signal.metadata && (
-            <MetadataComponent metadata={signal.metadata as never} diagnostics={diagnostics} />
+            <MetadataComponent
+              metadata={signal.metadata as never}
+              diagnostics={diagnostics}
+              score={signal.score}
+            />
           )}
         </div>
       </div>
