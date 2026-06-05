@@ -9,6 +9,7 @@ import { expect } from 'chai';
 import { startMockSpecServer } from './mock-spec-server.ts';
 
 const CLI_BIN = fileURLToPath(new URL('../../bin/jentic-api-scorecard.mjs', import.meta.url));
+const SAMPLE_SPEC = fileURLToPath(new URL('../fixtures/sample.yaml', import.meta.url));
 const OAK_PETSTORE_URL =
   'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
 
@@ -510,5 +511,29 @@ describe('score command — e2e against docker', function () {
     } finally {
       started.server.close();
     }
+  });
+
+  describe('real JENTIC_API_KEY against the live validator (regression: #114)', function () {
+    const realKey = process.env['JENTIC_API_KEY'];
+    const itOrSkip = realKey === undefined || realKey === '' ? it.skip : it;
+
+    itOrSkip('local-file input exits 0', async function () {
+      const result = await runCliAsync(['score', SAMPLE_SPEC], {
+        ...envWithoutKey(),
+        JENTIC_API_KEY: realKey,
+      });
+      expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
+      expect(strip(result.stdout)).to.include('API Readiness Scorecard');
+    });
+
+    itOrSkip('petstore URL + --bundle exits 0', async function () {
+      const result = await runCliAsync(['score', OAK_PETSTORE_URL, '--bundle'], {
+        ...envWithoutKey(),
+        JENTIC_API_KEY: realKey,
+      });
+      expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
+      expect(strip(result.stdout)).to.include('API Readiness Scorecard');
+      expect(result.stderr).to.include('Bundling');
+    });
   });
 });
