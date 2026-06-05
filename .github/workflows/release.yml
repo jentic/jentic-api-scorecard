@@ -180,16 +180,28 @@ jobs:
               "https://registry.npmjs.org/@jentic/api-scorecard-cli/-/api-scorecard-cli-${VERSION}.tgz"
         env:
           VERSION: ${{ needs.release-prepare.outputs.version }}
+      # The CLI now depends on its workspace sibling
+      # @jentic/api-scorecard-formatter-html, published moments earlier in this
+      # same job. The SBOM's `npm install` resolves that sibling from the
+      # registry, whose metadata can lag the publish ACK (same propagation window
+      # as the tarball download above) and surface as `ETARGET notarget`. Retry
+      # until the just-published version has propagated.
       - name: Generate SPDX SBOM for CLI
-        run: |
-          mkdir -p ./artifacts/sbom-staging
-          jq 'del(.devDependencies)' packages/cli/package.json \
-            > ./artifacts/sbom-staging/package.json
-          (cd ./artifacts/sbom-staging \
-            && npm install --omit=dev --no-audit --no-fund --ignore-scripts \
-            && npm sbom --sbom-format=spdx --sbom-type=application --omit=dev \
-              > ../cli.sbom.spdx.json)
-          jq empty ./artifacts/cli.sbom.spdx.json
+        uses: nick-fields/retry@v4
+        with:
+          max_attempts: 60
+          retry_wait_seconds: 30
+          timeout_minutes: 35
+          retry_on: error
+          command: |
+            mkdir -p ./artifacts/sbom-staging
+            jq 'del(.devDependencies)' packages/cli/package.json \
+              > ./artifacts/sbom-staging/package.json
+            (cd ./artifacts/sbom-staging \
+              && npm install --omit=dev --no-audit --no-fund --ignore-scripts \
+              && npm sbom --sbom-format=spdx --sbom-type=application --omit=dev \
+                > ../cli.sbom.spdx.json)
+            jq empty ./artifacts/cli.sbom.spdx.json
       - name: Attest SBOM
         uses: actions/attest@v4
         with:
