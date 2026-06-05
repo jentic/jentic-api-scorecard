@@ -4,19 +4,25 @@ import Scorecard from './components/Scorecard.tsx';
 import fixture from './scorecard.fixture.json';
 
 // `format()` accepts engine-verbatim JSON (Record<string, unknown>), so the injected
-// payload is not guaranteed to have the shape Scorecard reads. Check only the truly
-// load-bearing fields — summary + apiMetadata — so a malformed payload degrades to the
-// empty state rather than crashing the SPA. `details` is intentionally NOT required:
-// the CLI's --detail filter drops it at the summary/dimensions levels, and Scorecard
-// tolerates its absence.
+// payload is not guaranteed to have the shape the SPA reads. Validate the scalar
+// fields SummaryCard actually dereferences (apiMetadata.name, summary.score/level/
+// grade) — not just that the containers are objects — so a malformed payload degrades
+// to the empty state rather than crashing on `.charAt` of undefined. `details` and
+// `summary.dimensions` are intentionally NOT required: the CLI's --detail filter drops
+// them at lower levels and the components guard their absence.
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 function isRenderable(data: unknown): data is ScorecardData {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as Record<string, unknown>;
+  if (!isObject(data)) return false;
+  const { summary, apiMetadata } = data;
+  if (!isObject(summary) || !isObject(apiMetadata)) return false;
   return (
-    typeof d['summary'] === 'object' &&
-    d['summary'] !== null &&
-    typeof d['apiMetadata'] === 'object' &&
-    d['apiMetadata'] !== null
+    typeof apiMetadata['name'] === 'string' &&
+    typeof summary['score'] === 'number' &&
+    typeof summary['level'] === 'string' &&
+    typeof summary['grade'] === 'string'
   );
 }
 

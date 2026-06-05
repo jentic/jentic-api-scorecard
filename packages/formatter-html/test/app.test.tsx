@@ -22,6 +22,14 @@ describe('App graceful degradation', function () {
     ['null', null],
     ['empty object', {}],
     ['summary without apiMetadata', { summary: {} }],
+    // Containers present but their load-bearing scalars are missing: must NOT be
+    // treated as renderable (SummaryCard would crash on apiMetadata.name.charAt).
+    ['empty summary + apiMetadata objects', { summary: {}, apiMetadata: {} }],
+    [
+      'apiMetadata without a name',
+      { summary: { score: 1, level: 'x', grade: 'A' }, apiMetadata: {} },
+    ],
+    ['summary missing scalars', { summary: {}, apiMetadata: { name: 'n' } }],
     ['a number', 42],
   ];
 

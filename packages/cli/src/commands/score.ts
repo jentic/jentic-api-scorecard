@@ -55,7 +55,10 @@ export function tryParseEngineOutput(stdout: string, format: Format): ParseEngin
 }
 
 function invalidEngineOutput(format: Format, stdout: string): ParseEngineOutputResult {
-  if (format === Format.JSON) {
+  // Raw pass-through only makes sense for pretty, where the engine's text is still
+  // human-readable. json and html are structured: passing raw output through would
+  // emit non-JSON / non-HTML while reporting success, so escalate to a hard failure.
+  if (format !== Format.PRETTY) {
     return {
       ok: false,
       exitCode: ExitCode.ENGINE_FAILURE,

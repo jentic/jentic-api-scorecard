@@ -47,6 +47,19 @@ describe('tryParseEngineOutput', function () {
     });
   });
 
+  describe('invalid output under Format.HTML', function () {
+    it('escalates to ENGINE_FAILURE rather than passing raw output through', function () {
+      // Raw pass-through would write non-HTML into a .html file while reporting
+      // success; html is structured, so it must hard-fail like json.
+      const result = tryParseEngineOutput('not a scorecard', Format.HTML);
+      expect(result.ok).to.equal(false);
+      if (!result.ok) {
+        expect(result.exitCode).to.equal(ExitCode.ENGINE_FAILURE);
+        expect(result.stdout).to.equal('');
+      }
+    });
+  });
+
   describe('invalid JSON under Format.PRETTY', function () {
     it('returns SUCCESS with a warning and the raw stdout passthrough', function () {
       const raw = 'engine emitted a plain-text traceback instead of JSON';
