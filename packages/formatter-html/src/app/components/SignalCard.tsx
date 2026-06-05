@@ -37,9 +37,13 @@ const getScoreTextColor = (score: number): string => {
   return 'text-red-600';
 };
 
-// Each metadata component types its own metadata shape; the registry erases those
-// differences, so cast to a common prop signature at the boundary. `score` (the
-// signal's 0-1 score) is passed to every component; most ignore it.
+// Each of the 15 metadata components types its own distinct `metadata` shape. A
+// `kind -> component` registry can't preserve those per-kind types in one Record
+// without a discriminated-union lookup (a large refactor for no runtime gain), so
+// we erase `metadata` to `never` at this boundary. The cost: field-drift in a
+// component is caught at runtime by the fixture-based value assertions in
+// test/signals.test.tsx, not at compile time. `score` is passed to every component;
+// most ignore it.
 type MetadataComponent = ComponentType<{
   metadata: never;
   diagnostics?: Diagnostic[];
