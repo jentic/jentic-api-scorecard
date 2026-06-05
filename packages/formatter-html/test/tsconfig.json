@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "mocha"]
   },
-  "include": ["../src/**/*", "../app/**/*", "**/*.ts", "**/*.tsx"]
+  "include": ["../src/**/*", "**/*.ts", "**/*.tsx"]
 }

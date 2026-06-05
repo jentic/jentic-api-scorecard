@@ -49,6 +49,18 @@ describe('injectScorecard', function () {
     const result: ScorecardResult = { note: 'line and para' };
     expect(readInjected(injectScorecard(TEMPLATE, result))).to.deep.equal(result);
   });
+
+  it('preserves $ replacement-pattern sequences in the payload', function () {
+    // String.replace interprets $1/$&/$`/$' in a replacement *string*; spec content
+    // routinely contains `$`. The payload must survive verbatim regardless.
+    const result: ScorecardResult = {
+      price: 'costs $5 and $1 each',
+      a: 'see $`example',
+      b: 'A & B $&',
+      c: "tail $' here",
+    };
+    expect(readInjected(injectScorecard(TEMPLATE, result))).to.deep.equal(result);
+  });
 });
 
 const DIST = fileURLToPath(new URL('../dist/index.js', import.meta.url));

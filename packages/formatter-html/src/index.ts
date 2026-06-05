@@ -30,7 +30,15 @@ function escapeForScript(json: string): string {
  */
 export function injectScorecard(template: string, result: ScorecardResult): string {
   const payload = escapeForScript(JSON.stringify(result));
-  return template.replace(DATA_ISLAND_PATTERN, `$1window.__SCORECARD__ = ${payload};$3`);
+  // Use a replacement function, not a replacement string: a string would have its
+  // `$` sequences ($1, $&, $`, $') interpreted by String.replace, and spec content
+  // routinely contains `$` (prices, templates). The function's return value is
+  // inserted verbatim, so the payload is immune to that interpretation.
+  return template.replace(
+    DATA_ISLAND_PATTERN,
+    (_match, open: string, _body: string, close: string) =>
+      `${open}window.__SCORECARD__ = ${payload};${close}`,
+  );
 }
 
 let cachedTemplate: string | undefined;

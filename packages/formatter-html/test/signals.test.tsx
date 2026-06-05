@@ -163,5 +163,25 @@ describe('signal metadata panels', function () {
       expect(html).to.contain('Security Schemes');
       expect(html, 'oauth2 strength 35%').to.contain('35%');
     });
+
+    // CountBasedMetadata coerces missing fields to 0 (renders 0/N, not `undefined`),
+    // so the undefined-guard alone can't catch a numerator/denominator field rename.
+    // Assert the real numerator + denominator render so a rename fails the test.
+    const COUNT_EXPECTATIONS: Record<string, [string, string]> = {
+      resolution_completeness: ['43', '43'],
+      example_density: ['16', '128'],
+      example_validity: ['16', '16'],
+      description_coverage: ['117', '198'],
+      error_standardization: ['0', '19'],
+      summary_coverage: ['19', '32'],
+    };
+
+    for (const [kind, [numerator, denominator]] of Object.entries(COUNT_EXPECTATIONS)) {
+      it(`${kind} renders its numerator/denominator from the fixture`, function () {
+        const html = render(kind);
+        expect(html, `numerator ${numerator}`).to.contain(numerator);
+        expect(html, `denominator ${denominator}`).to.contain(denominator);
+      });
+    }
   });
 });
