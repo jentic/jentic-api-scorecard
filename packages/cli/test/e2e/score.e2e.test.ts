@@ -514,23 +514,19 @@ describe('score command — e2e against docker', function () {
   });
 
   describe('real JENTIC_API_KEY against the live validator (regression: #114)', function () {
-    const realKey = process.env['JENTIC_API_KEY'];
-    const itOrSkip = realKey === undefined || realKey === '' ? it.skip : it;
+    beforeEach(function () {
+      const realKey = process.env['JENTIC_API_KEY'];
+      if (realKey === undefined || realKey === '') this.skip();
+    });
 
-    itOrSkip('local-file input exits 0', async function () {
-      const result = await runCliAsync(['score', SAMPLE_SPEC], {
-        ...envWithoutKey(),
-        JENTIC_API_KEY: realKey,
-      });
+    it('local-file input exits 0', async function () {
+      const result = await runCliAsync(['score', SAMPLE_SPEC], process.env);
       expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
       expect(strip(result.stdout)).to.include('API Readiness Scorecard');
     });
 
-    itOrSkip('petstore URL + --bundle exits 0', async function () {
-      const result = await runCliAsync(['score', OAK_PETSTORE_URL, '--bundle'], {
-        ...envWithoutKey(),
-        JENTIC_API_KEY: realKey,
-      });
+    it('petstore URL + --bundle exits 0', async function () {
+      const result = await runCliAsync(['score', OAK_PETSTORE_URL, '--bundle'], process.env);
       expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
       expect(strip(result.stdout)).to.include('API Readiness Scorecard');
       expect(result.stderr).to.include('Bundling');
