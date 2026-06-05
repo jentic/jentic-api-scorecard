@@ -1,20 +1,50 @@
 # @jentic/api-scorecard-formatter-html
 
-HTML formatter for [Jentic API Scorecard](https://github.com/jentic/jentic-api-scorecard) results.
+HTML formatter and React components for [Jentic API Scorecard](https://github.com/jentic/jentic-api-scorecard) results.
 
-> **Status:** stub. `format(result)` throws "not implemented" until Phase 9 of the
-> [roadmap](https://github.com/jentic/jentic-api-scorecard/blob/main/specs/roadmap.md).
-> The package is published alongside `@jentic/api-scorecard-cli` (Lerna fixed-version) so the
-> contract is in place; the implementation lands later.
+The package has two entry points:
 
-## Documentation
+## `format(result): string` — self-contained HTML
 
-- Project overview:
-  [github.com/jentic/jentic-api-scorecard](https://github.com/jentic/jentic-api-scorecard)
-- Architecture notes:
-  [`docs/architecture.md`](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/architecture.md)
+Renders a scorecard result as a single self-contained HTML document — an interactive React SPA
+with its JS and CSS inlined, the result JSON assigned to `window.__SCORECARD__`, and no external
+assets or CDN. The output works offline and is suitable for embedding in CI artifacts and
+dashboards.
+
+```ts
+import { writeFileSync } from 'node:fs';
+
+import { format } from '@jentic/api-scorecard-formatter-html';
+
+writeFileSync('scorecard.html', format(scorecardResult)); // engine-verbatim scorecard JSON
+```
+
+## React components
+
+For embedding the scorecard inside your own React app:
+
+```tsx
+import { Scorecard, type ScorecardData } from '@jentic/api-scorecard-formatter-html/react';
+
+export function Report({ data }: { data: ScorecardData }) {
+  return <Scorecard data={data} />;
+}
+```
+
+React is an (optional) **peer dependency** — the components render with *your* React. The
+components are styled with stock Tailwind utility classes and **ship no CSS**, so a Tailwind
+pipeline must be present. The quickest way is the Tailwind Play CDN:
+
+```html
+<script src="https://cdn.tailwindcss.com"></script>
+```
+
+The entry exports `Scorecard` (the full report) and the `ScorecardData` type model.
 
 ## License
 
-[Apache 2.0](https://github.com/jentic/jentic-api-scorecard/blob/main/LICENSE). See also
-[`NOTICE`](https://github.com/jentic/jentic-api-scorecard/blob/main/NOTICE).
+Jentic API Scorecard is licensed under the
+[Apache 2.0](https://github.com/jentic/jentic-api-scorecard/blob/main/LICENSE) license.
+Jentic API Scorecard comes with an explicit
+[NOTICE](https://github.com/jentic/jentic-api-scorecard/blob/main/NOTICE) file containing
+additional legal notices and information.

@@ -124,9 +124,12 @@ jentic-api-scorecard/
 │   │   │   ├── formatters/                   (pretty / json / markdown formatters; --format + --detail)
 │   │   │   └── spinner.ts                    (stderr phase spinner)
 │   │   └── test/fixtures/sample.yaml         (tiny OpenAPI doc used as an e2e test fixture)
-│   └── formatter-html/                       (@jentic/api-scorecard-formatter-html — stub)
-│       ├── package.json
-│       └── src/index.ts                      (export format(result): string — TODO)
+│   └── formatter-html/                       (@jentic/api-scorecard-formatter-html)
+│       ├── package.json                      (dual export: "." → format(); "./react" → components)
+│       ├── src/index.ts                      (export format(result): string — self-contained HTML)
+│       ├── app/                              (React SPA: ported scorecard components + react.ts entry)
+│       ├── index.html                        (Vite entry; window.__SCORECARD__ data island)
+│       └── vite.config.ts                    (singlefile build → dist/app/index.html, CSS inlined)
 ├── docker/                                   (image internals; not a deliverable on its own)
 │   ├── Dockerfile                            (python:3.14-slim + Node 24, uv install)
 │   ├── .dockerignore
@@ -147,7 +150,8 @@ A few layout notes worth calling out:
 - `packages/` and `docker/` are siblings at the repo root. Lerna's workspace globs are `packages/*`; the Dockerfile is built with `docker build ./docker`. Neither tree depends on the other at build time — they only compose at runtime when the host CLI invokes the container.
 - The Python code under `docker/src/jentic_scorecard_runner/` is *image-internal* — it's never published to PyPI, never imported from anywhere outside the image. Treating it as part of the docker artifact (rather than a peer "Python project") avoids the false impression that Python is a parallel deliverable to JS.
 - `tsconfig.base.json` and `lerna.json` live at the repo root because Lerna and TypeScript expect monorepo metadata to be top-level. There's no `javascript/` wrapper because there's no symmetric `python/` to balance against — JS is the only language we publish.
-- **`pretty`, `json`, and `markdown` formatters live inside `packages/cli/src/formatters/`** because they're plain TS string-projections of the engine result with no toolchain weight. **`formatter-html` is a separate package** because its Phase 14 implementation is an interactive React SPA (single self-contained HTML, bundle inlined into `<script>` and `<style>` blocks) — pulling React + a bundler into `packages/cli/` would burden every `pretty`/`json` user with weight they never use. The decision rule: a formatter gets its own package iff its build/runtime toolchain materially exceeds the CLI's; otherwise it lives in the CLI. The CLI is today the only consumer of these formatters, so per-toolchain weight is the load-bearing axis for the split — not library re-use across surfaces.
+- **`pretty`, `json`, and `markdown` formatters live inside `packages/cli/src/formatters/`** because they're plain TS string-projections of the engine result with no toolchain weight. **`formatter-html` is a separate package** because its implementation is an interactive React SPA (single self-contained HTML, bundle inlined into `<script>` and `<style>` blocks) — pulling React + a bundler into `packages/cli/` would burden every `pretty`/`json` user with weight they never use. The decision rule: a formatter gets its own package iff its build/runtime toolchain materially exceeds the CLI's; otherwise it lives in the CLI.
+  - The package exposes **two entry points**. `"."` exports `format(result): string` — the CLI's consumption path, which reads the pre-built single-file SPA and injects the result into `window.__SCORECARD__`; this entry pulls **zero React** into the CLI (React/Vite/Tailwind are devDependencies, bundled into the output string). `"./react"` exports the scorecard React components (`Scorecard`, `SummaryCard`, … plus the `ScorecardData` types) for consumers embedding the scorecard in their own React app; React is a (optional) **peerDependency** there, and styling relies on the consumer's Tailwind pipeline (a `cdn.tailwindcss.com` tag suffices) rather than shipped CSS. So per-toolchain weight remains the load-bearing axis for *why the package is split out*, and the `"./react"` entry adds component re-use across surfaces as a deliberate second consumption mode — without imposing any React/bundler cost on the `format()`/CLI path.
 
 ## 5. CLI specification
 
@@ -676,7 +680,7 @@ The validator endpoint is a Jentic-side usage-accounting hit, not the access-con
 
 ## 10. Out of scope (Delivery 1)
 
-- HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package is scaffolded with a typed `format(result): string` stub so the monorepo shape and contract are in place; the implementation lands in Phase 14.
+- HTML formatter wired into the CLI. The `@jentic/api-scorecard-formatter-html` package implements `format(result): string` (and a `./react` component entry), but the CLI's `--format html` flag that calls it is deferred (roadmap Phase 14 / 15).
 - User-facing image flags. The CLI fully abstracts image management: it always pulls the image tag matching its own version, with no user override.
 - Subcommands beyond `score` (e.g. `login`, `logout`, `whoami`, `config`, `lint`) and any persistent credentials file. Auth is env-var only.
 - Multi-spec / portfolio scoring.

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "outDir": "./dist/react",
+    "rootDir": "./src/app",
+    "types": []
+  },
+  "include": ["src/app/react.ts", "src/app/components/**/*", "src/app/types.ts"]
+}

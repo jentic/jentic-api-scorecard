@@ -243,6 +243,22 @@ export default tseslint.config(
     },
   },
 
+  // formatter-html's React SPA under src/app/ is a Vite project, type-checked via
+  // tsconfig.app.json (the package tsconfig.json scopes itself to the Node format()
+  // entry). Point the parser at the app project and keep the explicit .ts/.tsx import
+  // suffixes the rest of the repo uses — rewriteRelativeImportExtensions handles them.
+  {
+    files: ['packages/formatter-html/src/app/**/*.ts', 'packages/formatter-html/src/app/**/*.tsx'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        projectService: false,
+        project: './packages/formatter-html/tsconfig.app.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+
   // Prettier must be last to override other configs
   eslintPluginPrettierRecommended,
 );

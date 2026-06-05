@@ -1,0 +1,63 @@
+import type { Diagnostic, Provenance } from '../../types.ts';
+
+import DiagnosticsList from '../DiagnosticsList.tsx';
+
+interface SeverityCounts {
+  critical?: number;
+  error?: number;
+  warning?: number;
+  info?: number;
+  hint?: number;
+}
+
+interface LintResultsMeta {
+  severity_counts?: SeverityCounts;
+  weighted_cost?: number;
+  max_cost?: number;
+  provenance?: Provenance;
+}
+
+interface LintResultsMetadataProps {
+  metadata: LintResultsMeta;
+  diagnostics?: Diagnostic[];
+}
+
+export default function LintResultsMetadata({ metadata, diagnostics }: LintResultsMetadataProps) {
+  const { severity_counts, weighted_cost, max_cost, provenance } = metadata;
+
+  if (!severity_counts) return null;
+
+  const critical = severity_counts.critical ?? 0;
+  const error = severity_counts.error ?? 0;
+  const warning = severity_counts.warning ?? 0;
+  const info = severity_counts.info ?? 0;
+  const hint = severity_counts.hint ?? 0;
+  const total = critical + error + warning + info + hint;
+
+  return (
+    <div
+      className="mt-3 pt-3 border-t border-gray-100 cursor-default"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="text-xs text-gray-600 mb-2">
+        <span className="font-medium">{total} issues:</span>{' '}
+        {critical > 0 && <span className="text-red-700">{critical} critical</span>}
+        {critical > 0 && (error > 0 || warning > 0 || info > 0 || hint > 0) && ', '}
+        {error > 0 && <span className="text-red-600">{error} errors</span>}
+        {error > 0 && (warning > 0 || info > 0 || hint > 0) && ', '}
+        {warning > 0 && <span className="text-yellow-700">{warning} warnings</span>}
+        {warning > 0 && (info > 0 || hint > 0) && ', '}
+        {info > 0 && <span className="text-blue-600">{info} info</span>}
+        {info > 0 && hint > 0 && ', '}
+        {hint > 0 && <span className="text-gray-600">{hint} hints</span>}
+      </div>
+      <div className="text-xs text-gray-500">
+        Weighted cost: {weighted_cost?.toFixed(3)} | Max cost: {max_cost}
+      </div>
+
+      {diagnostics && provenance && (
+        <DiagnosticsList diagnostics={diagnostics} provenance={provenance} />
+      )}
+    </div>
+  );
+}
