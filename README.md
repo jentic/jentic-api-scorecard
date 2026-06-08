@@ -137,6 +137,8 @@ Add `--format html` to render an interactive, self-contained HTML scorecard — 
 with all JS and CSS inlined (no external CDN, works offline), suitable for CI artifacts and
 dashboards. It honours `--detail`, so `--detail diagnostics` embeds the full evidence bundle.
 
+![HTML scorecard report](https://github.com/jentic/jentic-api-scorecard/raw/main/assets/cli-html-report.png)
+
 Because the output is a full HTML document, the CLI refuses to print it straight into an
 interactive terminal — redirect it or use `-o`:
 
