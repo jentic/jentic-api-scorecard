@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect } from 'chai';
 
-import { detectLlmFailure, formatLlmFailureError } from '../src/llm-warning.ts';
+import { detectLlmFailure, formatLlmFailureError } from '../src/llm-failure.ts';
 import { ScorecardResult } from '../src/result.ts';
 
 const failedPath = fileURLToPath(new URL('./fixtures/scorecard.llm-failed.json', import.meta.url));

@@ -9,7 +9,7 @@ import { formatHtml } from '../formatters/html.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
-import { detectLlmFailure, formatLlmFailureError } from '../llm-warning.ts';
+import { detectLlmFailure, formatLlmFailureError } from '../llm-failure.ts';
 import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
 import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
