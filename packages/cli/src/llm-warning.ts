@@ -45,9 +45,25 @@ function collectAffectedSignals(result: ScorecardResult): AffectedSignal[] {
   return affected;
 }
 
+// The engine signals LLM failure two ways depending on the cause: an explicit
+// llm-analysis-error diagnostic (provider auth/model errors), or — for
+// connectivity failures — a silent semantic-analysis-summary reporting batches
+// attempted but zero operations analyzed. Either means the LLM-derived signals
+// defaulted to a perfect score, so detect both.
+function semanticAnalysisAborted(diagnostic: { data?: Record<string, unknown> }): boolean {
+  const data = diagnostic.data ?? {};
+  const batches = data['batches_processed'];
+  const analyzed = data['total_operations_analyzed'];
+  return typeof batches === 'number' && batches > 0 && analyzed === 0;
+}
+
 export function detectLlmFailure(result: ScorecardResult): LlmFailureWarning | null {
-  const errors = (result.diagnostics ?? []).filter((d) => d.code === LLM_ANALYSIS_ERROR_CODE);
-  if (errors.length === 0) {
+  const diagnostics = result.diagnostics ?? [];
+  const errors = diagnostics.filter((d) => d.code === LLM_ANALYSIS_ERROR_CODE);
+  const aborted = diagnostics.some(
+    (d) => d.code === SEMANTIC_ANALYSIS_CODE && semanticAnalysisAborted(d),
+  );
+  if (errors.length === 0 && !aborted) {
     return null;
   }
   return { affectedSignals: collectAffectedSignals(result), cause: errors[0]?.message };

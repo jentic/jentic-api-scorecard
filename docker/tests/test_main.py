@@ -11,7 +11,7 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 _USAGE_PATH = "/api/v1/usage/api-scoring"
 
 
-def run_runner(*args, env_override=None, stdin_data=None):
+def run_runner(*args, env_override=None, stdin_data=None, timeout=10):
     """Run the runner as a subprocess to test arg parsing and exit codes."""
     env = os.environ.copy()
     env.pop("JENTIC_API_KEY", None)
@@ -27,7 +27,7 @@ def run_runner(*args, env_override=None, stdin_data=None):
         env=env,
         input=stdin_data if stdin_data is not None else "",
         cwd=_PROJECT_ROOT,
-        timeout=10,
+        timeout=timeout,
     )
     return result
 
@@ -106,3 +106,39 @@ class TestGateIntegration:
         result = run_runner("score", stdin_data='{"openapi":"3.0.0"}')
         assert result.returncode == 2
         assert "requires a Jentic API key" in result.stderr
+
+
+class TestLlmFailure:
+    _OAK_PETSTORE_URL = (
+        "https://raw.githubusercontent.com/jentic/jentic-public-apis/"
+        "refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json"
+    )
+
+    def test_with_llm_unreachable_endpoint_exits_8(self):
+        # Point --with-llm at an unreachable OpenAI-compatible endpoint. The LLM
+        # calls fail, the affected signals default to a perfect score, and the
+        # engine still reports success — so the runner must surface exit code 8.
+        # The allowlisted OAK URL keeps the gate happy without a key.
+        result = run_runner(
+            "score",
+            "--with-llm",
+            "--url",
+            self._OAK_PETSTORE_URL,
+            env_override={
+                "LLM_PROVIDER": "OPENAI",
+                "LIGHT_LLM_PROVIDER": "OPENAI",
+                "OPENAI_API_URL": "http://127.0.0.1:1/v1/chat/completions",
+                "OPENAI_API_KEY": "dummy",
+                "LLM_MODEL": "gpt-4o-mini",
+                "LLM_LIGHT_MODEL": "gpt-4o-mini",
+            },
+            timeout=120,
+        )
+        assert result.returncode == 8, result.stderr
+        assert "LLM analysis failed" in result.stderr
+        # The scorecard is still streamed so the host can format it.
+        assert '"summary"' in result.stdout
+
+    def test_without_with_llm_exits_0(self):
+        result = run_runner("score", "--url", self._OAK_PETSTORE_URL, timeout=120)
+        assert result.returncode == 0, result.stderr

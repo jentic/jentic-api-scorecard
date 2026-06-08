@@ -358,6 +358,7 @@ stdout stays clean so `--format json | jq` works without filtering.
 | 5 | Spec fetch or parse failure (engine exit code 2, passed through). |
 | 6 | Engine invocation failure (any other non-zero engine exit, passed through). |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
+| 8 | LLM analysis failed under `--with-llm`: the provider call failed (auth, model, connectivity, throttling, …) and the affected LLM-derived signals defaulted to a perfect score. The formatted scorecard is still emitted (with a stderr warning naming the affected signals) so the result is inspectable, but the non-zero exit lets CI gate on it. Only reachable with `--with-llm`. |
 
 ### Error UX examples
 
@@ -531,6 +532,7 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 | 5 | Reserved for spec-policy failure. Currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code; kept defined to preserve the public contract. |
 | 6 | Engine invocation failure (pipeline exception or `result.success == False`). |
 | 7 | Rate limit reached (validator returned 429). |
+| 8 | LLM analysis failed under `--with-llm`: the engine returns `result.success == True` but emits `llm-analysis-error` diagnostics, so the affected LLM-derived signals defaulted to a perfect score. The runner still streams `scorecard.json` to stdout (so the host can format it) and then returns this code. Only reachable with `--with-llm`. |
 
 The CLI passes these through verbatim and adds its own codes for host-side concerns (4 = Docker missing). The user-facing exit-code contract is §5.
 

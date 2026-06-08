@@ -7,9 +7,13 @@ import { detectLlmFailure, formatLlmFailureWarning } from '../src/llm-warning.ts
 import { ScorecardResult } from '../src/result.ts';
 
 const failedPath = fileURLToPath(new URL('./fixtures/scorecard.llm-failed.json', import.meta.url));
+const unreachablePath = fileURLToPath(
+  new URL('./fixtures/scorecard.llm-unreachable.json', import.meta.url),
+);
 const okPath = fileURLToPath(new URL('./fixtures/scorecard.sample.json', import.meta.url));
 
 const failed = JSON.parse(readFileSync(failedPath, 'utf8')) as ScorecardResult;
+const unreachable = JSON.parse(readFileSync(unreachablePath, 'utf8')) as ScorecardResult;
 const ok = JSON.parse(readFileSync(okPath, 'utf8')) as ScorecardResult;
 
 describe('detectLlmFailure', function () {
@@ -30,6 +34,17 @@ describe('detectLlmFailure', function () {
   it('carries the engine cause message', function () {
     const warning = detectLlmFailure(failed);
     expect(warning!.cause).to.be.a('string').and.contain('LLM analysis failed');
+  });
+
+  it('detects a connectivity failure that emits no llm-analysis-error', function () {
+    // An unreachable endpoint produces no llm-analysis-error — only a
+    // semantic-analysis-summary reporting batches attempted but 0 operations
+    // analyzed. The detector must catch this too, or connection failures exit 0.
+    const hasError = (unreachable.diagnostics ?? []).some((d) => d.code === 'llm-analysis-error');
+    expect(hasError).to.equal(false);
+    const warning = detectLlmFailure(unreachable);
+    expect(warning).to.not.equal(null);
+    expect(warning!.cause).to.equal(undefined);
   });
 });
 

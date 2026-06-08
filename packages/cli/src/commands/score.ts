@@ -202,7 +202,10 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     return ExitCode.GENERIC_ERROR;
   }
 
-  if (result.exitCode !== 0) {
+  // LLM_FAILURE still streams a valid scorecard on stdout; fall through to the
+  // normal formatting path so the report + the signal-named warning render, then
+  // surface the non-zero exit at the end.
+  if (result.exitCode !== 0 && result.exitCode !== ExitCode.LLM_FAILURE) {
     clearSpinner();
     if (result.stderr) {
       process.stderr.write(result.stderr);
@@ -268,15 +271,17 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     process.stdout.write(output);
   }
 
-  if (result.stderr) {
+  const llmFailure = options.withLlm ? detectLlmFailure(parsed) : null;
+
+  // The runner's own terse LLM note arrives via result.stderr; the rich,
+  // signal-named warning below supersedes it, so don't pass it through twice.
+  if (result.stderr && llmFailure === null) {
     process.stderr.write(result.stderr);
   }
 
-  if (options.withLlm) {
-    const llmFailure = detectLlmFailure(parsed);
-    if (llmFailure !== null) {
-      process.stderr.write(formatLlmFailureWarning(llmFailure));
-    }
+  if (llmFailure !== null) {
+    process.stderr.write(formatLlmFailureWarning(llmFailure));
+    return ExitCode.LLM_FAILURE;
   }
 
   return ExitCode.SUCCESS;

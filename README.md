@@ -173,10 +173,11 @@ models (Ollama) cost nothing per call.
 
 If the LLM calls fail (bad credentials, an inaccessible model, an unreachable endpoint), the
 engine degrades gracefully: the affected LLM-backed signals default to a perfect score, so the
-scorecard can look deceptively similar to a non-`--with-llm` run. The CLI detects this and prints
-a warning to stderr naming the affected signals — visible at any `--detail` level. If you see that
-warning, the printed scores are **not** a true `--with-llm` result; re-run with `--detail
-diagnostics` for the underlying provider error.
+scorecard can look deceptively similar to a non-`--with-llm` run. The CLI detects this, prints a
+warning to stderr naming the affected signals (at any `--detail` level), and **exits `8`** — so a
+CI job running `--with-llm` fails loudly instead of silently passing on a degraded score. The
+scorecard is still printed so a human can read it; re-run with `--detail diagnostics` for the
+underlying provider error.
 
 See **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
 for all provider recipes (including local Ollama), the full environment variable reference, and
@@ -255,6 +256,7 @@ jentic-api-scorecard score <input> [options]
 | 5 | Spec fetch or parse failure. |
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
+| 8 | LLM analysis failed under `--with-llm`: the provider call failed and the affected signals defaulted to a perfect score. The scorecard is still printed (with a stderr warning), so CI can gate on the exit code while a human can still read the report. |
 
 ## Prefer a browser?
 

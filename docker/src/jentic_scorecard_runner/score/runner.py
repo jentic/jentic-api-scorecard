@@ -16,6 +16,10 @@ from jentic.apitools.pipelines import score_openapi
 from jentic_scorecard_runner.exit_codes import ExitCode
 
 
+_LLM_ANALYSIS_ERROR_CODE = "llm-analysis-error"
+_SEMANTIC_ANALYSIS_SUMMARY_CODE = "semantic-analysis-summary"
+
+
 def run_score(url: str | None, with_llm: bool) -> ExitCode:
     """Score the input (URL or stdin) and write the scorecard JSON to stdout.
 
@@ -71,7 +75,43 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
 
         with (Path(result.version_dir) / "scorecard.json").open("rb") as src:
             shutil.copyfileobj(src, sys.stdout.buffer)
+
+        # The engine reports success even when LLM batches fail: the affected
+        # LLM-derived signals silently default to a perfect score. When the
+        # caller opted into --with-llm, treat that as a failure so CI gates on
+        # it — the scorecard is still streamed above for formatting, but the
+        # exit code reflects that this is not a true LLM run.
+        if with_llm and _llm_analysis_failed(result.diagnostics):
+            print(
+                "error: LLM analysis failed; affected signals defaulted to a perfect "
+                "score. Re-run with --detail diagnostics for the provider error.",
+                file=sys.stderr,
+            )
+            return ExitCode.LLM_FAILURE
     return ExitCode.SUCCESS
+
+
+def _llm_analysis_failed(diagnostics: list) -> bool:
+    """Detect LLM analysis failure regardless of cause.
+
+    The engine signals failure two different ways depending on what broke:
+    an explicit ``llm-analysis-error`` diagnostic (e.g. provider auth/model
+    errors), or — for connectivity failures — a silent
+    ``semantic-analysis-summary`` reporting batches attempted but zero
+    operations analyzed. Either means the LLM-derived signals defaulted.
+    """
+    for diag in diagnostics or []:
+        code = getattr(diag, "code", None)
+        if code == _LLM_ANALYSIS_ERROR_CODE:
+            return True
+        if code == _SEMANTIC_ANALYSIS_SUMMARY_CODE:
+            data = getattr(diag, "data", None) or {}
+            if (
+                data.get("batches_processed", 0) > 0
+                and data.get("total_operations_analyzed", 0) == 0
+            ):
+                return True
+    return False
 
 
 def _stdin_to_tempfile() -> Path | None:

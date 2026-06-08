@@ -11,3 +11,4 @@ class ExitCode(IntEnum):
     SPEC_FAILURE = 5
     ENGINE_FAILURE = 6
     RATE_LIMITED = 7
+    LLM_FAILURE = 8
