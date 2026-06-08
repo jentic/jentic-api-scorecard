@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/jentic/jentic-api-scorecard/compare/v1.2.1...v1.3.0) (2026-06-08)
+
+### Features
+
+- **formatter-html:** show score/100 with grade in summary card ([#143](https://github.com/jentic/jentic-api-scorecard/issues/143)) ([f394732](https://github.com/jentic/jentic-api-scorecard/commit/f3947328598bca8f0935a56e2ac2beb498b1b918))
+
 ## [1.2.1](https://github.com/jentic/jentic-api-scorecard/compare/v1.2.0...v1.2.1) (2026-06-05)
 
 **Note:** Version bump only for package @jentic/api-scorecard-formatter-html

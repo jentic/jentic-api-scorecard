@@ -1,9 +1,4 @@
-const getScoreColor = (score: number): string => {
-  if (score >= 80) return '#22c55e'; // green
-  if (score >= 50) return '#eab308'; // yellow
-  if (score >= 30) return '#f97316'; // orange
-  return '#ef4444'; // red
-};
+import { getScoreColor } from './scoreColors.ts';
 
 interface CircularProgressProps {
   score: number;

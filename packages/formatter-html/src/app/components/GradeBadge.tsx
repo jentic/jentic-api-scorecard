@@ -1,8 +1,8 @@
 const getGradeStyle = (grade: string): string => {
   const letter = grade.charAt(0);
   if (letter === 'A') return 'bg-green-100 text-green-800';
-  if (letter === 'B') return 'bg-yellow-100 text-yellow-800';
-  if (letter === 'C') return 'bg-yellow-100 text-yellow-800';
+  if (letter === 'B') return 'bg-teal-100 text-teal-800';
+  if (letter === 'C') return 'bg-amber-100 text-amber-800';
   if (letter === 'D') return 'bg-orange-100 text-orange-800';
   return 'bg-red-100 text-red-800'; // F
 };

@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 
 import type { Diagnostic, Signal } from '../types.ts';
 
+import { getScoreColor } from './scoreColors.ts';
 import {
   LintResultsMetadata,
   ResolutionCompletenessMetadata,
@@ -20,22 +21,6 @@ import {
   ErrorStandardizationMetadata,
   OpidQualityMetadata,
 } from './signals/index.ts';
-
-const getScoreColor = (score: number): string => {
-  const pct = score * 100;
-  if (pct >= 80) return 'border-green-500';
-  if (pct >= 50) return 'border-yellow-500';
-  if (pct >= 30) return 'border-orange-500';
-  return 'border-red-500';
-};
-
-const getScoreTextColor = (score: number): string => {
-  const pct = score * 100;
-  if (pct >= 80) return 'text-green-600';
-  if (pct >= 50) return 'text-yellow-600';
-  if (pct >= 30) return 'text-orange-600';
-  return 'text-red-600';
-};
 
 // Each of the 15 metadata components types its own distinct `metadata` shape. A
 // `kind -> component` registry can't preserve those per-kind types in one Record
@@ -84,11 +69,14 @@ export default function SignalCard({ signal, diagnostics }: SignalCardProps) {
 
   return (
     <div
-      className={`border-l-4 ${getScoreColor(signal.score)} bg-white rounded-r-lg p-4 shadow-sm ${isExpandable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+      className={`border-l-4 bg-white rounded-r-lg p-4 shadow-sm ${isExpandable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+      style={{ borderLeftColor: getScoreColor(percentage) }}
       onClick={() => isExpandable && setExpanded(!expanded)}
     >
       <div className="flex items-start gap-2">
-        <span className={`font-bold ${getScoreTextColor(signal.score)}`}>{percentage}%</span>
+        <span className="font-bold" style={{ color: getScoreColor(percentage) }}>
+          {percentage}%
+        </span>
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-gray-900">{signal.name}</h4>

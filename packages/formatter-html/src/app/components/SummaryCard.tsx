@@ -1,15 +1,7 @@
 import type { ApiMetadata, EngineMetadata, Summary } from '../types.ts';
 
 import CircularProgress from './CircularProgress.tsx';
-
-const getGradeColor = (grade: string): string => {
-  const letter = grade.charAt(0);
-  if (letter === 'A') return 'text-green-500';
-  if (letter === 'B') return 'text-yellow-500';
-  if (letter === 'C') return 'text-yellow-500';
-  if (letter === 'D') return 'text-orange-500';
-  return 'text-red-500';
-};
+import { getGradeColor } from './scoreColors.ts';
 
 // Engine version is `<engine>+jairf.<framework>` (e.g. `0.4.1+jairf.1.0.0`). Mirror
 // the CLI pretty formatter: strip the `jairf.` name token, keep the full framework
@@ -47,11 +39,25 @@ export default function SummaryCard({ apiMetadata, summary, metadata }: SummaryC
             </div>
             <h1 className="text-2xl font-bold text-gray-900">{apiMetadata.name}</h1>
             <span className="text-gray-500 text-lg">
-              - {summary.level.charAt(0).toUpperCase() + summary.level.slice(1)}
+              - {summary.level.charAt(0).toUpperCase() + summary.level.slice(1)}{' '}
+              <span className="font-semibold" style={{ color: getGradeColor(summary.grade) }}>
+                ({summary.grade})
+              </span>
             </span>
           </div>
-          <div className={`text-6xl font-bold ${getGradeColor(summary.grade)}`}>
-            {summary.grade}
+          <div className="flex items-baseline gap-1">
+            <span
+              className="text-5xl font-black tabular-nums leading-none"
+              style={{ color: getGradeColor(summary.grade) }}
+            >
+              {Math.round(summary.score)}
+            </span>
+            <span
+              className="text-xl font-semibold"
+              style={{ color: getGradeColor(summary.grade), opacity: 0.7 }}
+            >
+              /100
+            </span>
           </div>
         </div>
 
