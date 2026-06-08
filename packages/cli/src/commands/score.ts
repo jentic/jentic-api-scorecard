@@ -202,9 +202,10 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     return ExitCode.GENERIC_ERROR;
   }
 
-  // LLM_FAILURE still streams a valid scorecard on stdout; fall through to the
-  // normal formatting path so the report + the signal-named warning render, then
-  // surface the non-zero exit at the end.
+  // LLM_FAILURE still streams a valid scorecard on stdout, which we need to read
+  // to name the affected signals — so don't take the raw-passthrough error path
+  // here. The dedicated handler below detects the failure, suppresses the report,
+  // and returns exit 8.
   if (result.exitCode !== 0 && result.exitCode !== ExitCode.LLM_FAILURE) {
     clearSpinner();
     if (result.stderr) {

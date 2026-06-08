@@ -92,7 +92,7 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
     return ExitCode.SUCCESS
 
 
-def _llm_analysis_failed(diagnostics: list) -> bool:
+def _llm_analysis_failed(diagnostics: list[object]) -> bool:
     """Detect LLM analysis failure regardless of cause.
 
     The engine signals failure two different ways depending on what broke:

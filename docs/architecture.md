@@ -532,7 +532,7 @@ The runner always invokes the engine with `--format json --include-diagnostics -
 | 5 | Reserved for spec-policy failure. Currently unreachable since the in-process pipeline does not expose a separate spec-policy exit code; kept defined to preserve the public contract. |
 | 6 | Engine invocation failure (pipeline exception or `result.success == False`). |
 | 7 | Rate limit reached (validator returned 429). |
-| 8 | LLM analysis failed under `--with-llm`: the engine returns `result.success == True` but emits `llm-analysis-error` diagnostics, so the affected LLM-derived signals defaulted to a perfect score. The runner still streams `scorecard.json` to stdout (so the host can format it) and then returns this code. Only reachable with `--with-llm`. |
+| 8 | LLM analysis failed under `--with-llm`: the engine returns `result.success == True` but the LLM batches did not complete, so the affected LLM-derived signals were scored as perfect. Detected from the engine diagnostics two ways — an explicit `llm-analysis-error` (provider auth/model errors) or a `semantic-analysis-summary` reporting batches attempted (`batches_processed > 0`) but zero operations analyzed (`total_operations_analyzed == 0`, the connectivity case). The runner still streams `scorecard.json` to stdout (so the host can read it to name the affected signals) and then returns this code. Only reachable with `--with-llm`. |
 
 The CLI passes these through verbatim and adds its own codes for host-side concerns (4 = Docker missing). The user-facing exit-code contract is §5.
 

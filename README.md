@@ -158,9 +158,10 @@ descriptions are actionable for agents, whether error responses support autonomo
 more. Requires an LLM provider: cloud (OpenAI / Anthropic / Gemini / AWS Bedrock) or a local
 OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, …).
 
-Without `--with-llm`, the LLM-backed signals are not evaluated — they are scored as perfect, so they
-neither raise nor lower your score. A default (no-`--with-llm`) scorecard therefore reflects only the
-deterministic signals; turn on `--with-llm` to have those signals actually assessed.
+Without `--with-llm`, the LLM-backed signals are not evaluated — they hold an assumed-perfect
+baseline score until `--with-llm` actually assesses them. A default (no-`--with-llm`) scorecard
+therefore reflects only the deterministic signals, with the LLM-backed ones sitting at that perfect
+baseline; turn on `--with-llm` to have them genuinely assessed (which can lower your score).
 
 ```bash
 export OPENAI_API_KEY=sk-...

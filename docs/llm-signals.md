@@ -195,6 +195,14 @@ Ensure your server is listening on `0.0.0.0` (not just `127.0.0.1`) and that `OP
 uses `localhost` or `127.0.0.1` in the hostname. The CLI detects these and injects the Docker
 host-gateway flag automatically.
 
+**`--with-llm` exits 8 and prints no scorecard**
+
+When the LLM provider call fails — the Bedrock-misroute or unreachable-endpoint cases above, or
+bad credentials — the LLM-backed signals would be scored as perfect, inflating the result. Rather
+than print a misleading scorecard, the CLI suppresses the report, names the affected signals and
+the provider error on stderr, and exits `8`. Fix the provider error and retry, or re-run without
+`--with-llm` for a valid score from the deterministic signals.
+
 **Scoring takes much longer with `--with-llm`**
 
 Expected. LLM calls add latency — typically 30–90 seconds depending on the provider, model, and
