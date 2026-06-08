@@ -172,12 +172,11 @@ processes operations in small batches, and caps at 7 batches regardless of spec 
 models (Ollama) cost nothing per call.
 
 If the LLM calls fail (bad credentials, an inaccessible model, an unreachable endpoint), the
-engine degrades gracefully: the affected LLM-backed signals default to a perfect score, so the
-scorecard can look deceptively similar to a non-`--with-llm` run. The CLI detects this, prints a
-warning to stderr naming the affected signals (at any `--detail` level), and **exits `8`** — so a
-CI job running `--with-llm` fails loudly instead of silently passing on a degraded score. The
-scorecard is still printed so a human can read it; re-run with `--detail diagnostics` for the
-underlying provider error.
+affected LLM-backed signals get scored as perfect — which would inflate their dimension(s) and the
+overall score. Rather than print a misleading scorecard, the CLI **suppresses the report, names the
+affected signals and the provider error on stderr, and exits `8`** — so a CI job running
+`--with-llm` fails loudly instead of passing on an inflated score. Fix the provider error and
+retry, or re-run without `--with-llm` for a valid score from the non-LLM signals.
 
 See **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
 for all provider recipes (including local Ollama), the full environment variable reference, and
@@ -256,7 +255,7 @@ jentic-api-scorecard score <input> [options]
 | 5 | Spec fetch or parse failure. |
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
-| 8 | LLM analysis failed under `--with-llm`: the provider call failed and the affected signals defaulted to a perfect score. The scorecard is still printed (with a stderr warning), so CI can gate on the exit code while a human can still read the report. |
+| 8 | LLM analysis failed under `--with-llm`: the provider call failed, so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr. Re-run without `--with-llm` for a valid non-LLM score. |
 
 ## Prefer a browser?
 

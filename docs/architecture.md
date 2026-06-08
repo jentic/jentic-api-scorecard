@@ -358,7 +358,7 @@ stdout stays clean so `--format json | jq` works without filtering.
 | 5 | Spec fetch or parse failure (engine exit code 2, passed through). |
 | 6 | Engine invocation failure (any other non-zero engine exit, passed through). |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
-| 8 | LLM analysis failed under `--with-llm`: the provider call failed (auth, model, connectivity, throttling, …) and the affected LLM-derived signals defaulted to a perfect score. The formatted scorecard is still emitted (with a stderr warning naming the affected signals) so the result is inspectable, but the non-zero exit lets CI gate on it. Only reachable with `--with-llm`. |
+| 8 | LLM analysis failed under `--with-llm`: the provider call failed (auth, model, connectivity, throttling, …), so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr; the non-zero exit lets CI gate on it. Only reachable with `--with-llm`. (The container still streams the scorecard so the host CLI can read it to name the affected signals — see the container exit-code table.) |
 
 ### Error UX examples
 

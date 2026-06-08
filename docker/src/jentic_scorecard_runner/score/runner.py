@@ -77,14 +77,15 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             shutil.copyfileobj(src, sys.stdout.buffer)
 
         # The engine reports success even when LLM batches fail: the affected
-        # LLM-derived signals silently default to a perfect score. When the
-        # caller opted into --with-llm, treat that as a failure so CI gates on
-        # it — the scorecard is still streamed above for formatting, but the
+        # LLM-derived signals are scored as perfect, inflating their dimension(s)
+        # and the overall score. When the caller opted into --with-llm, treat
+        # that as a failure so CI gates on it. The scorecard is still streamed
+        # above (the host CLI reads it to name the affected signals), but the
         # exit code reflects that this is not a true LLM run.
         if with_llm and _llm_analysis_failed(result.diagnostics):
             print(
-                "error: LLM analysis failed; affected signals defaulted to a perfect "
-                "score. Re-run with --detail diagnostics for the provider error.",
+                "error: LLM analysis failed; the scorecard above is inflated and is "
+                "not a true --with-llm result.",
                 file=sys.stderr,
             )
             return ExitCode.LLM_FAILURE

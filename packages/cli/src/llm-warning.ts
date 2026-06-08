@@ -8,7 +8,7 @@ export interface AffectedSignal {
   dimension: string;
 }
 
-export interface LlmFailureWarning {
+export interface LlmFailure {
   affectedSignals: AffectedSignal[];
   cause?: string;
 }
@@ -28,9 +28,9 @@ function provenanceCodes(metadata: Record<string, unknown> | undefined): string[
 
 // A signal is LLM-derived when its provenance cites the semantic analyzer's
 // summary diagnostic. When the LLM call fails the engine still returns these
-// signals at a defaulted (perfect) score rather than omitting them, so we read
-// provenance to name exactly which signals were inflated — rather than hard-coding
-// a list that would drift as the engine's LLM-backed calculators grow.
+// signals scored as perfect rather than omitting them, so we read provenance to
+// name exactly which signals were inflated — rather than hard-coding a list that
+// would drift as the engine's LLM-backed calculators grow.
 function collectAffectedSignals(result: ScorecardResult): AffectedSignal[] {
   const affected: AffectedSignal[] = [];
   for (const group of result.details ?? []) {
@@ -49,7 +49,7 @@ function collectAffectedSignals(result: ScorecardResult): AffectedSignal[] {
 // llm-analysis-error diagnostic (provider auth/model errors), or — for
 // connectivity failures — a silent semantic-analysis-summary reporting batches
 // attempted but zero operations analyzed. Either means the LLM-derived signals
-// defaulted to a perfect score, so detect both.
+// were scored as perfect (nothing was analyzed), so detect both.
 function semanticAnalysisAborted(diagnostic: { data?: Record<string, unknown> }): boolean {
   const data = diagnostic.data ?? {};
   const batches = data['batches_processed'];
@@ -57,7 +57,7 @@ function semanticAnalysisAborted(diagnostic: { data?: Record<string, unknown> })
   return typeof batches === 'number' && batches > 0 && analyzed === 0;
 }
 
-export function detectLlmFailure(result: ScorecardResult): LlmFailureWarning | null {
+export function detectLlmFailure(result: ScorecardResult): LlmFailure | null {
   const diagnostics = result.diagnostics ?? [];
   const errors = diagnostics.filter((d) => d.code === LLM_ANALYSIS_ERROR_CODE);
   const aborted = diagnostics.some(
@@ -69,32 +69,28 @@ export function detectLlmFailure(result: ScorecardResult): LlmFailureWarning | n
   return { affectedSignals: collectAffectedSignals(result), cause: errors[0]?.message };
 }
 
-export function formatLlmFailureWarning(warning: LlmFailureWarning): string {
+export function formatLlmFailureError(failure: LlmFailure): string {
   const lines: string[] = [];
-  const count = warning.affectedSignals.length;
-  const noun = count === 1 ? 'signal' : 'signals';
 
+  lines.push(`error: LLM analysis failed; --with-llm produced no usable result.`);
   lines.push(
-    count > 0
-      ? `warning: LLM analysis failed; ${count} LLM-derived ${noun} defaulted to a perfect score.`
-      : `warning: LLM analysis failed; LLM-derived signals defaulted to a perfect score.`,
+    `  The LLM-derived signals could not be scored. Reporting them would inflate`,
+    `  their dimension(s) and the overall score, so the scorecard was not printed.`,
   );
 
-  for (const { signal, dimension } of warning.affectedSignals) {
-    lines.push(`  - ${signal} (${dimension})`);
+  if (failure.affectedSignals.length > 0) {
+    const affected = failure.affectedSignals.map((s) => `${s.signal} (${s.dimension})`).join(', ');
+    lines.push(`  Affected: ${affected}.`);
   }
 
   lines.push(
-    `  These signals are scored by the LLM; on failure they default to 100, which`,
-    `  inflates the affected dimension(s) and the overall score. The scorecard above`,
-    `  is NOT a true --with-llm result.`,
+    `  Fix the LLM provider error and retry, or re-run without --with-llm for a`,
+    `  valid score from the non-LLM signals.`,
   );
 
-  if (warning.cause !== undefined && warning.cause !== '') {
-    lines.push(`  Cause: ${warning.cause}`);
+  if (failure.cause !== undefined && failure.cause !== '') {
+    lines.push(`  Cause: ${failure.cause}`);
   }
-
-  lines.push(`  Re-run with --detail diagnostics for the full error.`);
 
   return lines.join('\n') + '\n';
 }

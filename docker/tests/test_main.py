@@ -116,9 +116,9 @@ class TestLlmFailure:
 
     def test_with_llm_unreachable_endpoint_exits_8(self):
         # Point --with-llm at an unreachable OpenAI-compatible endpoint. The LLM
-        # calls fail, the affected signals default to a perfect score, and the
-        # engine still reports success — so the runner must surface exit code 8.
-        # The allowlisted OAK URL keeps the gate happy without a key.
+        # calls fail, the affected signals are scored as perfect, and the engine
+        # still reports success — so the runner must surface exit code 8. The
+        # allowlisted OAK URL keeps the gate happy without a key.
         result = run_runner(
             "score",
             "--with-llm",
@@ -136,7 +136,8 @@ class TestLlmFailure:
         )
         assert result.returncode == 8, result.stderr
         assert "LLM analysis failed" in result.stderr
-        # The scorecard is still streamed so the host can format it.
+        # The runner still streams the scorecard so the host CLI can read it to
+        # name the affected signals; the CLI is what suppresses display.
         assert '"summary"' in result.stdout
 
     def test_without_with_llm_exits_0(self):

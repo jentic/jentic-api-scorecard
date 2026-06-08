@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect } from 'chai';
 
-import { detectLlmFailure, formatLlmFailureWarning } from '../src/llm-warning.ts';
+import { detectLlmFailure, formatLlmFailureError } from '../src/llm-warning.ts';
 import { ScorecardResult } from '../src/result.ts';
 
 const failedPath = fileURLToPath(new URL('./fixtures/scorecard.llm-failed.json', import.meta.url));
@@ -48,20 +48,22 @@ describe('detectLlmFailure', function () {
   });
 });
 
-describe('formatLlmFailureWarning', function () {
-  it('renders a stderr-style warning naming each affected signal and dimension', function () {
-    const warning = detectLlmFailure(failed)!;
-    const text = formatLlmFailureWarning(warning);
-    expect(text).to.match(/^warning: LLM analysis failed/);
+describe('formatLlmFailureError', function () {
+  it('renders an error naming each affected signal and the no-print rationale', function () {
+    const failure = detectLlmFailure(failed)!;
+    const text = formatLlmFailureError(failure);
+    expect(text).to.match(/^error: LLM analysis failed/);
+    expect(text).to.include('no usable result');
     expect(text).to.include('Descriptive Richness (AI Discoverability)');
-    expect(text).to.include('default to 100');
-    expect(text).to.include('NOT a true --with-llm result');
+    expect(text).to.include('scorecard was not printed');
+    expect(text).to.include('re-run without --with-llm');
+    expect(text).to.include('Cause:');
     expect(text.endsWith('\n')).to.equal(true);
   });
 
-  it('renders without a signal list when none could be enumerated', function () {
-    const text = formatLlmFailureWarning({ affectedSignals: [] });
-    expect(text).to.match(/^warning: LLM analysis failed/);
-    expect(text).to.not.include('  - ');
+  it('renders without an affected list when none could be enumerated', function () {
+    const text = formatLlmFailureError({ affectedSignals: [] });
+    expect(text).to.match(/^error: LLM analysis failed/);
+    expect(text).to.not.include('Affected:');
   });
 });
