@@ -9,6 +9,7 @@ import { formatHtml } from '../formatters/html.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
+import { detectLlmFailure, formatLlmFailureWarning } from '../llm-warning.ts';
 import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
 import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
@@ -269,6 +270,13 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
 
   if (result.stderr) {
     process.stderr.write(result.stderr);
+  }
+
+  if (options.withLlm) {
+    const llmFailure = detectLlmFailure(parsed);
+    if (llmFailure !== null) {
+      process.stderr.write(formatLlmFailureWarning(llmFailure));
+    }
   }
 
   return ExitCode.SUCCESS;

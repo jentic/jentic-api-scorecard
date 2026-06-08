@@ -171,6 +171,13 @@ Token cost is low — the engine uses a lightweight model (e.g. Claude Haiku, GP
 processes operations in small batches, and caps at 7 batches regardless of spec size. Local
 models (Ollama) cost nothing per call.
 
+If the LLM calls fail (bad credentials, an inaccessible model, an unreachable endpoint), the
+engine degrades gracefully: the affected LLM-backed signals default to a perfect score, so the
+scorecard can look deceptively similar to a non-`--with-llm` run. The CLI detects this and prints
+a warning to stderr naming the affected signals — visible at any `--detail` level. If you see that
+warning, the printed scores are **not** a true `--with-llm` result; re-run with `--detail
+diagnostics` for the underlying provider error.
+
 See **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
 for all provider recipes (including local Ollama), the full environment variable reference, and
 troubleshooting.
