@@ -41,7 +41,7 @@ def check_gate(url: str | None) -> ExitCode:
         if url is None:
             print(
                 "error: scoring from stdin requires a Jentic API key.\n"
-                "  Sign up for a key at https://jentic.com/signup and retry:\n"
+                "  Get a key at https://app.jentic.com/scorecard?tab=api-keys and retry:\n"
                 "    export JENTIC_API_KEY=<your-key>",
                 file=sys.stderr,
             )
@@ -51,8 +51,8 @@ def check_gate(url: str | None) -> ExitCode:
             "  https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/\n"
             "  Browse available documents:\n"
             "    https://github.com/jentic/jentic-public-apis/tree/main/apis/openapi\n"
-            "  Or sign up for a key:\n"
-            "    https://jentic.com/signup",
+            "  Or get a key:\n"
+            "    https://app.jentic.com/scorecard?tab=api-keys",
             file=sys.stderr,
         )
         return ExitCode.GATE_REJECTED
@@ -66,14 +66,14 @@ def check_gate(url: str | None) -> ExitCode:
             message = f"error: rate limit reached for your Jentic API key.\n  {detail}"
             if retry_after is not None:
                 message += f"\n  Retry-After: {retry_after}"
-            message += "\n  Manage your usage at https://jentic.com/account"
+            message += "\n  Manage your key at https://app.jentic.com/scorecard?tab=api-keys"
             print(message, file=sys.stderr)
             return ExitCode.RATE_LIMITED
         case UsageInvalidKey(detail=detail):
             print(
                 "error: this key is not recognized.\n"
                 f"  {detail}\n"
-                "  Check or regenerate your key at https://jentic.com/account",
+                "  Check or regenerate your key at https://app.jentic.com/scorecard?tab=api-keys",
                 file=sys.stderr,
             )
             return ExitCode.AUTH_INVALID_KEY

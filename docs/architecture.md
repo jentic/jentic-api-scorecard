@@ -365,7 +365,7 @@ stdout stays clean so `--format json | jq` works without filtering.
 ```
 $ npx @jentic/api-scorecard-cli score ./local.yaml         # no key
 error: scoring from stdin requires a Jentic API key.
-  Sign up for a key at https://jentic.com/signup and retry:
+  Get a key at https://app.jentic.com/scorecard?tab=api-keys and retry:
     export JENTIC_API_KEY=<your-key>
 exit 2
 
@@ -374,8 +374,8 @@ error: anonymous scoring is restricted to OpenAPI documents hosted at:
   https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/
   Browse available documents:
     https://github.com/jentic/jentic-public-apis/tree/main/apis/openapi
-  Or sign up for a key:
-    https://jentic.com/signup
+  Or get a key:
+    https://app.jentic.com/scorecard?tab=api-keys
 exit 3
 
 $ npx @jentic/api-scorecard-cli score ./openapi.yaml      # docker not in PATH
@@ -387,7 +387,7 @@ $ JENTIC_API_KEY=<your-key> npx @jentic/api-scorecard-cli score ./local.yaml   #
 error: rate limit reached for your Jentic API key.
   monthly scoring quota exhausted
   Retry-After: 3600
-  Manage your usage at https://jentic.com/account
+  Manage your key at https://app.jentic.com/scorecard?tab=api-keys
 exit 7
 ```
 
@@ -672,7 +672,7 @@ When the engine releases an update we want to ship, we:
 
 The auth pipeline is wired end-to-end against the Jentic backend:
 
-- **Real keys**: issued at `jentic.com/signup`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
+- **Real keys**: issued at `https://app.jentic.com/scorecard?tab=api-keys`. Validated live by the container against `POST https://api.jentic.com/api/v1/usage/api-scoring` (header `X-Jentic-API-Key`). The same call doubles as the per-key usage / rate-limit accounting hit, so a single round-trip both authenticates and increments.
 - **Free tier**: URLs under [`jentic/jentic-public-apis`](https://github.com/jentic/jentic-public-apis) score without contacting the validator at all, regardless of whether a key is set.
 - **Fail-open**: when `api.jentic.com` is unreachable (3xx, unexpected 4xx, 5xx, network error, timeout, malformed body) the container prints a one-line warning and lets scoring proceed. PO-confirmed policy — an outage on Jentic's side must not block scoring.
 
