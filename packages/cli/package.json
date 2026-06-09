@@ -57,7 +57,7 @@
   },
   "dependencies": {
     "@jentic/api-scorecard-formatter-html": "1.4.0",
-    "@redocly/openapi-core": "^2.31.6",
+    "@redocly/openapi-core": "^2.32.0",
     "chalk": "^5.6.2",
     "commander": "^14.0.0",
     "ora": "^9.4.0",
