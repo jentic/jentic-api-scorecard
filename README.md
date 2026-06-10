@@ -8,6 +8,40 @@ scores your OpenAPI document against the
 [Jentic API AI Readiness Framework (JAIRF)](https://github.com/jentic/api-ai-readiness-framework)
 across six dimensions and returns a single grade — so you know exactly where to improve.
 
+## Quick start
+
+1. **Install the prerequisites.** You need [Node.js](https://nodejs.org/) 20 LTS or newer and
+   [Docker](https://docs.docker.com/get-docker/) installed and running. No global install of the
+   CLI is required — `npx` runs it on demand. (See [Requirements](#requirements) for details.)
+
+2. **Get an API key.** OpenAPI documents from
+   [Jentic Public APIs (OAK)](https://github.com/jentic/jentic-public-apis) score with **no key**.
+   For everything else (local files, URLs outside OAK), grab a free key from the
+   [Jentic Scorecard API Keys page](https://app.jentic.com/scorecard?tab=api-keys) — free keys
+   include **100 scorings per month**. See
+   [Anonymous vs keyed access](#anonymous-vs-keyed-access) for details.
+
+   ```bash
+   export JENTIC_API_KEY=<your-key>
+   ```
+
+3. **Score an OpenAPI document.** Point the CLI at a URL or a local file:
+
+   ```bash
+   # An OAK URL — no key needed
+   npx @jentic/api-scorecard-cli@latest score \
+     https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json
+
+   # A local file — needs JENTIC_API_KEY (set in step 2)
+   npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
+   ```
+
+   The CLI pulls the scoring engine (Docker image) automatically on first run — allow a minute or
+   two on a typical connection.
+
+That's the fast path. Read on for what each dimension means, deeper output controls, LLM-backed
+analysis, and the full CLI reference.
+
 ## What it scores
 
 Each OpenAPI document is evaluated across six lenses — small, targeted improvements in any of them
