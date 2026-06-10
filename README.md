@@ -10,12 +10,19 @@ across six dimensions and returns a single grade — so you know exactly where t
 
 ## Quick start
 
-```bash
-export JENTIC_API_KEY=<your-key>
-npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
-```
+1. Get a free key at the [Jentic Scorecard API Keys page](https://app.jentic.com/scorecard?tab=api-keys).
 
-Get a free key at the [Jentic Scorecard API Keys page](https://app.jentic.com/scorecard?tab=api-keys).
+2. Set it:
+
+   ```bash
+   export JENTIC_API_KEY=<your-key>
+   ```
+
+3. Score an OpenAPI document:
+
+   ```bash
+   npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
+   ```
 
 ## What it scores
 
