@@ -275,8 +275,9 @@ shipped, and run without a runtime dependency on Jentic.
 ### Your OpenAPI document never leaves your environment
 
 Scoring runs entirely in a container **on your own machine**. Local files are
-piped in over stdin; URLs are fetched by the container's engine, not by Jentic.
-Either way, your spec is never uploaded.
+piped in over stdin; URLs are fetched on your side — by the container's engine,
+or host-side by the CLI when you pass `--bundle` — never by Jentic. Either way,
+your spec is never uploaded.
 
 The **only** call to Jentic is a key-check round-trip against `api.jentic.com` —
 it carries your key, never any part of your spec, and OAK URLs (jentic-public-apis)
