@@ -272,6 +272,25 @@ paste a URL or drop a file, no Docker or Node required.
 For teams that need to know exactly what's running, verify exactly what was
 shipped, and run without a runtime dependency on Jentic.
 
+### Your OpenAPI document never leaves your environment
+
+Scoring happens entirely inside a container running **on your own machine**.
+Your spec is never uploaded to Jentic.
+
+- **Local files** are bundled on your host and piped straight into the local
+  container over stdin — the bytes go from your disk to a process on the same
+  machine, nothing else.
+- **URLs** are fetched by the local container's engine, not by Jentic — the
+  document and any external `$ref`s it resolves come to your machine, and the
+  scorecard is computed there.
+
+The **only** outbound call to Jentic is a small key-check round-trip against
+`api.jentic.com` that authenticates your key and increments your usage counter.
+It carries your key, never any part of your spec, and OAK URLs
+(jentic-public-apis) skip even that. The one exception is `--with-llm`, which
+sends spec context to the LLM provider **you** choose — and pointing it at a
+local endpoint (Ollama) keeps that on-machine too.
+
 ### Auditable end to end
 
 Every component in the scoring stack — runner, CLI, release pipeline, and
@@ -298,15 +317,12 @@ verifies an artifact end-to-end before you install it:
 
 The image is a closed system at scoring time: every Python wheel, Node.js
 binary, and validator tarball it needs is baked in at build time. Scoring does
-not call PyPI or npmjs and pulls no runtime packages. The **only** outbound
-call to Jentic is a small key-check round-trip against `api.jentic.com` that
-authenticates your key and increments the per-key usage counter; OAK URLs
-(jentic-public-apis) skip even that. URL inputs additionally reach the network to fetch the OpenAPI
-document and resolve any external `$ref`s it points at. `--with-llm`
-optionally sends spec context to an LLM provider of your choice; a local
-endpoint (Ollama) keeps everything on-machine. Multi-arch images
-(linux/amd64 + linux/arm64) ship from the same release, so the same guarantees
-hold on Apple Silicon dev machines, ARM CI runners, and x86 servers alike.
+not call PyPI or npmjs and pulls no runtime packages. The only network traffic
+is the document fetch for URL inputs and the key-check round-trip described
+above — see [Your OpenAPI document never leaves your environment](#your-openapi-document-never-leaves-your-environment).
+Multi-arch images (linux/amd64 + linux/arm64) ship from the same release, so the
+same guarantees hold on Apple Silicon dev machines, ARM CI runners, and x86
+servers alike.
 
 ### Pinned for reproducibility
 
