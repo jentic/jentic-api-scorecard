@@ -39,15 +39,14 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
-        env:
-          # SARIF output ignores the `severity:` input; gate via env so the
-          # security tab stays aligned with the CRITICAL/HIGH policy below.
-          TRIVY_SEVERITY: 'CRITICAL,HIGH'
         with:
           image-ref: 'jentic-api-scorecard:security-scan'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          # SARIF output emits every severity unless this is set; without it the
+          # security tab fills with LOW/MEDIUM despite the severity filter above.
+          limit-severities-for-sarif: true
           ignore-unfixed: true
           vuln-type: 'os,library'
 
