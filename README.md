@@ -212,6 +212,36 @@ as the per-key usage / rate-limit accounting hit. **Each free key gets 100 scori
 resetting at the start of each calendar month. Once that quota is exhausted the CLI exits with
 code `7` and prints the `Retry-After` value along with a link to upgrade your plan.
 
+## Agent Skills
+
+This repository ships a versioned [agent skill](skills/jentic-api-scorecard/SKILL.md)
+that teaches AI coding agents how to use the CLI correctly — installing it, scoring
+files and URLs, producing JSON/HTML, wiring it into CI, enabling LLM analysis, and
+interpreting exit codes. There are two ways to install it:
+
+```bash
+# Package-bound, version-aligned — for projects that depend on the CLI.
+# Discovered by TanStack Intent from the installed package.
+npm install -D @jentic/api-scorecard-cli
+npx @tanstack/intent install
+```
+
+```bash
+# Repo-based — install the skill straight from GitHub, no dependency needed.
+npx skills add jentic/jentic-api-scorecard --skill jentic-api-scorecard
+```
+
+**Which one?** Use **[TanStack Intent](https://tanstack.com/intent)** when your
+project already depends on `@jentic/api-scorecard-cli` and you want agent guidance
+that stays aligned with the exact CLI version you installed — the skill ships inside
+the npm package, so it travels with the dependency. Use **[`npx skills add …`](https://github.com/vercel-labs/skills)**
+when you just want the skill itself, pulled directly from this repository, without
+adding the CLI as a dependency.
+
+The skill lives at `skills/jentic-api-scorecard/SKILL.md` (with supporting reference
+material under `skills/jentic-api-scorecard/references/`) and is the single canonical
+source for both install paths.
+
 ## CLI reference
 
 ```
