@@ -10,18 +10,9 @@ across six dimensions and returns a single grade — so you know exactly where t
 
 ## Quick start
 
-Needs [Node.js](https://nodejs.org/) 20+ and [Docker](https://docs.docker.com/get-docker/) running.
-
 ```bash
-# 1. Get a free key (100 scorings/month) from app.jentic.com/scorecard?tab=api-keys
-# 2. Use it
-export JENTIC_API_KEY=<your-key>
-
-# 3. Score
 npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
 ```
-
-OAK URLs score with no key. See [Anonymous vs keyed access](#anonymous-vs-keyed-access) for details.
 
 ## What it scores
 
