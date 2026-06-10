@@ -21,7 +21,7 @@ across six dimensions and returns a single grade — so you know exactly where t
 3. Score an OpenAPI document:
 
    ```bash
-   npx @jentic/api-scorecard-cli@latest score ./openapi.yaml
+   npx @jentic/api-scorecard-cli score ./openapi.yaml
    ```
 
 ## What it scores
