@@ -305,16 +305,13 @@ verifies an artifact end-to-end before you install it:
   per-platform SBOMs, dual-store attestations (BuildKit OCI referrers + Sigstore), and
   verification via either `docker buildx imagetools inspect` or `gh attestation verify`.
 
-### Runs anywhere, minimal phone-home
+### Runs anywhere
 
 The image is a closed system at scoring time: every Python wheel, Node.js
-binary, and validator tarball it needs is baked in at build time. Scoring does
-not call PyPI or npmjs and pulls no runtime packages. Its network traffic is
-limited to the document fetch for URL inputs and the key-check round-trip — see
-[Your OpenAPI document never leaves your environment](#your-openapi-document-never-leaves-your-environment).
-Multi-arch images (linux/amd64 + linux/arm64) ship from the same release, so the
-same guarantees hold on Apple Silicon dev machines, ARM CI runners, and x86
-servers alike.
+binary, and validator tarball it needs is baked in at build time, so scoring
+pulls no runtime packages from PyPI or npmjs. Multi-arch images (linux/amd64 +
+linux/arm64) ship from the same release, so the same guarantees hold on Apple
+Silicon dev machines, ARM CI runners, and x86 servers alike.
 
 ### Pinned for reproducibility
 
