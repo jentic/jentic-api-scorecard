@@ -10,6 +10,7 @@ npm-debug.log*
 packages/*/LICENSE
 packages/*/NOTICE
 packages/cli/README.md
+packages/cli/skills/
 !/.claude
 /.claude/settings.local.json
 /.claude/worktrees/*
