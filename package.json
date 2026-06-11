@@ -24,8 +24,6 @@
     "lint": "lerna run lint",
     "lint:fix": "lerna run lint:fix",
     "lint:docker": "docker run --rm -i hadolint/hadolint:v2.14.0 < docker/Dockerfile",
-    "skills:validate": "intent validate skills",
-    "skills:stale": "intent stale",
     "prepare": "husky"
   },
   "overrides": {
@@ -38,7 +36,6 @@
     "@commitlint/config-conventional": "^21.0.1",
     "@eslint/js": "^9.28.0",
     "@types/chai": "^5.2.3",
-    "@tanstack/intent": "0.0.42",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.9.2",
     "chai": "^6.2.2",

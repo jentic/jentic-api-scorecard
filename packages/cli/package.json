@@ -58,9 +58,6 @@
     "test:e2e": "mocha --no-config --node-option import=tsx --timeout 120000 'test/e2e/**/*.e2e.test.ts'",
     "typescript:check-types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json"
   },
-  "devDependencies": {
-    "@tanstack/intent": "0.0.42"
-  },
   "dependencies": {
     "@jentic/api-scorecard-formatter-html": "1.4.3",
     "@redocly/openapi-core": "^2.32.0",

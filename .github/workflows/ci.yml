@@ -118,28 +118,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-  skills:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.10.0
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
-
-      - name: Install dependencies
-        run: npm ci --engine-strict=false --ignore-scripts
-
-      # Validate SKILL.md frontmatter + structure against @tanstack/intent's
-      # rules (also satisfies the Vercel `skills` CLI, which shares the
-      # skills/<name>/SKILL.md + name/description convention).
-      - name: Validate agent skills
-        run: npm run skills:validate
-
   python-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
