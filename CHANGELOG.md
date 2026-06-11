@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/jentic/jentic-api-scorecard/compare/v1.4.3...v1.5.0) (2026-06-11)
+
+### Features
+
+- **skills:** agent-skill distribution for the CLI ([#158](https://github.com/jentic/jentic-api-scorecard/issues/158)) ([d2b9df2](https://github.com/jentic/jentic-api-scorecard/commit/d2b9df29f87e9e065910fcef0f8ac532eb3cc622))
+
 ## [1.4.3](https://github.com/jentic/jentic-api-scorecard/compare/v1.4.2...v1.4.3) (2026-06-10)
 
 ### Bug Fixes
