@@ -16,10 +16,12 @@ is pulled automatically on first run.
 
 ## The one rule: don't invent flags
 
-This CLI has exactly **one command (`score`) and six options**, listed in full
-below. It does **not** have flags for output directories of multiple files, config
-files, watch mode, batch/glob input, custom rulesets, or thresholds — do not guess
-or fabricate any of these. If you are unsure whether something is supported, run
+This CLI has exactly **one command (`score`) and six options** (`--with-llm`,
+`--bundle`, `-d/--detail`, `-f/--format`, `-o/--output`, `-q/--quiet`), plus the
+built-in `-h/--help` and `-V/--version` — all listed in full below. It does **not**
+have flags for multiple-file output directories, config files, watch mode,
+batch/glob input, custom rulesets, or thresholds — do not guess or fabricate any of
+these. If you are unsure whether something is supported, run
 `npx @jentic/api-scorecard-cli score --help` and trust its output over memory.
 
 ## Install / invoke
@@ -146,11 +148,11 @@ Check these to react correctly to failures — they are a stable contract.
 | Code | Meaning | Typical fix |
 |---|---|---|
 | 0 | Scoring completed (regardless of the score value). | — |
-| 1 | Generic error: bad input, bundling failure, unexpected container failure. | Check `<input>` is a real URL or existing file. |
+| 1 | Generic error: bad input, unexpected container failure, write failure. | Check `<input>` is a real URL or existing file. |
 | 2 | Auth: `JENTIC_API_KEY` unrecognized, or a local/stdin input ran without a key. | Set a valid `JENTIC_API_KEY`. |
 | 3 | Gate rejected: a non-OAK URL with no key set. | Set a key, or use an OAK URL. |
 | 4 | Docker not installed or daemon unreachable. | Start Docker. |
-| 5 | Spec fetch or parse failure. | Verify the spec is reachable and valid OpenAPI. |
+| 5 | Spec fetch, parse, or host-side bundling failure (local files and `--bundle` URLs). | Verify the spec is reachable and valid OpenAPI. |
 | 6 | Engine invocation failure. | Re-run; inspect stderr. |
 | 7 | Rate limited: key valid but over the monthly quota. | Wait for reset (see `Retry-After`) or upgrade. |
 | 8 | LLM analysis failed under `--with-llm`. | Fix provider credentials, or re-run **without** `--with-llm`. |
