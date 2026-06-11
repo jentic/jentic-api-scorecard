@@ -13,11 +13,11 @@ wheels = [
 
 [[package]]
 name = "attrs"
-version = "25.4.0"
+version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6b/5c/685e6633917e101e5dcb62b9dd76946cbb57c26e133bae9e0cd36033c0a9/attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11", size = 934251, upload-time = "2025-10-06T13:54:44.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32", size = 952055, upload-time = "2026-03-19T14:22:25.026Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373", size = 67615, upload-time = "2025-10-06T13:54:43.17Z" },
+    { url = "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309", size = 67548, upload-time = "2026-03-19T14:22:23.645Z" },
 ]
 
 [[package]]
@@ -475,28 +475,28 @@ wheels = [
 
 [[package]]
 name = "jentic-openapi-common"
-version = "1.0.0a56"
+version = "1.0.0a57"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/64/ca/9d776a3b6fe0b6c3047a59fbfcfa8f3a1e1a25caf1e68b8908ee006cdb9a/jentic_openapi_common-1.0.0a56.tar.gz", hash = "sha256:852877667a547c26620da7f2ee6cf9fd8ccddd7f3f1a547d97189bf669a2b436", size = 14955, upload-time = "2026-05-19T11:26:35.998Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/56/60b07720ef30c76287e9d31cdeedd2f8daa1017b981e013522f004408755/jentic_openapi_common-1.0.0a57.tar.gz", hash = "sha256:6940edec224c8f56e069e653be29959e36d6f58c5d3eb06519db689298845175", size = 14955, upload-time = "2026-06-10T15:09:54.046Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/86/79/09d5d4b0f72230a8ad4fce814f6db67f69401d9520c332c61476a3ba5872/jentic_openapi_common-1.0.0a56-py3-none-any.whl", hash = "sha256:da63d3a0d586c83050ad92be7eafb3239107fdab871e9b6923d993a6fa4ec899", size = 18339, upload-time = "2026-05-19T11:26:20.697Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/3a/d24e71cc4546201fd5c3229652872d0af8dd547b0cf6a47c0441ecb7468c/jentic_openapi_common-1.0.0a57-py3-none-any.whl", hash = "sha256:ce61a00b43f0eb7b978495eab28d7136ef13d2e70aca6b1438624b74653dcfc5", size = 18339, upload-time = "2026-06-10T15:09:39.608Z" },
 ]
 
 [[package]]
 name = "jentic-openapi-datamodels"
-version = "1.0.0a56"
+version = "1.0.0a57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ruamel-yaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/79/735bc3df2a5a3b7f1bb4ae5dfa74ac5d235796d86735a08c966e27c6a671/jentic_openapi_datamodels-1.0.0a56.tar.gz", hash = "sha256:d77dc1a49e0b9f26680b909ae923c62a2094fc24100f8cd24383d42cb6b17009", size = 57756, upload-time = "2026-05-19T11:26:36.926Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/53/5d44e6984f3d49497395080d36741f6c0d4ba3267998670002d6796d8657/jentic_openapi_datamodels-1.0.0a57.tar.gz", hash = "sha256:2bbf8e582e60849c44fa52c9299ff6f04780d8b4cb00c26a746e1df50f4af871", size = 57754, upload-time = "2026-06-10T15:09:55.047Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/b0/94d752459c93519d362599825f0e519be586aab4d24a9d7e4e9ab6ecb574/jentic_openapi_datamodels-1.0.0a56-py3-none-any.whl", hash = "sha256:b8f302b78c2f87c798fcb6714c15ab31666dc0dcb3a39b60ef8c75fd89768a20", size = 129431, upload-time = "2026-05-19T11:26:21.878Z" },
+    { url = "https://files.pythonhosted.org/packages/10/54/bc10a5f18fbfb4c37f06f7e9d2fad913148f5d2c2b52e73ea12af5e735e2/jentic_openapi_datamodels-1.0.0a57-py3-none-any.whl", hash = "sha256:a56c935221227778c10e0ef72793c157719e68642ad69c6426b6e7e2959768fa", size = 129431, upload-time = "2026-06-10T15:09:41.186Z" },
 ]
 
 [[package]]
 name = "jentic-openapi-parser"
-version = "1.0.0a56"
+version = "1.0.0a57"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -506,9 +506,9 @@ dependencies = [
     { name = "requests" },
     { name = "ruamel-yaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/07/6299e4d8b57f32a0bd06c4f4cad738d4f0f40a70fc8a0471dde63551d998/jentic_openapi_parser-1.0.0a56.tar.gz", hash = "sha256:367215327d61bf80179f0aab2c1eaf03ded3df3ef29765e018f25d37586e717f", size = 14668, upload-time = "2026-05-19T11:26:38.151Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/91/8d/5819e8473268c6d9926c91da52c021e3dbeef338740e72965a0b64c61d71/jentic_openapi_parser-1.0.0a57.tar.gz", hash = "sha256:abad02f2da33b1c0cbbad8254f577762bfe252829042de52da01b0dd44b6f70f", size = 14661, upload-time = "2026-06-10T15:09:56.022Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/8c/7663f133414aff4586dd70e75f8e8919a8b1bb851e49a65da9ec462acd27/jentic_openapi_parser-1.0.0a56-py3-none-any.whl", hash = "sha256:1f93bdca0728e63d919983e02bb03f0811a3b18f3676a51c798490eb16b05df0", size = 22914, upload-time = "2026-05-19T11:26:23.458Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/0f/aa22a737e22b9b8086c24264ddcca7387a6f3f7d6bb3be8c1b9e02992b6c/jentic_openapi_parser-1.0.0a57-py3-none-any.whl", hash = "sha256:1a2faf5af88daa79b00d59d6ae7d3e6083c72309dd609aacdd182a0c4618aa9e", size = 22911, upload-time = "2026-06-10T15:09:42.516Z" },
 ]
 
 [[package]]
@@ -630,7 +630,7 @@ dev = [
 requires-dist = [
     { name = "jentic-apitools-common", specifier = "==1.0.0a17" },
     { name = "jentic-apitools-pipelines", specifier = "==1.0.0a17" },
-    { name = "requests", specifier = ">=2.32,<3" },
+    { name = "requests", specifier = ">=2.34.2,<3" },
 ]
 
 [package.metadata.requires-dev]
@@ -1254,7 +1254,7 @@ wheels = [
 
 [[package]]
 name = "requests"
-version = "2.33.1"
+version = "2.34.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -1262,9 +1262,9 @@ dependencies = [
     { name = "idna" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/a4/98b9c7c6428a668bf7e42ebb7c79d576a1c3c1e3ae2d47e674b468388871/requests-2.33.1.tar.gz", hash = "sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517", size = 134120, upload-time = "2026-03-30T16:09:15.531Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/8e/7540e8a2036f79a125c1d2ebadf69ed7901608859186c856fa0388ef4197/requests-2.33.1-py3-none-any.whl", hash = "sha256:4e6d1ef462f3626a1f0a0a9c42dd93c63bad33f9f1c1937509b8c5c8718ab56a", size = 64947, upload-time = "2026-03-30T16:09:13.83Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
 ]
 
 [[package]]
