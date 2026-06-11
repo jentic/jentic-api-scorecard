@@ -1,0 +1,17 @@
+{
+  "name": "jentic-api-scorecard",
+  "owner": {
+    "name": "Jentic",
+    "email": "hello@jentic.com"
+  },
+  "description": "Agent skill for scoring OpenAPI documents against the Jentic API AI Readiness Framework (JAIRF).",
+  "plugins": [
+    {
+      "name": "api-scorecard",
+      "description": "Teaches coding agents to use the @jentic/api-scorecard-cli to score, lint, and assess the AI-readiness of an OpenAPI document.",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/jentic-api-scorecard"]
+    }
+  ]
+}

@@ -217,12 +217,40 @@ code `7` and prints the `Retry-After` value along with a link to upgrade your pl
 This repository ships a versioned [agent skill](skills/jentic-api-scorecard/SKILL.md)
 that teaches AI coding agents how to use the CLI correctly — installing it, scoring
 files and URLs, producing JSON/HTML, wiring it into CI, enabling LLM analysis, and
-interpreting exit codes. Install it straight from this repository with the
+interpreting exit codes. Install it through whichever path fits your agent.
+
+### Claude Code
+
+[Claude Code](https://docs.claude.com/en/docs/claude-code/overview) users install it
+as a [plugin](https://docs.claude.com/en/docs/claude-code/plugins) — this repository
+doubles as a plugin marketplace:
+
+```
+/plugin marketplace add jentic/jentic-api-scorecard
+/plugin install api-scorecard@jentic-api-scorecard
+```
+
+Once installed, the skill loads automatically when you ask Claude to score an OpenAPI document —
+no explicit invocation needed:
+
+```
+> Score ./openapi.yaml for AI-readiness
+> How AI-ready is https://petstore3.swagger.io/api/v3/openapi.json?
+```
+
+To force it into context regardless of phrasing, invoke it explicitly with
+`/api-scorecard:jentic-api-scorecard`.
+
+### Vercel `skills` CLI
+
+Install it straight from this repository with the
 [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills add jentic/jentic-api-scorecard --skill jentic-api-scorecard
 ```
+
+### TanStack Intent
 
 The `@jentic/api-scorecard-cli` npm package also ships this skill inside its published
 tarball, so it's discoverable by [TanStack Intent](https://tanstack.com/intent) for
