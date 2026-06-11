@@ -131,8 +131,6 @@ That's it. The CLI pulls the scoring engine automatically on first run.
 
 ![CLI score output](https://github.com/jentic/jentic-api-scorecard/raw/main/assets/cli-screenshot.png)
 
-
-
 ## Control output depth
 
 The `--detail` flag lets you zoom in:
