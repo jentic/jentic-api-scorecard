@@ -234,9 +234,9 @@ npx skills add jentic/jentic-api-scorecard --skill jentic-api-scorecard
 **Which one?** Use **[TanStack Intent](https://tanstack.com/intent)** when your
 project already depends on `@jentic/api-scorecard-cli` and you want agent guidance
 that stays aligned with the exact CLI version you installed — the skill ships inside
-the npm package, so it travels with the dependency. Use **[`npx skills add …`](https://github.com/vercel-labs/skills)**
-when you just want the skill itself, pulled directly from this repository, without
-adding the CLI as a dependency.
+the npm package, so it travels with the dependency. Use the **[`skills` CLI](https://github.com/vercel-labs/skills)**
+(`npx skills add …`) when you just want the skill itself, pulled directly from this
+repository, without adding the CLI as a dependency.
 
 The skill lives at `skills/jentic-api-scorecard/SKILL.md` (with supporting reference
 material under `skills/jentic-api-scorecard/references/`) and is the single canonical
