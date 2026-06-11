@@ -293,11 +293,11 @@ jentic-api-scorecard score <input> [options]
 | Code | Meaning |
 |---|---|
 | 0 | Scoring completed (regardless of the score itself). |
-| 1 | Generic error (bad input, bundling failure, unexpected container failure). |
+| 1 | Generic error (bad input, unexpected container failure, output write failure). |
 | 2 | Auth: `JENTIC_API_KEY` is set to a value the Jentic backend does not recognize, or a local file / stdin input was used without the key set. |
 | 3 | Anonymous gate rejected: URL outside the OAK allowlist and no key set. |
 | 4 | Docker not installed or daemon unreachable. |
-| 5 | Spec fetch or parse failure. |
+| 5 | Spec fetch, parse, or host-side bundling failure (local files and `--bundle` URLs). |
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 | 8 | LLM analysis failed under `--with-llm`: the provider call failed, so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr. Re-run without `--with-llm` for a valid non-LLM score. |
