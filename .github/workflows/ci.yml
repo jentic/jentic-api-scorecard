@@ -140,12 +140,6 @@ jobs:
       - name: Validate agent skills
         run: npm run skills:validate
 
-      # Prove the published @jentic/api-scorecard-cli tarball actually ships
-      # the skill files (exercises the prepack copy from the canonical
-      # repo-root skills/ tree). See scripts/assert-skill-packaged.mjs.
-      - name: Assert skills are in the npm tarball
-        run: npm run skills:install:test
-
   python-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10

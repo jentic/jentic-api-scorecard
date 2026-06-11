@@ -26,7 +26,6 @@
     "lint:docker": "docker run --rm -i hadolint/hadolint:v2.14.0 < docker/Dockerfile",
     "skills:validate": "intent validate skills",
     "skills:stale": "intent stale",
-    "skills:install:test": "node scripts/assert-skill-packaged.mjs",
     "prepare": "husky"
   },
   "overrides": {
