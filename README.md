@@ -214,7 +214,7 @@ code `7` and prints the `Retry-After` value along with a link to upgrade your pl
 
 ## Agent Skills
 
-This repository ships a versioned [agent skill](skills/jentic-api-scorecard/SKILL.md)
+This repository ships a versioned [agent skill](https://github.com/jentic/jentic-api-scorecard/blob/main/skills/jentic-api-scorecard/SKILL.md)
 that teaches AI coding agents how to use the CLI correctly — installing it, scoring
 files and URLs, producing JSON/HTML, wiring it into CI, enabling LLM analysis, and
 interpreting exit codes. Install it through whichever path fits your agent.
