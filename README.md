@@ -8,6 +8,26 @@ scores your OpenAPI document against the
 [Jentic API AI Readiness Framework (JAIRF)](https://github.com/jentic/api-ai-readiness-framework)
 across six dimensions and returns a single grade — so you know exactly where to improve.
 
+## Table of contents
+
+- [Quick start](#quick-start)
+- [What it scores](#what-it-scores)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Try it now](#try-it-now)
+- [Control output depth](#control-output-depth)
+- [Machine-readable output](#machine-readable-output)
+- [HTML report](#html-report)
+- [LLM analysis](#llm-analysis)
+- [Anonymous vs keyed access](#anonymous-vs-keyed-access)
+- [Agent Skills](#agent-skills)
+- [CLI reference](#cli-reference)
+- [Prefer a browser?](#prefer-a-browser)
+- [Enterprise-ready by default](#enterprise-ready-by-default)
+- [Status](#status)
+- [License](#license)
+
 ## Quick start
 
 1. Get a free key at the [Jentic Scorecard API Keys page](https://app.jentic.com/scorecard?tab=api-keys).
