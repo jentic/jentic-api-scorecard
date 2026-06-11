@@ -34,8 +34,8 @@ npx @jentic/api-scorecard-cli@latest score <input> [options]
 npm install -g @jentic/api-scorecard-cli
 jentic-api-scorecard score <input> [options]
 
-# Pin a version for reproducibility (CI):
-npx @jentic/api-scorecard-cli@1.4.1 score <input> [options]
+# Pin a version for reproducibility (CI) — replace <version> with a real release:
+npx @jentic/api-scorecard-cli@<version> score <input> [options]
 ```
 
 `<input>` is **either** an `https://` URL **or** a local file path to an OpenAPI
@@ -115,10 +115,11 @@ interactive terminal**, so always pair it with `-o <file>` or redirect stdout.
 
 ## CI integration
 
-In CI, pin the version, provide the key as a secret, and choose a machine-readable
-format. The process exit code is the pass/fail signal — `0` means scoring
-completed (it does **not** assert any minimum score; the CLI has no threshold flag,
-so gate on the score yourself by parsing the JSON).
+In CI, provide the key as a secret and choose a machine-readable format. The process
+exit code is the pass/fail signal — `0` means scoring completed (it does **not**
+assert any minimum score; the CLI has no threshold flag, so gate on the score
+yourself by parsing the JSON). For reproducible CI runs, pin `@<version>` to a fixed
+release instead of `@latest` so a new publish can't shift results mid-pipeline.
 
 ```yaml
 # GitHub Actions example
@@ -126,7 +127,7 @@ so gate on the score yourself by parsing the JSON).
   env:
     JENTIC_API_KEY: ${{ secrets.JENTIC_API_KEY }}
   run: |
-    npx @jentic/api-scorecard-cli@1.4.1 score ./openapi.yaml \
+    npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
       --format json --output scorecard.json --quiet
 ```
 
