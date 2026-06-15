@@ -243,6 +243,22 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 
 The alpha era served its purpose — the flag surface is settled, real-key auth is live, and `mvp-preview` was always documented as transitional. Stable gives integrators a `latest` tag they can pin against. Releases are driven entirely by Conventional Commits — `lerna version --conventional-commits --force-publish` reads `feat:` / `fix:` / `BREAKING CHANGE:` markers since the last tag and computes the bump.
 
+## Phase 17 — SARIF formatter (`--format sarif`)
+
+**Goal:** Add `--format sarif` so the CLI encodes the engine's `diagnostics[]` as a schema-valid SARIF 2.1.0 document that GitHub code-scanning ingests.
+**Depends on:** none (self-contained — the diagnostics shape it encodes shipped in Phase 5)
+**Priority:** High
+
+SARIF is the prerequisite for a GitHub Action (a separate later phase): it populates the Security tab with JAIRF findings, while the score itself gates the build through other channels. SARIF is a findings format, so it projects `diagnostics[]` only — the score, dimensions, and signals deliberately have no SARIF home.
+
+- Add `sarif` to `-f, --format` (`pretty|json|html|sarif`) in `index.ts`; implement encoder in `packages/cli/src/formatters/sarif.ts`.
+- Emit schema-valid SARIF 2.1.0: one `tool.driver` per validator `source`; one `results[]` entry per diagnostic.
+- Map `code`→`ruleId`, `message`→`message.text`, `severity` 1–4 → `level` (1=error, 2=warning, 3/4=note), `data.path`/`data.paths[]` → `logicalLocation.fullyQualifiedName`; no-pointer → location-less result.
+- Force full diagnostics regardless of `--detail` (warn on stderr if an explicit `--detail` ≠ diagnostics is combined with `--format sarif`); keep encoder faithful and uncapped (no severity filter, no findings cap).
+- Refuse SARIF to an interactive terminal (validate in `validateScoreOptions`); require `-o` or redirect.
+- Add `packages/cli/test/formatters/` tests vs. the engine fixture: schema validity, severity→level map, single/plural pointer locations, multi-tool grouping.
+- Sync README `## CLI reference` + `SKILL.md` flag tables; note logical-location-only (no inline PR-diff annotations yet).
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `8 — score below threshold`; code `7` is taken by `RATE_LIMITED`) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
