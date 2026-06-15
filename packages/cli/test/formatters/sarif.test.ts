@@ -84,6 +84,19 @@ describe('formatSarif', function () {
     expect(allResults(doc)).to.have.lengthOf((fixture.diagnostics ?? []).length);
   });
 
+  it('sets ruleId from code, and omits it when the diagnostic has no code', function () {
+    const result = {
+      summary: { score: 0, level: 'unknown', grade: 'F' },
+      diagnostics: [
+        { source: 'loader', severity: 2, message: 'with code', code: 'HAS_CODE' },
+        { source: 'loader', severity: 2, message: 'no code' },
+      ],
+    } as unknown as ScorecardResult;
+    const [withCode, withoutCode] = allResults(JSON.parse(formatSarif(result)) as SarifLog);
+    expect(withCode?.ruleId).to.equal('HAS_CODE');
+    expect(withoutCode).to.not.have.property('ruleId');
+  });
+
   describe('severity → level mapping', function () {
     it('maps severity 1 to error', function () {
       const code = findDiagnostic((d) => d.severity === 1).code as string;

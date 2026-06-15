@@ -11,9 +11,11 @@ interface SarifLocation {
   logicalLocations: SarifLogicalLocation[];
 }
 
+type SarifLevel = 'error' | 'warning' | 'note';
+
 interface SarifResult {
   ruleId?: string;
-  level: string;
+  level: SarifLevel;
   message: { text: string };
   locations?: SarifLocation[];
 }
@@ -30,8 +32,9 @@ interface SarifLog {
 }
 
 // The engine declares a 1–4 severity scale; SARIF has three usable levels. Hint (4)
-// collapses into note alongside info (3); unknown severities fall back to note.
-function severityToLevel(severity: number): string {
+// collapses into note alongside info (3); any other value (0, negatives, NaN) also
+// falls back to note — a safe floor, since the engine emits only 1–4.
+function severityToLevel(severity: number): SarifLevel {
   switch (severity) {
     case 1:
       return 'error';

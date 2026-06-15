@@ -259,7 +259,8 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const detail = options.detail ?? DEFAULT_DETAIL;
   // SARIF projects diagnostics[], which only survive at the deepest detail level.
   // Honoring a lower --detail would emit an empty document, so SARIF always reads
-  // the unfiltered result (index.ts warns when an explicit --detail is overridden).
+  // the unfiltered result (validateScoreOptions warns when an explicit --detail is
+  // overridden).
   const filtered = filterByDetail(parsed, detail);
   const output =
     format === Format.HTML
