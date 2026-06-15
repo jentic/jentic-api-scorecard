@@ -31,7 +31,7 @@ Exits 0. `test/formatters/markdown.test.ts` asserts, against `test/fixtures/scor
 - the dimension table has a GFM header row plus one row per `summary.dimensions[]` entry (6 rows), with kinds `FC`, `DXJ`, `ARAX`, `AU`, `SEC`, `AID`;
 - `--detail` projection: `summary` → headline only (no dimension table); `dimensions` → dimension table, no signals/diagnostics sections; `signals` → signals section present; `diagnostics` → diagnostics section present;
 - a minimal `ScorecardResult` (only `summary.{score,level,grade}`) renders a headline without throwing and emits no empty tables;
-- a diagnostic message containing a literal `|` is escaped to `\|` in its table cell.
+- an inline-constructed diagnostic message containing a literal `|` and a `\n` renders with `\|` and the newline collapsed to a space (no raw pipe, no broken row) — the fixture has no pipe-bearing message, so this case builds its own input.
 
 ### 4. Markdown output is valid GFM end-to-end against a real score
 

@@ -30,7 +30,7 @@ Unlike `html` (a full document) and `sarif` (machine output), Markdown is human-
 
 ### GFM tables, escaping pipes
 
-The dimension table (and any signal/diagnostic tables) use GFM pipe-table syntax. Cell content that can contain a literal `|` (e.g. diagnostic messages) is escaped (`\|`) so a stray pipe does not break the table. Scores render as integers (rounded, matching `pretty`); signal scores — which are `[0, 1]` in the engine — render as percentages, consistent with `pretty`.
+The dimension table (and any signal/diagnostic tables) use GFM pipe-table syntax. Cell content that can contain a literal `|` (e.g. diagnostic messages) is escaped (`\|`), and literal newlines are collapsed to a space, so neither a stray pipe nor a multi-line message breaks a table row. Scores render as integers (rounded, matching `pretty`); signal scores — which are `[0, 1]` in the engine — render as percentages, consistent with `pretty`.
 
 ### Independent of SARIF (Phase 17)
 

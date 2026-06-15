@@ -13,7 +13,7 @@
 6. Render the API-stats line (operations / schemas / tags / security schemes) from `apiMetadata` when present, as a short bullet or inline list.
 7. Render the signals section at `--detail signals` and above: per dimension (from `details[].dimensions[].signals[]`), a sub-heading and a table of signal Name / Score (as `%`, since signal scores are `[0,1]`) / Description. Skip dimensions with no signals.
 8. Render the diagnostics section at `--detail diagnostics`: a severity tally then a table (or grouped lists) of findings — code, severity label, message. Escape literal `|` in messages (`\|`) so cells don't break the table. Tolerate zero diagnostics (render a "0 diagnostics" line).
-9. Add a small `escapeCell(s: string): string` helper for pipe/newline escaping in table cells.
+9. Add a small `escapeCell(s: string): string` helper for table cells: escape literal `|` to `\|`, and collapse any literal newline (`\n`/`\r`) to a space so a multi-line message can't break the GFM row.
 
 ## Group 3 — Wire into dispatch
 
@@ -25,7 +25,7 @@
 12. Create `packages/cli/test/formatters/markdown.test.ts` asserting against `packages/cli/test/fixtures/scorecard.sample.json` (mirror `pretty.test.ts` / `json.test.ts` structure): headline contains the rounded score, upper-cased level, and grade; the dimension table has a GFM header row plus one row per `summary.dimensions[]` entry (6 in the fixture) with the expected kinds (`FC`, `DXJ`, `ARAX`, `AU`, `SEC`, `AID`).
 13. Add `--detail` projection cases: `summary` → headline only, no dimension table; `dimensions` → dimension table present, no signals/diagnostics sections; `signals` → signals section present; `diagnostics` → diagnostics section present. Feed each through `filterByDetail(fixture, level)` as the sibling formatter tests do.
 14. Add a robustness case: a minimal `ScorecardResult` (only `summary.{score,level,grade}`) renders a headline without throwing and emits no empty tables.
-15. Add a pipe-escaping case: a diagnostic message containing `|` renders as `\|` inside the table cell (construct a small fixture inline or reuse a fixture diagnostic if one contains a pipe).
+15. Add a cell-escaping case: build a small inline `ScorecardResult` whose diagnostic message contains both a literal `|` and a `\n` (no fixture diagnostic contains a pipe, so the input must be constructed), and assert the rendered cell shows `\|` and a space (no raw pipe, no row break).
 
 ## Group 5 — Docs and lifecycle
 
