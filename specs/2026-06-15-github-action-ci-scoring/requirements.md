@@ -28,6 +28,10 @@ The action runs one `score … --format json --detail diagnostics -o report.json
 
 Phase 17 ships SARIF as a CLI-internal formatter. This phase adds a `"./sarif"` entry to `packages/cli/package.json` `exports` (pointing at the built `dist/formatters/sarif.js`) so the helper imports `formatSarif(result)` and runs it over the captured `report.json` without re-scoring — mirroring how the CLI already consumes the published HTML `format()`. The CLI's `files` array already includes `dist/`, so no packaging change is needed beyond the `exports` entry.
 
+### Helper's library access deferred to implementation
+
+The Node helper imports two libraries at action runtime — `formatSarif` (CLI `./sarif` subpath) and the HTML `format()` (`@jentic/api-scorecard-formatter-html`) — but a composite action has no `node_modules` for them on a consumer's runner (the CLI itself runs via `npx`, which doesn't expose its library exports to the helper). Two resolutions are viable: an explicit `npm install` of the two packages (pinned to the action version) in a setup step, or pre-bundling the helper with its deps via a bundler (esbuild/ncc) and committing the artifact. Both preserve score-once. The choice is **deferred to `plan.md`/implementation** rather than locked here; the requirement is only that the helper reliably resolves both libraries at runtime, pinned to the action's CLI version.
+
 ### Inputs and gate semantics
 
 Inputs: `input` (file/URL), `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity` (default `warning`), `max-findings` (default `5000`), `with-llm`, `summary-detail` (controls only the Markdown summary depth — the capture is always `--detail diagnostics`). The gate fails the build when `summary.score < min-score`, or when severity-1 (error) counts exceed `max-errors`, or severity-2 (warning) counts exceed `max-warnings`. **Gates read the full captured result, not the filtered SARIF** — a finding hidden by the `severity` filter still counts toward `max-errors`/`max-warnings`, so raising `severity` never silently weakens the gate.
@@ -47,6 +51,7 @@ A workflow under `.github/workflows/` invokes the composite action (`uses: ./`) 
 - **Result JSON is engine-verbatim; formatters are pure projections** (`docs/architecture.md` §7). The helper derives all outputs from one captured `report.json` without mutating it.
 - **Exit codes are public CLI contract** (`specs/tech-stack.md`). The action's gate is a wrapper-level pass/fail (a non-zero step exit), not a new CLI exit code — the CLI contract is untouched.
 - **`api-key` is a secret** — forwarded to the CLI as `JENTIC_API_KEY`; never echoed to logs, the step summary, or the artifact. Anonymous (jentic-public-apis allowlist) inputs work without it.
+- **SARIF upload needs `security-events: write`** — `github/codeql-action/upload-sarif` requires the consuming job to grant `permissions: security-events: write`, and on pull requests from forks the `GITHUB_TOKEN` is read-only so the upload cannot run. The README example must show the permission block, and the action must degrade gracefully (skip the upload with a clear notice, not hard-fail) when the token lacks the scope — common in fork PRs.
 - **CLI surface / docs sync** (`.claude/rules/cli-readme-sync.md`) — the `./sarif` export and the action are public surface; README documents the action and an example workflow in the same change.
 
 ## Context

@@ -40,7 +40,11 @@ Exits 0, including:
 
 ### 5. SARIF is uploaded even on gate failure
 
-In the failing self-test run, the `github/codeql-action/upload-sarif` step executes (guarded by `if: always()`) and the HTML `actions/upload-artifact` step produces a downloadable `scorecard.html`. A gate failure does not skip the publish steps.
+In the failing self-test run (job granted `permissions: security-events: write`), the `github/codeql-action/upload-sarif` step executes (guarded by `if: always()`) and the HTML `actions/upload-artifact` step produces a downloadable `scorecard.html`. A gate failure does not skip the publish steps.
+
+### 5a. Missing `security-events: write` degrades gracefully
+
+When the action runs without the `security-events: write` scope (e.g. a fork PR's read-only token), the SARIF upload is skipped with a clear notice and the action does **not** hard-fail on that account — the gate decision and the other outputs (HTML artifact, Markdown summary) still run. Verifiable by a self-test job without the permission, or by reasoning from the guarded upload step.
 
 ### 6. End-to-end against a real spec (manual)
 
@@ -52,7 +56,7 @@ The action invokes `score …` exactly **once** per run (one engine pass); SARIF
 
 ### 8. README documents the action
 
-`README.md` includes a `pull_request` example workflow, the full input table (`input`, `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity`, `max-findings`, `with-llm`, `summary-detail`), and the note that Marketplace listing requires the root `action.yml`. SKILL/README note the score-once behavior and the logical-location-only SARIF caveat.
+`README.md` includes a `pull_request` example workflow with the required `permissions: security-events: write` block, the full input table (`input`, `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity`, `max-findings`, `with-llm`, `summary-detail`), and the note that Marketplace listing requires the root `action.yml`. SKILL/README note the score-once behavior, the logical-location-only SARIF caveat, and that fork PRs skip the SARIF upload (read-only token).
 
 ### 9. Roadmap lifecycle marker
 
