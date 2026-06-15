@@ -195,5 +195,29 @@ describe('formatMarkdown', function () {
       expect(row).to.not.match(/[^\\]\| right/);
       expect(row).to.not.include('\n');
     });
+
+    it('escapes a backslash before a pipe so the pipe stays escaped', function () {
+      const result: ScorecardResult = {
+        summary: { score: 50, level: 'ai-aware', grade: 'C' },
+        diagnostics: [
+          {
+            source: 'test',
+            severity: 1,
+            code: 'BACKSLASH_TEST',
+            message: 'a\\|b',
+          },
+        ],
+      };
+      const output = formatMarkdown(result, { detail: DetailLevel.DIAGNOSTICS });
+      const row = output.split('\n').find((l) => l.includes('BACKSLASH_TEST'));
+      expect(row).to.be.a('string');
+      // Backslash escaped first (→ `\\`), then the pipe (→ `\|`), so the cell
+      // content is `\\\|` — a GFM-literal backslash followed by a GFM-literal,
+      // non-cell-breaking pipe. Three content cells plus two delimiters means
+      // exactly five `|` once the escaped pipe is removed from the count.
+      expect(row).to.include('a\\\\\\|b');
+      const unescapedPipes = (row as string).replace(/\\\|/g, '').match(/\|/g) ?? [];
+      expect(unescapedPipes).to.have.length(4);
+    });
   });
 });

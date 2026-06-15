@@ -16,9 +16,14 @@ function severityLabel(sev: number): string {
 }
 
 // GFM cell sanitiser: a literal pipe ends the cell, and a newline ends the row,
-// so escape the former and collapse the latter to a space.
+// so escape the former and collapse the latter to a space. Backslashes are
+// escaped first — otherwise an input like `\|` would be left as a real
+// backslash followed by an unescaped pipe, breaking the cell.
 function escapeCell(s: string): string {
-  return s.replace(/[\r\n]+/g, ' ').replace(/\|/g, '\\|');
+  return s
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|');
 }
 
 export interface FormatMarkdownOptions {
