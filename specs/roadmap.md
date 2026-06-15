@@ -259,7 +259,7 @@ SARIF is the prerequisite for a GitHub Action (a separate later phase): it popul
 - Add `packages/cli/test/formatters/` tests vs. the engine fixture: schema validity, severity→level map, single/plural pointer locations, multi-tool grouping.
 - Sync README `## CLI reference` + `SKILL.md` flag tables; note logical-location-only (no inline PR-diff annotations yet).
 
-## Phase 18 — Markdown formatter (`--format markdown`)
+## Phase 18 — Markdown formatter (`--format markdown`) ✅
 
 **Goal:** Add `--format markdown` so the CLI emits a GitHub-flavored Markdown projection of the scorecard, suitable for `$GITHUB_STEP_SUMMARY`, PR comments, and status checks.
 **Depends on:** Phase 5 — `--detail <level>` filtering (the canonical filtered shape all formatters consume; already shipped)

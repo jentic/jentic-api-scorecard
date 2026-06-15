@@ -324,7 +324,7 @@ jentic-api-scorecard score <input> [options]
 | `--with-llm` | off | — | Enable LLM-backed analysis. Requires an LLM provider (see [LLM analysis](#llm-analysis)). |
 | `--bundle` | off | — | Force CLI-side bundling for URL inputs: the CLI fetches the URL on the host, bundles with Redocly, and pipes to the container via stdin. Use for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Requires `JENTIC_API_KEY`. No-op for local files. |
 | `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see [Control output depth](#control-output-depth)). |
-| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html` | Output encoding (see [Machine-readable output](#machine-readable-output) and [HTML report](#html-report)). |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown` | Output encoding (`markdown` is a GitHub-flavored projection for `$GITHUB_STEP_SUMMARY` / PR comments; see also [Machine-readable output](#machine-readable-output) and [HTML report](#html-report)). |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
 | `-h, --help` | — | — | Show usage for `score`. |
