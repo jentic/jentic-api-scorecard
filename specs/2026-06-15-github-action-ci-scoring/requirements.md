@@ -20,6 +20,10 @@ The action is a thin composite wrapper over `npx @jentic/api-scorecard-cli` — 
 
 `action.yml` sits at the repository root (not a subdirectory) because GitHub Marketplace listing requires the action manifest at the repo root. Consumers reference it as `jentic/jentic-api-scorecard@<version>`. The root already hosts the npm-workspaces files; a root `action.yml` coexists with them. The action `runs.using: composite` and shells out to `npx @jentic/api-scorecard-cli@<action-version>` plus a bundled Node helper.
 
+### Marketplace docs = root README, addressed via a TOC entry
+
+The Marketplace listing renders the repository-root `README.md` verbatim as the action's documentation; `action.yml` has no field to point at a different file, and splitting the action into its own repo would break the single-tag CLI-version=action-version invariant. The root README is intentionally CLI-first (it also serves as the npm package readme), so rather than restructure it, this phase adds a dedicated `## GitHub Action` section plus a `## Table of contents` entry — giving Marketplace visitors a one-click jump to the action docs without burying the CLI audience's quick start. A separate `docs/github-action.md` was rejected: the Marketplace renders the README inline regardless, so a linked file would not become the listing body.
+
 ### Score once, format many — via a bundled Node helper
 
 The action runs one `score … --format json --detail diagnostics -o report.json` (a full engine pass), then a small in-repo Node script (`action/postprocess.mjs` or similar) parses `report.json` and: computes the gate decision; derives SARIF via the CLI's new `./sarif` subpath export; derives HTML via `@jentic/api-scorecard-formatter-html`'s `format()`; derives Markdown via `score --format markdown` (or the same JSON, once Markdown is importable); applies the severity filter then the findings cap; and writes `$GITHUB_STEP_SUMMARY`. A Node helper is chosen over bash + `jq` because the gate math, severity filtering, and cap logic are unit-testable in isolation and far less brittle than shell.

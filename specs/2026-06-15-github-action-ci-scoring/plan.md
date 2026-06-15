@@ -24,7 +24,7 @@
 
 ## Group 4 — Docs and lifecycle
 
-12. Add an action section to `README.md`: a `pull_request`-triggered example workflow (`uses: jentic/jentic-api-scorecard@v<major>` with `input`, `api-key`, `min-score`) that includes the required `permissions: security-events: write` block, the full input table, and a note that Marketplace listing requires the root `action.yml`.
+12. Add a `## GitHub Action` section to `README.md` **and a matching entry in the existing `## Table of contents`**: a `pull_request`-triggered example workflow (`uses: jentic/jentic-api-scorecard@v<major>` with `input`, `api-key`, `min-score`) that includes the required `permissions: security-events: write` block, the full input table, and a note that Marketplace listing requires the root `action.yml`. The root README *is* the Marketplace listing body (the listing renders it verbatim; `action.yml` cannot redirect to a different file), so the README stays CLI-first but the TOC entry gives Marketplace visitors a one-click jump to the action docs.
 13. Note in the README/SKILL that the action scores once and derives SARIF/HTML/Markdown locally (no per-format re-scoring), that SARIF carries logical locations only (no inline PR-diff annotations yet), and that fork PRs cannot upload SARIF (read-only token) so the upload is skipped there.
 14. Add a verification note (and, where feasible, a test) confirming the engine emits severity-1 diagnostics on an error-bearing spec, so `max-errors: 0` is a gate that can actually trip rather than a no-op.
 15. Append ` ✅` (a single space followed by the U+2705 checkmark) to the `## Phase 19 — GitHub Action for CI Scoring` heading in `specs/roadmap.md`, leaving the rest of the block untouched.
