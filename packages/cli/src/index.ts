@@ -48,6 +48,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           output?: string;
           quiet?: boolean;
         },
+        command: Command,
       ) => {
         const validationError = validateScoreOptions(
           { format: opts.format, output: opts.output },
@@ -57,6 +58,20 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           process.stderr.write(`error: ${validationError}\n`);
           process.exitCode = ExitCode.GENERIC_ERROR;
           return;
+        }
+
+        // SARIF always emits full diagnostics, so --detail has no effect. Warn when
+        // it was set explicitly to something other than diagnostics. Emitted here,
+        // before runScore starts the stderr spinner, so the line is not garbled.
+        if (
+          opts.format === Format.SARIF &&
+          opts.detail !== DetailLevel.DIAGNOSTICS &&
+          command.getOptionValueSource('detail') === 'cli'
+        ) {
+          process.stderr.write(
+            `warning: --detail ${opts.detail} is ignored with --format sarif; ` +
+              `SARIF always includes the full diagnostics.\n`,
+          );
         }
 
         const exitCode = await runScore(input, {

@@ -9,6 +9,7 @@ import { formatHtml } from '../formatters/html.ts';
 import { formatJson } from '../formatters/json.ts';
 import { formatMarkdown } from '../formatters/markdown.ts';
 import { formatPretty } from '../formatters/pretty.ts';
+import { formatSarif } from '../formatters/sarif.ts';
 import { detectLlmEnv } from '../llm-env.ts';
 import { detectLlmFailure, formatLlmFailureError } from '../llm-failure.ts';
 import { writeReport } from '../output.ts';
@@ -256,6 +257,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   }
 
   const detail = options.detail ?? DEFAULT_DETAIL;
+  // SARIF projects diagnostics[], which only survive at the deepest detail level.
+  // Honoring a lower --detail would emit an empty document, so SARIF always reads
+  // the unfiltered result (index.ts warns when an explicit --detail is overridden).
   const filtered = filterByDetail(parsed, detail);
   const output =
     format === Format.HTML
@@ -264,7 +268,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
         ? formatJson(filtered)
         : format === Format.MARKDOWN
           ? formatMarkdown(filtered, { detail })
-          : formatPretty(filtered, input, { detail });
+          : format === Format.SARIF
+            ? formatSarif(parsed)
+            : formatPretty(filtered, input, { detail });
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
