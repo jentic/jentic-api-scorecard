@@ -1,5 +1,7 @@
 # Jentic API Scorecard
 
+[![skills.sh](https://skills.sh/b/jentic/jentic-api-scorecard)](https://skills.sh/jentic/jentic-api-scorecard)
+
 ![Jentic API Scorecard preview](https://github.com/jentic/jentic-api-scorecard/raw/main/assets/scorecard-preview.jpg)
 
 An OpenAPI document that passes validation isn't necessarily one an AI agent can use. Grammar is
@@ -278,6 +280,8 @@ Install it straight from this repository with the
 ```bash
 npx skills add jentic/jentic-api-scorecard --skill jentic-api-scorecard
 ```
+
+It's also listed in the [skills.sh directory](https://skills.sh/jentic/jentic-api-scorecard).
 
 ### TanStack Intent
 
