@@ -32,7 +32,8 @@ Exits 0. `test/formatters/sarif.test.ts` asserts, against `test/fixtures/scoreca
 - one `runs[]` entry per distinct diagnostic `source` (5 in the fixture);
 - total `results[]` count equals the diagnostic count (34);
 - severity→level mapping holds, asserting the emitted `level` string (not severity semantics): a severity-1 diagnostic emits `level: 'error'`, severity-2 → `'warning'`, severity-3 → `'note'`;
-- a `data.path` diagnostic yields exactly one `logicalLocation`; a `data.paths` diagnostic yields one location per pointer; a no-pointer diagnostic yields a result with no `locations` key.
+- location handling keys off **non-empty** pointers (the fixture uses `[]` to mean "no pointer" and often carries both `data.path` and `data.paths` on one diagnostic): a non-empty `data.path` (with empty/absent `paths`) → exactly one `logicalLocation`; a non-empty `data.paths` → one location per pointer; a diagnostic with `data.path: []` + non-empty `data.paths` → locations from `paths` (precedence), proving an empty `path` produces no bogus location; both arrays empty/absent → result with no `locations` key;
+- pointers are encoded as RFC 6901 (`toJsonPointer` helper): `['paths','/health','get']` → `/paths/~1health/get` (slash-in-segment escaped to `~1`, `~`→`~0`), verified by a dedicated helper test.
 
 The extended `test/validate.test.ts` asserts `--format sarif` is refused to a TTY without `-o`, allowed when piped, and allowed to a TTY with `-o`.
 

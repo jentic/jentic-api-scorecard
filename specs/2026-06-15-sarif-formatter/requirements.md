@@ -28,11 +28,17 @@ The warning is emitted up-front in `index.ts` — before `runScore` starts and t
 
 ### Severity 1–4 → SARIF level (error/warning/note)
 
-The engine declares a 1–4 severity scale (confirmed via `lint_results.metadata.provenance.severity: [1,2,3,4]`). The mapping is 1=`error`, 2=`warning`, 3=`note`, 4=`note`. SARIF has only three levels (`error`/`warning`/`note`, ignoring `none`), so the engine's hint (4) collapses into `note` alongside info (3). The CLI fixture exercises severities 1, 2, and 3.
+The engine declares a 1–4 severity scale (confirmed via the `lint_results` signal's `metadata.provenance.diagnostics.severity: [1,2,3,4]`). The mapping is 1=`error`, 2=`warning`, 3=`note`, 4=`note`. SARIF has only three levels (`error`/`warning`/`note`, ignoring `none`), so the engine's hint (4) collapses into `note` alongside info (3). The CLI fixture exercises severities 1, 2, and 3.
 
 ### JSON-Pointer → `logicalLocation`, no-pointer → location-less result
 
-`data.path` (a single pointer array) and `data.paths` (an array of pointer arrays) map to `logicalLocation.fullyQualifiedName` entries; a result with `data.paths` carries one location per pointer. Diagnostics with neither become valid location-less (file-level) results. This is well-formed SARIF that GitHub ingests; it lists in the Security tab without inline diff annotations (those need `physicalLocation` regions the engine does not provide).
+The engine carries pointers in two fields whose shapes are messier than "one vs. many," so the encoding rule is explicit:
+
+- **`data.path`** is a single pointer (an array of segments) and **`data.paths`** is an array of such pointers. In the current fixture **both keys are frequently present on the same diagnostic**, and either may be an **empty array (`[]`) meaning "no pointer."** So presence of a key is not enough — the encoder keys off *non-emptiness*.
+- **Precedence:** if `data.paths` is a non-empty array, use it (one `logicalLocation` per pointer). Else if `data.path` is a non-empty array, use it (one location). Else (both empty or absent) emit **no `locations` key** — a valid location-less, file-level result. This makes `path: []` + non-empty `paths` (8 fixture diagnostics) resolve to the `paths` locations, and `path: []` + `paths: []` (or `paths` absent) resolve to no location.
+- **Pointer → string encoding:** build each `fullyQualifiedName` as an **RFC 6901 JSON Pointer** — join segments with `/`, prefix with a leading `/`, and escape `~`→`~0` and `/`→`~1` *within* each segment. This is unambiguous even when a segment itself contains a slash (the fixture has `'/health'` and `'application/json'` segments, which a naïve `/`-join would render as a confusing `//health` / `application/json`). RFC 6901 is the SARIF-idiomatic pointer encoding and round-trips cleanly.
+
+Resulting fixture breakdown (empty arrays treated as no-pointer): 12 single-location diagnostics, 8 plural-location, 14 location-less. This is well-formed SARIF that GitHub ingests; it lists in the Security tab without inline diff annotations (those need `physicalLocation` regions the engine does not provide).
 
 ### ruleId-only; no rules catalog
 
