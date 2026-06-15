@@ -1,0 +1,105 @@
+name: SkillSpector
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 4 * * 2' # weekly, Tuesdays 04:00 UTC (same cadence as CodeQL / docker-security)
+  workflow_dispatch:
+
+concurrency:
+  group: skill-security-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  security-events: write # upload SARIF to the GitHub Security tab
+
+jobs:
+  # Glob skills/* into a JSON matrix so new skills are scanned automatically —
+  # no workflow edit needed when a second skill lands.
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      skills: ${{ steps.list.outputs.skills }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: list
+        run: |
+          skills=$(ls -d skills/*/ | xargs -n1 basename | jq -R . | jq -cs .)
+          echo "skills=${skills}" >> "$GITHUB_OUTPUT"
+          echo "Discovered skills: ${skills}"
+
+  skill-security:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false # one flagged skill must not cancel the others' scans
+      matrix:
+        skill: ${{ fromJSON(needs.discover.outputs.skills) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      # SkillSpector is not published to PyPI and cuts no release tags, so we
+      # install from a pinned commit SHA — an unpinned main could flip the gate
+      # (or its ruleset) without a change on our side. Bump deliberately in its
+      # own PR. cff7ecc = v2.1.4.
+      - name: Install SkillSpector
+        run: python -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@cff7ecc4f2881d9e23ea4bb801a6353e1dbe39e6"
+
+      # Static analysis only (--no-llm): the semantic LLM stage needs a provider
+      # credential we don't expose to CI, and it adds nothing for a markdown-only
+      # skill (verified locally). Two scans because the CLI emits one --format per
+      # run: JSON carries the aggregate verdict (risk_assessment) the gate
+      # enforces; SARIF carries only individual findings, which feed the Security
+      # tab but cannot drive the SAFE/CAUTION/DANGER gate on their own.
+      - name: Scan ${{ matrix.skill }}
+        run: |
+          skillspector scan "skills/${{ matrix.skill }}/" \
+            --no-llm --format json --output report.json
+          skillspector scan "skills/${{ matrix.skill }}/" \
+            --no-llm --format sarif --output results.sarif
+          cat report.json
+
+      # Best-effort audit trail, not the gate. A pull_request from a forked repo
+      # gets a read-only GITHUB_TOKEN without security-events:write, so we skip
+      # the upload there rather than let it fail noisily; the scan + JSON gate
+      # below still run for forks. continue-on-error covers any other transient
+      # upload failure on non-fork runs. The JSON gate is the authoritative check.
+      # A per-skill category keeps each skill's findings as a distinct, self-
+      # healing analysis in the Security tab.
+      - name: Upload SARIF to GitHub Security
+        if: always() && github.event.pull_request.head.repo.fork != true
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+          category: skillspector-${{ matrix.skill }}
+
+      - name: Enforce SAFE recommendation
+        run: |
+          recommendation=$(python -c "import json; print(json.load(open('report.json'))['risk_assessment']['recommendation'])")
+          score=$(python -c "import json; print(json.load(open('report.json'))['risk_assessment']['score'])")
+          echo "${{ matrix.skill }}: recommendation=${recommendation} risk-score=${score}/100"
+          if [ "${recommendation}" != "SAFE" ]; then
+            echo "::error::SkillSpector flagged ${{ matrix.skill }} (recommendation=${recommendation}, risk-score=${score}/100). See report above and the Security tab."
+            exit 1
+          fi
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillspector-report-${{ matrix.skill }}
+          path: |
+            report.json
+            results.sarif

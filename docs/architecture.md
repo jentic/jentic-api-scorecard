@@ -148,6 +148,7 @@ jentic-api-scorecard/
 └── .github/workflows/
     ├── ci.yml                                (lint + test on PRs; also callable via workflow_call)
     ├── docker-publish.yml                    (build + push :unstable to GHCR on main; gated on ci.yml)
+    ├── skill-security.yml                    (SkillSpector static scan, matrixed over every skills/* dir; gates each skill on a SAFE recommendation)
     └── release.yml                           (workflow_dispatch — bump via Conventional Commits, build versioned image, npm publish at @latest)
 ```
 
