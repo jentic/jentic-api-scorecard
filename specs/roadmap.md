@@ -259,10 +259,46 @@ SARIF is the prerequisite for a GitHub Action (a separate later phase): it popul
 - Add `packages/cli/test/formatters/` tests vs. the engine fixture: schema validity, severity→level map, single/plural pointer locations, multi-tool grouping.
 - Sync README `## CLI reference` + `SKILL.md` flag tables; note logical-location-only (no inline PR-diff annotations yet).
 
+## Phase 18 — Markdown formatter (`--format markdown`)
+
+**Goal:** Add `--format markdown` so the CLI emits a GitHub-flavored Markdown projection of the scorecard, suitable for `$GITHUB_STEP_SUMMARY`, PR comments, and status checks.
+**Depends on:** Phase 5 — `--detail <level>` filtering (the canonical filtered shape all formatters consume; already shipped)
+**Priority:** High
+
+This formatter was parked in Later Phases pending "concrete CI-integrator demand" — the GitHub Action (Phase 19) is that demand. `$GITHUB_STEP_SUMMARY` renders Markdown, not ANSI-colored `pretty` output, so a rich inline run summary needs a real Markdown projection (rendered headline, dimension table, optional per-signal breakdown) rather than stripped-pretty text in a code fence. Like the other formatters, it is a pure function of the engine result JSON, so Phase 19 derives it from the same single capture with no extra scoring.
+
+- Add `markdown` to `-f, --format` (`pretty|json|html|sarif|markdown`) in `format.ts`; implement the formatter in `packages/cli/src/formatters/markdown.ts`.
+- Emit GitHub-flavored Markdown: headline (score / level / grade), a dimension table from `summary.dimensions[]`, and an optional per-signal section when `--detail signals`/`diagnostics` includes them. Tolerate unknown/absent keys like the other formatters.
+- Respect `--detail` (unlike `sarif`): the Markdown projection mirrors whatever depth the filtered result carries.
+- Safe to print to a TTY (plain text), so no `validateScoreOptions` TTY refusal; `-o` writes the Markdown verbatim (no chalk strip needed).
+- Add `packages/cli/test/formatters/markdown.test.ts` vs. the engine fixture: headline fields, dimension-table rows, `--detail` projection.
+- Sync README `## CLI reference` + `SKILL.md` flag tables.
+
+## Phase 19 — GitHub Action for CI Scoring
+
+**Goal:** Add a Marketplace-listable composite GitHub Action at the repo root that scores an OpenAPI spec via the CLI, gates the build on the score, uploads SARIF findings to the Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown summary on the run.
+**Depends on:** Phase 17 — SARIF formatter (`--format sarif`), Phase 18 — Markdown formatter (`--format markdown`)
+**Priority:** High
+
+This is the headline CI-integrator deliverable and the reason SARIF (Phase 17) and the Markdown formatter (Phase 18) were built. The action is a thin composite wrapper over `npx @jentic/api-scorecard-cli` — no backend service, consistent with the no-service-in-the-loop invariant. The score gates the build; SARIF diagnostics populate the Security tab; the HTML scorecard is a downloadable artifact; a Markdown summary renders inline on the run page. **Score once, format many:** scoring is the expensive step (a full `docker run` engine pass), but the formatters are pure functions of the engine result JSON, so the action scores a single time (`--format json --detail diagnostics`) and derives SARIF, HTML, and Markdown locally from the captured `report.json` — no re-scoring per format. `action.yml` must sit at the repo root for GitHub Marketplace listing.
+
+- Add a `./sarif` subpath export to `@jentic/api-scorecard-cli` (`packages/cli/package.json` `exports` + built `dist/formatters/sarif.js`) so `formatSarif(result)` runs over a captured `report.json` without re-scoring — mirrors how the CLI already consumes the published HTML `format()`. (Phase 17 ships SARIF CLI-internal; this phase exposes it for the action as the second consumer.)
+- Add a composite `action.yml` at the repo root (Marketplace-listable) wrapping `npx @jentic/api-scorecard-cli@<action-version>`; the action version tracks the CLI/image tag invariant.
+- Inputs: `input` (file/URL), `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity` (default warning), `max-findings` (default 5000), `with-llm`, `summary-detail` (controls only the Markdown run-summary depth — the single capture is always `--detail diagnostics` so SARIF/HTML are never starved of data).
+- Score once: `score <input> --format json --detail diagnostics -o report.json` (one engine pass); the gate, SARIF, HTML, and Markdown all derive from this single capture.
+- Gate the build on `summary.score` from `report.json`; fail when `< min-score`, or when severity-1/severity-2 counts exceed `max-errors`/`max-warnings`.
+- Gates read the full captured result, not the filtered SARIF — `severity`-hidden findings still count toward `max-errors`/`max-warnings`.
+- Derive SARIF locally via the `./sarif` export, then apply `severity` filter, then `max-findings` cap (filter-then-cap, lowest-severity-first, log dropped count); upload via `github/codeql-action/upload-sarif`.
+- Derive HTML locally via the `@jentic/api-scorecard-formatter-html` `format()` and upload via `actions/upload-artifact` (downloadable from the run).
+- Render the Markdown projection (`--format markdown`) into `$GITHUB_STEP_SUMMARY` for at-a-glance PR feedback.
+- Upload SARIF and the HTML artifact, and write the Markdown summary, even when a gate fails (`if: always()`) — outputs land regardless of pass/fail.
+- Add an example workflow (`pull_request` trigger) to the README/docs.
+- Add a verification step confirming the engine emits severity-1 diagnostics on an error-bearing spec (so `max-errors: 0` is a gate that can actually trip).
+- Document the action in README; note the Marketplace listing requires `action.yml` at the repo root.
+
 ## Later Phases (Not Yet Planned)
 
-- `--min-score N` for CI gating — `score --min-score 70` exits non-zero (proposed exit code `8 — score below threshold`; code `7` is taken by `RATE_LIMITED`) when `summary.score < N`. Deferred until concrete CI-integrator demand surfaces; once Phase 6 ships `--format json`, integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
-- Markdown formatter (`--format markdown`) — a Markdown table projection of the scorecard for pasting into PR comments / status checks. Deferred until concrete CI-integrator demand surfaces; `--format json` (Phase 6) covers the machine-readable channel in the meantime.
+- `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
 - Structured logger across `packages/cli/` — replace ad-hoc `process.stderr.write('error: …')` / `'warning: …'` calls with a level-based logger (likely `consola`). Not a phase on its own — refactor, no user-visible capability. The decision to introduce one (or not) belongs in Phase 7's `plan.md`, since `--verbose` is the first feature that makes log levels load-bearing. Listed here so the question isn't lost.
 - Native binary distribution via `curl -fsSL | bash` (self-extracting archive bundling Node + node_modules; platform-specific builds in CI; requires code signing for macOS/Windows)
 - Multi-spec / portfolio scoring across many APIs in one invocation
