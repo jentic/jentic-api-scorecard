@@ -35,7 +35,7 @@ Exits 0. `test/formatters/sarif.test.ts` asserts, against `test/fixtures/scoreca
 - location handling keys off **non-empty** pointers (the fixture uses `[]` to mean "no pointer" and often carries both `data.path` and `data.paths` on one diagnostic): a non-empty `data.path` (with empty/absent `paths`) → exactly one `logicalLocation`; a non-empty `data.paths` → one location per pointer; a diagnostic with `data.path: []` + non-empty `data.paths` → locations from `paths` (precedence), proving an empty `path` produces no bogus location; both arrays empty/absent → result with no `locations` key;
 - pointers are encoded as RFC 6901 (`toJsonPointer` helper): `['paths','/health','get']` → `/paths/~1health/get` (slash-in-segment escaped to `~1`, `~`→`~0`), verified by a dedicated helper test.
 
-The extended `test/validate.test.ts` asserts `--format sarif` is refused to a TTY without `-o`, allowed when piped, and allowed to a TTY with `-o`.
+The extended `test/validate.test.ts` asserts `--format sarif` is never refused: allowed to a TTY without `-o`, allowed when piped, and allowed to a TTY with `-o` (SARIF is plain JSON text, TTY-safe like `json`).
 
 ### 4. SARIF output is valid end-to-end against a real score
 

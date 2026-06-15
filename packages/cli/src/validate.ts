@@ -13,19 +13,14 @@ export function validateScoreOptions(
   options: ScoreOptionsToValidate,
   stdoutIsTty: boolean,
 ): string | null {
-  // HTML and SARIF write machine-oriented documents, not terminal-friendly text.
-  // Refuse to dump them into an interactive terminal; require either -o <file> or
-  // a redirected stdout.
-  const ext = options.format === Format.HTML ? 'html' : 'sarif';
-  if (
-    (options.format === Format.HTML || options.format === Format.SARIF) &&
-    options.output === undefined &&
-    stdoutIsTty
-  ) {
+  // HTML is a full document, not terminal-friendly. Refuse to dump it into an
+  // interactive terminal; require either -o <file> or a redirected stdout. SARIF,
+  // json, and markdown are plain text and stay printable to a TTY.
+  if (options.format === Format.HTML && options.output === undefined && stdoutIsTty) {
     return (
-      `--format ${options.format} writes a full document; refusing to print it to the terminal.\n` +
-      `  Redirect it to a file:  … --format ${options.format} > scorecard.${ext}\n` +
-      `  Or use -o:              … --format ${options.format} -o scorecard.${ext}`
+      `--format html writes a full HTML document; refusing to print it to the terminal.\n` +
+      `  Redirect it to a file:  … --format html > scorecard.html\n` +
+      `  Or use -o:              … --format html -o scorecard.html`
     );
   }
 
