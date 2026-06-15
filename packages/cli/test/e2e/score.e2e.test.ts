@@ -305,6 +305,42 @@ describe('score command — e2e against docker', function () {
     });
   });
 
+  describe('--format markdown', function () {
+    let exitCode: number | null;
+    let stdout: string;
+    let stderr: string;
+
+    before(function () {
+      const result = spawnSync(
+        'node',
+        [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'markdown'],
+        {
+          env: envWithoutKey(),
+          encoding: 'utf8',
+          timeout: E2E_TIMEOUT_MS,
+        },
+      );
+      exitCode = result.status;
+      stdout = result.stdout ?? '';
+      stderr = result.stderr ?? '';
+    });
+
+    it('exits 0', function () {
+      expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+    });
+
+    it('emits a GFM headline and dimension table on stdout', function () {
+      expect(stdout).to.include('# API Readiness Scorecard');
+      expect(stdout).to.include('| Kind | Name | Score | Grade |');
+      expect(stdout).to.include('| --- | --- | --- | --- |');
+    });
+
+    it('carries no ANSI escape codes', function () {
+      // eslint-disable-next-line no-control-regex
+      expect(stdout).to.not.match(/\x1B\[/);
+    });
+  });
+
   describe('-o / --output FILE', function () {
     let workDir: string;
     let outPath: string;
