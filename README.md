@@ -22,6 +22,7 @@ across six dimensions and returns a single grade — so you know exactly where t
 - [Control output depth](#control-output-depth)
 - [Machine-readable output](#machine-readable-output)
 - [HTML report](#html-report)
+- [SARIF output](#sarif-output)
 - [LLM analysis](#llm-analysis)
 - [Anonymous vs keyed access](#anonymous-vs-keyed-access)
 - [Agent Skills](#agent-skills)
@@ -193,6 +194,26 @@ npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
   --format html --detail diagnostics -o scorecard.html
 ```
 
+## SARIF output
+
+Add `--format sarif` to emit a schema-valid [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)
+document — the format GitHub code-scanning ingests to populate the repository **Security** tab.
+SARIF is a *findings* format, so it projects the engine's `diagnostics[]` only: each diagnostic
+becomes one SARIF result, and each validator source (`redocly-validator`, `spectral-validator`, …)
+becomes its own run. The score, dimensions, and signals are deliberately excluded — use
+`--format json` for those.
+
+Because diagnostics only survive at the deepest detail level, `--format sarif` always emits the
+full diagnostics regardless of `--detail`; passing an explicit `--detail` other than `diagnostics`
+prints a one-line warning on stderr and proceeds. Findings carry logical locations (RFC 6901
+JSON Pointers into the spec) but no `physicalLocation` line/column regions, so they list in the
+Security tab without inline PR-diff annotations.
+
+```bash
+# Pipe SARIF to a file for upload to GitHub code-scanning
+npx @jentic/api-scorecard-cli@latest score ./openapi.yaml --format sarif -o findings.sarif
+```
+
 ## LLM analysis
 
 Add `--with-llm` to unlock LLM-backed signals — deeper semantic reasoning about whether your API
@@ -324,7 +345,7 @@ jentic-api-scorecard score <input> [options]
 | `--with-llm` | off | — | Enable LLM-backed analysis. Requires an LLM provider (see [LLM analysis](#llm-analysis)). |
 | `--bundle` | off | — | Force CLI-side bundling for URL inputs: the CLI fetches the URL on the host, bundles with Redocly, and pipes to the container via stdin. Use for URLs only the host can reach (internal networks, VPN-gated specs, auth-required URLs). Requires `JENTIC_API_KEY`. No-op for local files. |
 | `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see [Control output depth](#control-output-depth)). |
-| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown` | Output encoding (`markdown` is a GitHub-flavored projection for `$GITHUB_STEP_SUMMARY` / PR comments; see also [Machine-readable output](#machine-readable-output) and [HTML report](#html-report)). |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown`, `sarif` | Output encoding (`markdown` is a GitHub-flavored projection for `$GITHUB_STEP_SUMMARY` / PR comments; `sarif` projects diagnostics only as SARIF 2.1.0 for GitHub code-scanning and always emits full diagnostics regardless of `--detail`; see also [Machine-readable output](#machine-readable-output), [HTML report](#html-report), and [SARIF output](#sarif-output)). |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
 | `-h, --help` | — | — | Show usage for `score`. |

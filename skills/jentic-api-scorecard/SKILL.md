@@ -97,7 +97,7 @@ jentic-api-scorecard score <input> [options]
 | `--with-llm` | off | — | Enable LLM-backed signals. Requires an LLM provider — see `references/llm-analysis.md`. |
 | `--bundle` | off | — | Fetch + Redocly-bundle a URL **on the host**, then pipe to the engine over stdin. For URLs only the host can reach. Requires `JENTIC_API_KEY`. No-op for local files. |
 | `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth (see below). |
-| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown` | Output encoding. |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown`, `sarif` | Output encoding. |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The progress spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
 | `-h, --help` | — | — | Show usage for `score`. |
@@ -114,7 +114,11 @@ piped or written to a file). `json` is engine-verbatim, filtered by `--detail`.
 interactive terminal**, so always pair it with `-o <file>` or redirect stdout.
 `markdown` is a GitHub-flavored Markdown projection (headline + dimension table,
 plus per-signal and diagnostics tables at higher `--detail`); it is plain text,
-safe to a terminal, and made for `$GITHUB_STEP_SUMMARY` and PR comments.
+safe to a terminal, and made for `$GITHUB_STEP_SUMMARY` and PR comments. `sarif`
+projects `diagnostics[]` only as a SARIF 2.1.0 document for GitHub code-scanning
+(one run per validator source, logical locations only — no inline PR-diff
+annotations); it always emits full diagnostics regardless of `--detail` and warns
+on stderr if an explicit non-`diagnostics` `--detail` is combined with it.
 
 ## CI integration
 

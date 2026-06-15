@@ -243,7 +243,7 @@ This phase replaces the prior "Later Phases" entry "CLI connecting to remote doc
 
 The alpha era served its purpose — the flag surface is settled, real-key auth is live, and `mvp-preview` was always documented as transitional. Stable gives integrators a `latest` tag they can pin against. Releases are driven entirely by Conventional Commits — `lerna version --conventional-commits --force-publish` reads `feat:` / `fix:` / `BREAKING CHANGE:` markers since the last tag and computes the bump.
 
-## Phase 17 — SARIF formatter (`--format sarif`)
+## Phase 17 — SARIF formatter (`--format sarif`) ✅
 
 **Goal:** Add `--format sarif` so the CLI encodes the engine's `diagnostics[]` as a schema-valid SARIF 2.1.0 document that GitHub code-scanning ingests.
 **Depends on:** none (self-contained — the diagnostics shape it encodes shipped in Phase 5)
