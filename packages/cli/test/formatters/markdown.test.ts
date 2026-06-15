@@ -172,6 +172,17 @@ describe('formatMarkdown', function () {
       expect(output).to.include('## Diagnostics');
       expect(output).to.include('0 diagnostics');
     });
+
+    it('omits the em dash when no diagnostic falls in the 1–4 severity order', function () {
+      const result: ScorecardResult = {
+        summary: { score: 50, level: 'ai-aware', grade: 'C' },
+        diagnostics: [{ source: 'test', severity: 9, message: 'out of range' }],
+      };
+      const output = formatMarkdown(result, { detail: DetailLevel.DIAGNOSTICS });
+      expect(output).to.include('**1** diagnostics');
+      expect(output).to.not.match(/\*\*1\*\* diagnostics —\s*$/m);
+      expect(output).to.not.include('diagnostics — \n');
+    });
   });
 
   describe('cell escaping', function () {

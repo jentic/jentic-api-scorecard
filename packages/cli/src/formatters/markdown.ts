@@ -176,7 +176,10 @@ function appendDiagnostics(lines: string[], diagnostics: Diagnostic[] | undefine
     const label = pluralizableSeverities[sev] && items.length !== 1 ? `${base}s` : base;
     tallyParts.push(`${items.length} ${label}`);
   }
-  lines.push(`**${diagnostics.length}** diagnostics — ${tallyParts.join(' · ')}`);
+  // Every diagnostic could carry a severity outside the 1–4 order, leaving the
+  // tally empty — drop the em dash in that case rather than dangling it.
+  const tally = tallyParts.length > 0 ? ` — ${tallyParts.join(' · ')}` : '';
+  lines.push(`**${diagnostics.length}** diagnostics${tally}`);
 
   lines.push('');
   lines.push(`| Code | Severity | Message |`);
