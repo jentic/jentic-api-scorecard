@@ -31,7 +31,7 @@ Exits 0. `test/formatters/sarif.test.ts` asserts, against `test/fixtures/scoreca
 - `version === '2.1.0'`;
 - one `runs[]` entry per distinct diagnostic `source` (5 in the fixture);
 - total `results[]` count equals the diagnostic count (34);
-- severity→level mapping holds: a severity-1 diagnostic → `error`, severity-2 → `warning`, severity-3 → `note`;
+- severity→level mapping holds, asserting the emitted `level` string (not severity semantics): a severity-1 diagnostic emits `level: 'error'`, severity-2 → `'warning'`, severity-3 → `'note'`;
 - a `data.path` diagnostic yields exactly one `logicalLocation`; a `data.paths` diagnostic yields one location per pointer; a no-pointer diagnostic yields a result with no `locations` key.
 
 The extended `test/validate.test.ts` asserts `--format sarif` is refused to a TTY without `-o`, allowed when piped, and allowed to a TTY with `-o`.

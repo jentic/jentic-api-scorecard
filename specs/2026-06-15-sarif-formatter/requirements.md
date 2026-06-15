@@ -44,7 +44,7 @@ Diagnostics are grouped by their `source` field (`default-validator`, `redocly-v
 
 ### Validate output against the official SARIF schema in tests
 
-Tests validate the emitted document against the official SARIF 2.1.0 JSON Schema via `ajv` (a new devDependency, plus the schema committed to the repo). This is a stronger guarantee than structural assertions and protects against silently-malformed SARIF that GitHub would reject. Per-field assertions (level mapping, location counts, run grouping) sit on top of the schema-validity gate.
+Tests validate the emitted document against the official SARIF 2.1.0 JSON Schema via `ajv` (a new devDependency, plus the schema committed to the repo). This is a stronger guarantee than structural assertions and protects against silently-malformed SARIF that GitHub would reject. Per-field assertions (level mapping, location counts, run grouping) sit on top of the schema-validity gate. The emitted document's `$schema` points at `https://json.schemastore.org/sarif-2.1.0.json` (the URI GitHub code-scanning recognizes). One implementation gotcha: the SARIF schema declares an older JSON Schema draft than ajv v8's default (2020-12), so ajv must be configured for the schema's draft or compilation throws — see `plan.md` task 11.
 
 ## Constraints
 

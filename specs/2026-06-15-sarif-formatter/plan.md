@@ -7,7 +7,7 @@
 
 ## Group 2 — Implement the encoder
 
-3. Create `packages/cli/src/formatters/sarif.ts` exporting `formatSarif(result: ScorecardResult): string`. Return a SARIF 2.1.0 document (`version: '2.1.0'`, `$schema` set to the OASIS SARIF 2.1.0 schema URI) ending with a trailing newline, matching `formatJson`'s pretty-printed style.
+3. Create `packages/cli/src/formatters/sarif.ts` exporting `formatSarif(result: ScorecardResult): string`. Return a SARIF 2.1.0 document (`version: '2.1.0'`, `$schema: 'https://json.schemastore.org/sarif-2.1.0.json'` — the schemastore URI GitHub code-scanning explicitly recognizes) ending with a trailing newline, matching `formatJson`'s pretty-printed style.
 4. Read `result.diagnostics` defensively (may be absent → emit a document with an empty/zero-result run set, never crash). Group diagnostics by `source`; emit one `runs[]` entry per source with `tool.driver.name = <source>`.
 5. Map each diagnostic to a SARIF `result`: `ruleId = code`, `message.text = message`, `level` from `severity` via a `severityToLevel` helper (1→error, 2→warning, 3→note, 4→note, unknown→note). Build `locations[]` from `data.path` (single pointer) or `data.paths` (one location per pointer) as `logicalLocation.fullyQualifiedName`; emit no `locations` key when neither is present.
 6. Encode each JSON-Pointer path array as a single `fullyQualifiedName` string (join with `/`, matching the engine's `[path: …]` convention) so the Security tab shows a readable location.
@@ -21,10 +21,10 @@
 
 ## Group 4 — Tests
 
-11. Add `ajv` (and the SARIF 2.1.0 JSON Schema, committed under `packages/cli/test/fixtures/`) as a CLI devDependency in `packages/cli/package.json`.
-12. Create `packages/cli/test/formatters/sarif.test.ts` asserting against `packages/cli/test/fixtures/scorecard.sample.json` (34 diagnostics; severities 1/2/3; all 5 sources; 12 single-path, 8 plural-paths, 14 no-pointer): the output validates against the SARIF schema via ajv; `version === '2.1.0'`; one run per distinct source; result count equals diagnostic count; severity→level mapping (1→error, 2→warning, 3→note); single-pointer → one logical location; plural-paths → one location per pointer; no-pointer → result with no `locations`.
+11. Add `ajv` (and the SARIF 2.1.0 JSON Schema, committed under `packages/cli/test/fixtures/`) as a CLI devDependency in `packages/cli/package.json`. Mind the draft mismatch: the SARIF 2.1.0 schema declares an older JSON Schema draft (draft-07, or draft-04 on some mirrors) while ajv v8 defaults to draft-2020-12 and will throw at compile time otherwise. Pin a known-good schema revision and configure ajv for its draft (draft-07 is built into ajv core; draft-04 needs the `ajv-draft-04` entry point) so `ajv.compile(schema)` succeeds.
+12. Create `packages/cli/test/formatters/sarif.test.ts` asserting against `packages/cli/test/fixtures/scorecard.sample.json` (34 diagnostics; severities 1/2/3; all 5 sources; 12 single-path, 8 plural-paths, 14 no-pointer): the output validates against the SARIF schema via ajv; `version === '2.1.0'`; one run per distinct source; result count equals diagnostic count; severity→level mapping (a severity-1 diagnostic emits `level: 'error'`, severity-2 → `'warning'`, severity-3 → `'note'`). Assert the emitted `level` string only — do not assert what severity 1 *means* semantically; only severities 2 and 3 are empirically confirmed (warning / info), and collapsing critical/error into `error` is correct regardless. Also assert: single-pointer → one logical location; plural-paths → one location per pointer; no-pointer → result with no `locations`.
 13. Add a shape-robustness case: a minimal `ScorecardResult` with no `diagnostics` key produces a schema-valid SARIF document without throwing.
-14. Extend `packages/cli/test/validate.test.ts` to cover `--format sarif`: refused to a TTY without `-o`; allowed when piped; allowed to a TTY with `-o`.
+14. Extend `packages/cli/test/validate.test.ts` to cover `--format sarif`: refused to a TTY without `-o`; allowed when piped; allowed to a TTY with `-o`. Note: the explicit-`--detail` warning trigger lives in `index.ts` (it reads Commander's `getOptionValueSource`), so it is not unit-tested here — only `validateScoreOptions` is. The trigger is exercised by the manual end-to-end check in `validation.md` §5, matching how the existing TTY-validation split is covered.
 
 ## Group 5 — Docs and lifecycle
 
