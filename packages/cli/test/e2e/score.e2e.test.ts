@@ -341,6 +341,83 @@ describe('score command — e2e against docker', function () {
     });
   });
 
+  describe('--format sarif', function () {
+    describe('default detail', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync(
+          'node',
+          [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'sarif'],
+          {
+            env: envWithoutKey(),
+            encoding: 'utf8',
+            timeout: E2E_TIMEOUT_MS,
+          },
+        );
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('emits a SARIF 2.1.0 document with non-empty runs and populated results', function () {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        expect(parsed['version']).to.equal('2.1.0');
+        const runs = parsed['runs'] as Record<string, unknown>[];
+        expect(runs).to.be.an('array').with.length.greaterThan(0);
+        const results = runs.flatMap((run) => run['results'] as Record<string, unknown>[]);
+        expect(results).to.have.length.greaterThan(0);
+        expect(results.every((r) => typeof r['level'] === 'string')).to.equal(true);
+        expect(
+          runs.every((run) => Boolean((run['tool'] as Record<string, unknown>)['driver'])),
+        ).to.equal(true);
+      });
+    });
+
+    describe('explicit --detail summary (forced full diagnostics)', function () {
+      let exitCode: number | null;
+      let stdout: string;
+      let stderr: string;
+
+      before(function () {
+        const result = spawnSync(
+          'node',
+          [CLI_BIN, 'score', OAK_PETSTORE_URL, '--format', 'sarif', '--detail', 'summary'],
+          {
+            env: envWithoutKey(),
+            encoding: 'utf8',
+            timeout: E2E_TIMEOUT_MS,
+          },
+        );
+        exitCode = result.status;
+        stdout = result.stdout ?? '';
+        stderr = result.stderr ?? '';
+      });
+
+      it('exits 0', function () {
+        expect(exitCode, `stderr: ${stderr}`).to.equal(0);
+      });
+
+      it('warns on stderr that --detail is ignored', function () {
+        expect(stderr).to.include('--format sarif');
+        expect(stderr).to.match(/--detail .* is ignored/);
+      });
+
+      it('still emits the full diagnostics despite --detail summary', function () {
+        const parsed = JSON.parse(stdout) as Record<string, unknown>;
+        const runs = parsed['runs'] as Record<string, unknown>[];
+        const results = runs.flatMap((run) => run['results'] as unknown[]);
+        expect(results).to.have.length.greaterThan(0);
+      });
+    });
+  });
+
   describe('-o / --output FILE', function () {
     let workDir: string;
     let outPath: string;
