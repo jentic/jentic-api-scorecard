@@ -2,8 +2,6 @@ import { DEFAULT_DETAIL, DetailLevel } from '../detail.ts';
 import { Diagnostic, ScorecardResult } from '../result.ts';
 import { cliVersion } from '../version.ts';
 
-export type { ScorecardResult } from '../result.ts';
-
 const SEVERITY_LABELS: Record<number, string> = {
   1: 'error',
   2: 'warning',
