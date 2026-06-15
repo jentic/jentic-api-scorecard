@@ -7,6 +7,7 @@ import { ExitCode } from '../exit-codes.ts';
 import { DEFAULT_FORMAT, Format } from '../format.ts';
 import { formatHtml } from '../formatters/html.ts';
 import { formatJson } from '../formatters/json.ts';
+import { formatMarkdown } from '../formatters/markdown.ts';
 import { formatPretty } from '../formatters/pretty.ts';
 import { detectLlmEnv } from '../llm-env.ts';
 import { detectLlmFailure, formatLlmFailureError } from '../llm-failure.ts';
@@ -261,7 +262,9 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
       ? formatHtml(filtered)
       : format === Format.JSON
         ? formatJson(filtered)
-        : formatPretty(filtered, input, { detail });
+        : format === Format.MARKDOWN
+          ? formatMarkdown(filtered, { detail })
+          : formatPretty(filtered, input, { detail });
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
