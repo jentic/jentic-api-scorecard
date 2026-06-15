@@ -24,6 +24,8 @@ The encoder lives in `packages/cli/src/formatters/sarif.ts` next to `json.ts` / 
 
 SARIF reads `diagnostics[]`, which only survives at `--detail diagnostics`. Respecting a lower `--detail` would emit an empty SARIF file — worse than useless — so `--format sarif` forces full diagnostics regardless of `--detail`. To avoid a silent override (the footgun of "I passed `--detail summary` and it did nothing"), an *explicit* `--detail` other than `diagnostics` triggers a one-line stderr warning. The default `dimensions` does not warn — Commander's `getOptionValueSource('detail') === 'cli'` distinguishes an explicit flag from the default. This differs from `--format html`, which tolerates lower detail by rendering less; SARIF cannot render less and stay useful.
 
+The warning is emitted up-front in `index.ts` — before `runScore` starts and therefore before any ora spinner — not mid-scoring. The spinner writes to `process.stderr` (`spinner.ts`), so a warning written to stderr while the spinner is live would garble the line. Emitting the warning in the same pre-flight slot as `validateScoreOptions` (no spinner active yet) keeps stderr clean. The warning is non-fatal — it informs and proceeds, unlike `validateScoreOptions`, which returns an error and exits.
+
 ### Severity 1–4 → SARIF level (error/warning/note)
 
 The engine declares a 1–4 severity scale (confirmed via `lint_results.metadata.provenance.severity: [1,2,3,4]`). The mapping is 1=`error`, 2=`warning`, 3=`note`, 4=`note`. SARIF has only three levels (`error`/`warning`/`note`, ignoring `none`), so the engine's hint (4) collapses into `note` alongside info (3). The CLI fixture exercises severities 1, 2, and 3.

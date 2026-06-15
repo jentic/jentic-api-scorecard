@@ -54,7 +54,7 @@ node packages/cli/bin/jentic-api-scorecard.mjs score \
   --format sarif --detail summary -o /tmp/phase17-summary.sarif
 ```
 
-stderr contains a one-line warning that `--detail` is ignored with `--format sarif`. `/tmp/phase17-summary.sarif` still contains the full diagnostics (non-empty `results[]`), proving the detail filter was bypassed rather than honored.
+stderr contains a one-line warning that `--detail` is ignored with `--format sarif`, printed cleanly (emitted before the spinner starts, so it is not interleaved with or overwritten by the spinner line). `/tmp/phase17-summary.sarif` still contains the full diagnostics (non-empty `results[]`), proving the detail filter was bypassed rather than honored. Re-running with `--quiet` (spinner suppressed) shows the identical warning text, confirming the warning is independent of the spinner.
 
 ### 6. README and SKILL reflect the new format
 

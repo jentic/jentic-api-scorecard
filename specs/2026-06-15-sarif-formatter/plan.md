@@ -16,7 +16,7 @@
 
 7. In `packages/cli/src/commands/score.ts`, extend the format-dispatch (around the `format === Format.HTML ? … : …` chain) to call `formatSarif` when `format === Format.SARIF`.
 8. Force full diagnostics for SARIF: when `format === Format.SARIF`, bypass `--detail` filtering and feed the unfiltered `parsed` result to `formatSarif` (the other formatters still consume `filterByDetail(parsed, detail)`).
-9. Emit a one-line stderr warning when `format === Format.SARIF` and `--detail` was set explicitly to a non-`diagnostics` level. Thread the explicit-vs-default signal from `index.ts` (Commander `getOptionValueSource('detail') === 'cli'`) into `runScore` via `ScoreOptions` so the warning fires only on an explicit conflicting flag, not the default `dimensions`.
+9. Emit a one-line stderr warning when `format === Format.SARIF` and `--detail` was set explicitly to a non-`diagnostics` level. Emit it in `index.ts` up-front — in the same pre-flight slot as `validateScoreOptions`, before `runScore` starts — so no ora spinner is active when it writes to stderr (the spinner also writes to stderr; writing the warning mid-scoring would garble the spinner line). Detect "explicit" via Commander `getOptionValueSource('detail') === 'cli'`; the default `dimensions` must not warn. Keep the warning non-fatal (inform and proceed) — distinct from `validateScoreOptions`, which returns an error and exits.
 10. Confirm `-o` file output works for SARIF: `writeReport` already passes non-pretty content through verbatim (no chalk strip), so `--format sarif -o out.sarif` writes the document unmodified. Add no special-casing unless a gap is found.
 
 ## Group 4 — Tests
