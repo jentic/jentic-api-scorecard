@@ -8,7 +8,7 @@ interface SarifLogicalLocation {
 }
 
 interface SarifLocation {
-  logicalLocation: SarifLogicalLocation;
+  logicalLocations: SarifLogicalLocation[];
 }
 
 interface SarifResult {
@@ -67,13 +67,13 @@ function locationsFor(diagnostic: Diagnostic): SarifLocation[] | undefined {
   const paths = data['paths'];
   if (nonEmptyArray(paths)) {
     return paths.map((pointer) => ({
-      logicalLocation: { fullyQualifiedName: toJsonPointer(pointer as (string | number)[]) },
+      logicalLocations: [{ fullyQualifiedName: toJsonPointer(pointer as (string | number)[]) }],
     }));
   }
   const path = data['path'];
   if (nonEmptyArray(path)) {
     return [
-      { logicalLocation: { fullyQualifiedName: toJsonPointer(path as (string | number)[]) } },
+      { logicalLocations: [{ fullyQualifiedName: toJsonPointer(path as (string | number)[]) }] },
     ];
   }
   return undefined;
