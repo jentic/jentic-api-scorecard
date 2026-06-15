@@ -147,6 +147,46 @@ describe('formatSarif', function () {
     });
   });
 
+  it('drops malformed pointer entries within data.paths without throwing', function () {
+    const result = {
+      summary: { score: 0, level: 'unknown', grade: 'F' },
+      diagnostics: [
+        {
+          source: 'speclynx-validator',
+          severity: 3,
+          message: 'mixed pointers',
+          code: 'MIXED',
+          // A non-array entry and an empty-array entry must be skipped; the one
+          // valid pointer survives.
+          data: { paths: ['not-an-array', [], ['paths', 'get']] },
+        },
+      ],
+    } as unknown as ScorecardResult;
+    const built = JSON.parse(formatSarif(result)) as SarifLog;
+    const sarifResult = built.runs[0]?.results[0];
+    expect(sarifResult?.locations).to.have.lengthOf(1);
+    expect(sarifResult?.locations?.[0]?.logicalLocations[0]?.fullyQualifiedName).to.equal(
+      '/paths/get',
+    );
+  });
+
+  it('omits locations when every data.paths entry is malformed', function () {
+    const result = {
+      summary: { score: 0, level: 'unknown', grade: 'F' },
+      diagnostics: [
+        {
+          source: 'speclynx-validator',
+          severity: 3,
+          message: 'all bad pointers',
+          code: 'ALLBAD',
+          data: { paths: ['not-an-array', []] },
+        },
+      ],
+    } as unknown as ScorecardResult;
+    const built = JSON.parse(formatSarif(result)) as SarifLog;
+    expect(built.runs[0]?.results[0]?.locations).to.equal(undefined);
+  });
+
   it('produces a schema-valid document when diagnostics is absent', function () {
     const minimal = {
       summary: { score: 0, level: 'unknown', grade: 'F' },

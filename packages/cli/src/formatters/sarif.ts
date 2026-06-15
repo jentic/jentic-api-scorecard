@@ -56,6 +56,17 @@ function nonEmptyArray(value: unknown): value is unknown[] {
   return Array.isArray(value) && value.length > 0;
 }
 
+function locationFor(pointer: unknown): SarifLocation | undefined {
+  // A pointer is an array of segments; a non-array (or empty array) entry carries
+  // no usable location, so skip it rather than throw or emit an empty pointer.
+  if (!nonEmptyArray(pointer)) {
+    return undefined;
+  }
+  return {
+    logicalLocations: [{ fullyQualifiedName: toJsonPointer(pointer as (string | number)[]) }],
+  };
+}
+
 function locationsFor(diagnostic: Diagnostic): SarifLocation[] | undefined {
   const data = diagnostic.data;
   if (data === undefined) {
@@ -63,20 +74,18 @@ function locationsFor(diagnostic: Diagnostic): SarifLocation[] | undefined {
   }
   // Precedence: a non-empty data.paths (array of pointers) wins, then a non-empty
   // data.path (one pointer). Both are often present and either may be [] meaning
-  // "no pointer", so we key off non-emptiness, not key presence.
+  // "no pointer", so we key off non-emptiness, not key presence. Within paths, a
+  // malformed (non-array / empty) entry is dropped; locations is omitted if none
+  // survive.
   const paths = data['paths'];
   if (nonEmptyArray(paths)) {
-    return paths.map((pointer) => ({
-      logicalLocations: [{ fullyQualifiedName: toJsonPointer(pointer as (string | number)[]) }],
-    }));
+    const locations = paths
+      .map(locationFor)
+      .filter((location): location is SarifLocation => location !== undefined);
+    return locations.length > 0 ? locations : undefined;
   }
-  const path = data['path'];
-  if (nonEmptyArray(path)) {
-    return [
-      { logicalLocations: [{ fullyQualifiedName: toJsonPointer(path as (string | number)[]) }] },
-    ];
-  }
-  return undefined;
+  const location = locationFor(data['path']);
+  return location !== undefined ? [location] : undefined;
 }
 
 function toSarifResult(diagnostic: Diagnostic): SarifResult {
