@@ -19,7 +19,7 @@ npm run build:typescript -w @jentic/api-scorecard-cli
 node -e "import('@jentic/api-scorecard-cli/sarif').then(m => console.log(typeof m.formatSarif))"
 ```
 
-`build:typescript` exits 0; the `node -e` line prints `function`. `dist/formatters/sarif.js` and `sarif.d.ts` exist and the `"./sarif"` export points at them.
+`build:typescript` exits 0; the `node -e` line prints `function`. `dist/formatters/sarif.js` and `dist/formatters/sarif.d.ts` exist (and the parallel `dist/formatters/markdown.{js,d.ts}`), and the `"./sarif"` / `"./markdown"` exports point at them.
 
 ### 3. Unit tests pass — subpath import + helper logic
 
@@ -28,7 +28,7 @@ npm test -w @jentic/api-scorecard-cli
 ```
 
 Exits 0, including:
-- the subpath-import test: `formatSarif(fixture)` returns schema-valid SARIF without invoking the `score` command;
+- the subpath-import test: `@jentic/api-scorecard-cli/sarif`'s `formatSarif(fixture)` returns schema-valid SARIF and `@jentic/api-scorecard-cli/markdown`'s `formatMarkdown(fixture)` returns Markdown — both without invoking the `score` command;
 - the helper tests: gate decision at just-below / just-at `min-score`; `max-errors`/`max-warnings` counted against the **full** diagnostics (not the severity-filtered set); `severity` filter drops below-threshold findings; `max-findings` cap truncates lowest-severity-first and reports the dropped count.
 
 ### 4. Action self-test workflow passes both ways
@@ -56,7 +56,7 @@ The action invokes `score …` exactly **once** per run (one engine pass); SARIF
 
 ### 8. README documents the action
 
-`README.md` includes a `pull_request` example workflow with the required `permissions: security-events: write` block, the full input table (`input`, `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity`, `max-findings`, `with-llm`, `summary-detail`), and the note that Marketplace listing requires the root `action.yml`. SKILL/README note the score-once behavior, the logical-location-only SARIF caveat, and that fork PRs skip the SARIF upload (read-only token).
+`README.md` includes a `pull_request` example workflow with the required `permissions: security-events: write` block, the full input table (`input`, `api-key`, `min-score`, `max-errors`, `max-warnings`, `severity`, `max-findings`, `with-llm`, `summary-detail`), and the note that Marketplace listing requires the root `action.yml`. `skills/jentic-api-scorecard/SKILL.md` and `README.md` note the score-once behavior, the logical-location-only SARIF caveat, and that fork PRs skip the SARIF upload (read-only token).
 
 ### 9. Roadmap lifecycle marker
 
