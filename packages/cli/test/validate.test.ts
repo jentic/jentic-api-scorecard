@@ -22,4 +22,12 @@ describe('validateScoreOptions', function () {
     expect(validateScoreOptions({ format: Format.PRETTY }, true)).to.equal(null);
     expect(validateScoreOptions({ format: Format.JSON }, true)).to.equal(null);
   });
+
+  it('never blocks sarif (plain JSON text, TTY-safe like json)', function () {
+    expect(validateScoreOptions({ format: Format.SARIF }, true)).to.equal(null);
+    expect(validateScoreOptions({ format: Format.SARIF }, false)).to.equal(null);
+    expect(validateScoreOptions({ format: Format.SARIF, output: 'out.sarif' }, true)).to.equal(
+      null,
+    );
+  });
 });

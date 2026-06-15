@@ -5,17 +5,18 @@ import { DEFAULT_FORMAT, FORMATS, Format } from '../src/format.ts';
 // The set of --format choices is public CLI surface; locking it guards against
 // accidental removal/rename of a documented encoding.
 describe('Format', function () {
-  it('exposes pretty, json, html, and markdown', function () {
+  it('exposes pretty, json, html, markdown, and sarif', function () {
     expect(Format).to.deep.equal({
       PRETTY: 'pretty',
       JSON: 'json',
       HTML: 'html',
       MARKDOWN: 'markdown',
+      SARIF: 'sarif',
     });
   });
 
   it('lists every format as a selectable choice', function () {
-    expect([...FORMATS]).to.have.members(['pretty', 'json', 'html', 'markdown']);
+    expect([...FORMATS]).to.have.members(['pretty', 'json', 'html', 'markdown', 'sarif']);
   });
 
   it('defaults to pretty', function () {
