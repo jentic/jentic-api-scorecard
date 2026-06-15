@@ -17,9 +17,10 @@ Exits 0. ESLint + Prettier pass on the `package.json` `exports` change, the Node
 ```
 npm run build:typescript -w @jentic/api-scorecard-cli
 node -e "import('@jentic/api-scorecard-cli/sarif').then(m => console.log(typeof m.formatSarif))"
+node -e "import('@jentic/api-scorecard-cli/markdown').then(m => console.log(typeof m.formatMarkdown))"
 ```
 
-`build:typescript` exits 0; the `node -e` line prints `function`. `dist/formatters/sarif.js` and `dist/formatters/sarif.d.ts` exist (and the parallel `dist/formatters/markdown.{js,d.ts}`), and the `"./sarif"` / `"./markdown"` exports point at them.
+`build:typescript` exits 0; both `node -e` lines print `function`. `dist/formatters/sarif.{js,d.ts}` and `dist/formatters/markdown.{js,d.ts}` exist, and the `"./sarif"` / `"./markdown"` exports point at them.
 
 ### 3. Unit tests pass — subpath import + helper logic
 
@@ -29,7 +30,7 @@ npm test -w @jentic/api-scorecard-cli
 
 Exits 0, including:
 - the subpath-import test: `@jentic/api-scorecard-cli/sarif`'s `formatSarif(fixture)` returns schema-valid SARIF and `@jentic/api-scorecard-cli/markdown`'s `formatMarkdown(fixture)` returns Markdown — both without invoking the `score` command;
-- the helper tests: gate decision at just-below / just-at `min-score`; `max-errors`/`max-warnings` counted against the **full** diagnostics (not the severity-filtered set); `severity` filter drops below-threshold findings; `max-findings` cap truncates lowest-severity-first and reports the dropped count.
+- the helper tests: gate decision at the boundary — score **just below** `min-score` fails, score **equal to** `min-score` passes (guards against a `<=` off-by-one), score above passes; `max-errors`/`max-warnings` counted against the **full** diagnostics (not the severity-filtered set); `severity` filter drops below-threshold findings; `max-findings` cap truncates lowest-severity-first and reports the dropped count.
 
 ### 4. Action self-test workflow passes both ways
 

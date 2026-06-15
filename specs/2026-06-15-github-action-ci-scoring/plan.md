@@ -32,9 +32,9 @@
 ## Group 5 — Verify
 
 16. `npm run lint -w @jentic/api-scorecard-cli` exits 0 and any linters covering the action/helper pass.
-17. `npm run build:typescript -w @jentic/api-scorecard-cli` exits 0 (the `./sarif` export resolves and `dist/formatters/sarif.{js,d.ts}` exist).
+17. `npm run build:typescript -w @jentic/api-scorecard-cli` exits 0 (the `./sarif` and `./markdown` exports resolve and `dist/formatters/{sarif,markdown}.{js,d.ts}` exist).
 18. `npm test -w @jentic/api-scorecard-cli` exits 0, including the subpath-import test (task 3) and the helper unit tests (task 10).
-19. `node -e "import('@jentic/api-scorecard-cli/sarif').then(m => console.log(typeof m.formatSarif))"` prints `function` (subpath export resolves at runtime).
+19. `node -e "import('@jentic/api-scorecard-cli/sarif').then(m => console.log(typeof m.formatSarif))"` and the equivalent for `@jentic/api-scorecard-cli/markdown` (`formatMarkdown`) each print `function` (both subpath exports resolve at runtime).
 20. The self-test workflow (`.github/workflows/action-selftest.yml`) passes on the PR: the high-`min-score` invocation fails the gate, the low-`min-score` invocation passes, SARIF and the HTML artifact are produced in both.
 21. Manual end-to-end: in a scratch repo or workflow run, the action against a real spec uploads SARIF to the Security tab, attaches `scorecard.html` as a downloadable artifact, and renders the Markdown scorecard in the run summary.
 22. `grep -F "## Phase 19 — GitHub Action for CI Scoring ✅" specs/roadmap.md` exits 0 (lifecycle marker present with the load-bearing leading space).
