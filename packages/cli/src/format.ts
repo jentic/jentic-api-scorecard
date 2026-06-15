@@ -3,6 +3,7 @@ export const Format = {
   JSON: 'json',
   HTML: 'html',
   MARKDOWN: 'markdown',
+  SARIF: 'sarif',
 } as const;
 
 export type Format = (typeof Format)[keyof typeof Format];
@@ -12,6 +13,7 @@ export const FORMATS: readonly Format[] = [
   Format.JSON,
   Format.HTML,
   Format.MARKDOWN,
+  Format.SARIF,
 ];
 
 export const DEFAULT_FORMAT: Format = Format.PRETTY;
