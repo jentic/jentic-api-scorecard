@@ -32,6 +32,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./sarif": {
+      "types": "./dist/formatters/sarif.d.ts",
+      "import": "./dist/formatters/sarif.js"
+    },
+    "./markdown": {
+      "types": "./dist/formatters/markdown.d.ts",
+      "import": "./dist/formatters/markdown.js"
     }
   },
   "bin": {
