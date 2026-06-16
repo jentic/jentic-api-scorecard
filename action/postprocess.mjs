@@ -6,7 +6,7 @@
 // `docker run`, breaking score-once.
 //
 // Library access: the three formatters are resolved by dynamic import of the
-// installed packages — `@jentic/api-scorecard-cli/sarif` and `/markdown` plus
+// installed packages — `@jentic/api-scorecard-cli/formatters/{sarif,markdown}` plus
 // `@jentic/api-scorecard-formatter-html`. A composite action has no node_modules
 // of its own, so action.yml runs `npm install @jentic/api-scorecard-cli@<ver>`
 // (which pulls formatter-html transitively) into the action dir first, unless the
@@ -167,8 +167,8 @@ export function capFindings(doc, maxFindings) {
 
 async function loadFormatters() {
   const [{ formatSarif }, { formatMarkdown }, { format: formatHtml }] = await Promise.all([
-    import('@jentic/api-scorecard-cli/sarif'),
-    import('@jentic/api-scorecard-cli/markdown'),
+    import('@jentic/api-scorecard-cli/formatters/sarif'),
+    import('@jentic/api-scorecard-cli/formatters/markdown'),
     import('@jentic/api-scorecard-formatter-html'),
   ]);
   return { formatSarif, formatMarkdown, formatHtml };

@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { Ajv } from 'ajv';
 import { expect } from 'chai';
 
-import { formatMarkdown } from '@jentic/api-scorecard-cli/markdown';
-import { formatSarif } from '@jentic/api-scorecard-cli/sarif';
+import { formatMarkdown } from '@jentic/api-scorecard-cli/formatters/markdown';
+import { formatSarif } from '@jentic/api-scorecard-cli/formatters/sarif';
 
 import { ScorecardResult } from '../../src/result.ts';
 
@@ -19,13 +19,14 @@ const sarifSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 // subpath exports — never through the `score` command — to derive SARIF and
 // Markdown from one captured report.json (score-once). This test resolves the
 // published specifiers (not the relative src paths) so a missing or misnamed
-// "./sarif" / "./markdown" exports entry fails the suite, not just CI.
+// "./formatters/sarif" / "./formatters/markdown" exports entry fails the suite,
+// not just CI.
 describe('CLI subpath exports', function () {
-  it('@jentic/api-scorecard-cli/sarif exposes formatSarif', function () {
+  it('@jentic/api-scorecard-cli/formatters/sarif exposes formatSarif', function () {
     expect(formatSarif).to.be.a('function');
   });
 
-  it('@jentic/api-scorecard-cli/markdown exposes formatMarkdown', function () {
+  it('@jentic/api-scorecard-cli/formatters/markdown exposes formatMarkdown', function () {
     expect(formatMarkdown).to.be.a('function');
   });
 

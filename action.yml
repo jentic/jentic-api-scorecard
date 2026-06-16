@@ -112,7 +112,7 @@ runs:
     - name: Resolve formatter libraries for the post-processor
       shell: bash
       run: |
-        # The helper imports the CLI's ./sarif and ./markdown subpath exports and
+        # The helper imports the CLI's formatters/sarif and formatters/markdown exports and
         # the HTML formatter's format() over the captured report.json. A composite
         # action has no node_modules of its own, so install the CLI (which pulls
         # @jentic/api-scorecard-formatter-html transitively) pinned to the same
@@ -125,8 +125,8 @@ runs:
         # Probe all three imports the helper needs — skipping install on a partial
         # resolution (e.g. only ./sarif present) would fail at runtime.
         probe="Promise.all([
-          import('@jentic/api-scorecard-cli/sarif'),
-          import('@jentic/api-scorecard-cli/markdown'),
+          import('@jentic/api-scorecard-cli/formatters/sarif'),
+          import('@jentic/api-scorecard-cli/formatters/markdown'),
           import('@jentic/api-scorecard-formatter-html'),
         ]).then(()=>process.exit(0)).catch(()=>process.exit(1))"
         if node -e "$probe" 2>/dev/null; then
