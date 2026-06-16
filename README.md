@@ -396,11 +396,11 @@ jobs:
 | `cli-version` | the matching release | The `@jentic/api-scorecard-cli` version to run; it pins the matching engine image (CLI version = image tag invariant). |
 
 **Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
-`max-warnings` to fail on too many findings. Findings come in three levels — `error`, `warning`,
-`note` — matching what you'll see in the Security tab. (If you also read `--format json`, those map
-from its 1–4 severity: `1` is error, `2` is warning, `3` and `4` are both note.) The `severity`
-input only trims what appears in the Security tab; it never changes your gate, so quieting the
-Security tab to errors-only won't let a warning-heavy spec slip through.
+`max-warnings` to fail on too many findings. Each finding carries one of three levels — `error`,
+`warning`, `note` — which is how it's labelled on its Security-tab alert. (If you also read
+`--format json`, those map from its 1–4 severity: `1` is error, `2` is warning, `3` and `4` are both
+note.) The `severity` input only trims which findings reach the Security tab; it never changes your
+gate, so quieting the Security tab to errors-only won't let a warning-heavy spec slip through.
 
 **Outputs land even on a failing build.** When a gate fails, you still get the SARIF findings, the
 HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
