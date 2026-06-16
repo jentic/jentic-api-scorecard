@@ -355,9 +355,7 @@ jentic-api-scorecard score <input> [options]
 
 A composite GitHub Action wraps the CLI for CI: it scores an OpenAPI document, **gates the build**
 on the score, uploads SARIF findings to the **Security tab**, attaches the **HTML scorecard** as a
-downloadable artifact, and renders a **Markdown summary** on the run page. It scores **once**
-(`--format json --detail diagnostics`) and derives SARIF, HTML, and Markdown from that single
-captured result — no per-format re-scoring.
+downloadable artifact, and renders a **Markdown summary** on the run page.
 
 ```yaml
 name: API readiness
