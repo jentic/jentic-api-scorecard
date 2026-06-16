@@ -385,6 +385,7 @@ jobs:
 |---|---|---|
 | `input` | — | **Required.** `https://` URL or local file path to an OpenAPI document. |
 | `api-key` | — | Jentic API key (forwarded as `JENTIC_API_KEY`). Required for local files and non-OAK URLs; omit for allowlisted OAK URLs. Never echoed to logs, the summary, or the artifact. |
+| `github-token` | `${{ github.token }}` | Token for the SARIF upload. The default workflow token suffices for same-repo runs with `security-events: write`. Override with a GitHub App / PAT, or a writable token from a base-context workflow, for advanced setups (see fork PRs below). |
 | `min-score` | — | Fail the build when `summary.score` is **strictly below** this value. Unset = no score gate. |
 | `max-errors` | — | Fail when error-level findings exceed this count. Unset = no gate. |
 | `max-warnings` | — | Fail when warning-level findings exceed this count. Unset = no gate. |
@@ -405,8 +406,11 @@ Security tab to errors-only won't let a warning-heavy spec slip through.
 HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
 
 **On fork PRs**, GitHub gives the workflow a read-only token, so the Security-tab upload can't run;
-the action skips it with a notice and still publishes the HTML artifact and Markdown summary. In the
-Security tab, findings link to the document but not yet to a specific line.
+the action skips it with a notice and still publishes the HTML artifact and Markdown summary. To
+upload fork findings anyway, run the action from a separate `workflow_run` workflow that executes in
+your base repo's context (where the token is writable) and pass that token via `github-token` — the
+safe alternative to checking out untrusted PR code under `pull_request_target`. In the Security tab,
+findings link to the document but not yet to a specific line.
 
 ## Prefer a browser?
 

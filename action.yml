@@ -20,6 +20,15 @@ inputs:
       allowlisted URLs.
     required: false
     default: ''
+  github-token:
+    description: >-
+      Token used to upload SARIF to the Security tab. Defaults to the workflow
+      GITHUB_TOKEN, which is enough for same-repo runs with security-events:
+      write. Advanced: supply a GitHub App / PAT, or a writable token from a
+      base-context workflow_run/pull_request_target workflow, to upload findings
+      that a plain fork pull_request cannot (its token is read-only by design).
+    required: false
+    default: ${{ github.token }}
   min-score:
     description: 'Fail the build when summary.score is strictly below this value. Unset = no score gate.'
     required: false
@@ -150,6 +159,7 @@ runs:
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: report.sarif
+        token: ${{ inputs.github-token }}
 
     - name: Upload the HTML scorecard artifact
       if: always()
