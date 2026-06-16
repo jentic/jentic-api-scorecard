@@ -109,7 +109,11 @@ describe('pullImage', function () {
       expect(result.exitCode).to.equal(ExitCode.DOCKER_MISSING);
       expect(result.stderr).to.include("'docker' command not found");
     } finally {
-      process.env['PATH'] = originalPath;
+      if (originalPath === undefined) {
+        delete process.env['PATH'];
+      } else {
+        process.env['PATH'] = originalPath;
+      }
     }
   });
 });
