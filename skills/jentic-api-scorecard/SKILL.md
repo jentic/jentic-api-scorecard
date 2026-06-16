@@ -146,7 +146,9 @@ instead of a raw `npx` step: it gates the build on the score, uploads SARIF to t
 Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown
 run summary. The job needs `permissions: security-events: write` for the SARIF
 upload; on fork PRs (read-only token) that upload is skipped with a notice rather
-than hard-failing. See the README "GitHub Action" section for the full input table.
+than hard-failing. With `with-llm: 'true'`, set the LLM provider credentials +
+routing as job-level `env:` (the action forwards them but won't materialize
+secrets for you). See the README "GitHub Action" section for the full input table.
 
 ## LLM-backed analysis
 
