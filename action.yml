@@ -1,0 +1,144 @@
+name: 'Jentic API Scorecard'
+description: >-
+  Score an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF),
+  gate the build on the score, upload SARIF findings to the Security tab, attach
+  the HTML scorecard as an artifact, and render a Markdown summary on the run.
+author: 'Jentic'
+
+branding:
+  icon: 'check-circle'
+  color: 'purple'
+
+inputs:
+  input:
+    description: 'https:// URL or local file path to an OpenAPI document to score.'
+    required: true
+  api-key:
+    description: >-
+      Jentic API key, forwarded to the CLI as JENTIC_API_KEY. Required for local
+      files and URLs outside the jentic-public-apis allowlist; omit for anonymous
+      allowlisted URLs.
+    required: false
+    default: ''
+  min-score:
+    description: 'Fail the build when summary.score is strictly below this value. Unset = no score gate.'
+    required: false
+    default: ''
+  max-errors:
+    description: 'Fail when error-severity (severity 1) findings exceed this count. Unset = no error gate.'
+    required: false
+    default: ''
+  max-warnings:
+    description: 'Fail when warning-severity (severity 2) findings exceed this count. Unset = no warning gate.'
+    required: false
+    default: ''
+  severity:
+    description: 'Minimum SARIF level to include in the uploaded SARIF: error | warning | note.'
+    required: false
+    default: 'warning'
+  max-findings:
+    description: 'Cap the SARIF results, dropping lowest-severity-first. GitHub allows at most 5000.'
+    required: false
+    default: '5000'
+  with-llm:
+    description: 'Enable LLM-backed analysis (requires LLM provider env vars on the runner).'
+    required: false
+    default: 'false'
+  summary-detail:
+    description: 'Detail depth of the Markdown run summary only: summary | dimensions | signals | diagnostics.'
+    required: false
+    default: 'dimensions'
+  cli-version:
+    description: >-
+      The @jentic/api-scorecard-cli version to run (npm tag or exact version). The
+      CLI version pins the matching engine image (CLI version = image tag
+      invariant), so pin an exact version for reproducible CI.
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Score the OpenAPI document (one engine pass)
+      shell: bash
+      env:
+        JENTIC_API_KEY: ${{ inputs.api-key }}
+      run: |
+        args=( score "${{ inputs.input }}" --format json --detail diagnostics -o report.json --quiet )
+        if [ "${{ inputs.with-llm }}" = "true" ]; then
+          args+=( --with-llm )
+        fi
+        npx --yes "@jentic/api-scorecard-cli@${{ inputs.cli-version }}" "${args[@]}"
+
+    - name: Resolve formatter libraries for the post-processor
+      shell: bash
+      run: |
+        # The helper imports the CLI's ./sarif and ./markdown subpath exports and
+        # the HTML formatter's format() over the captured report.json. A composite
+        # action has no node_modules of its own, so install the CLI (which pulls
+        # @jentic/api-scorecard-formatter-html transitively) pinned to the same
+        # version as the score step — unless the packages already resolve, which
+        # is the case in this repo's own self-test where the built workspace is on
+        # the resolution path and carries the not-yet-published subpath exports.
+        if node -e "import('@jentic/api-scorecard-cli/sarif').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+          echo "Formatters already resolvable; skipping install."
+        else
+          npm install --no-save --no-audit --no-fund \
+            "@jentic/api-scorecard-cli@${{ inputs.cli-version }}"
+        fi
+
+    - name: Derive SARIF, HTML, and Markdown; compute the gate
+      id: postprocess
+      shell: bash
+      env:
+        REPORT_JSON: report.json
+        SARIF_PATH: report.sarif
+        HTML_PATH: scorecard.html
+        MIN_SCORE: ${{ inputs.min-score }}
+        MAX_ERRORS: ${{ inputs.max-errors }}
+        MAX_WARNINGS: ${{ inputs.max-warnings }}
+        SEVERITY: ${{ inputs.severity }}
+        MAX_FINDINGS: ${{ inputs.max-findings }}
+        SUMMARY_DETAIL: ${{ inputs.summary-detail }}
+      run: node "$GITHUB_ACTION_PATH/action/postprocess.mjs"
+
+    - name: Check SARIF upload permission
+      id: sarif-perm
+      if: always()
+      shell: bash
+      run: |
+        # github/codeql-action/upload-sarif needs security-events: write. On fork
+        # PRs the GITHUB_TOKEN is read-only, so guard the upload rather than
+        # hard-fail the action.
+        perm=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push // false' 2>/dev/null || echo "unknown")
+        if [ "$perm" = "true" ]; then
+          echo "can-upload=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "can-upload=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::Skipping SARIF upload — the token lacks security-events: write (common on fork PRs)."
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Upload SARIF to the Security tab
+      if: always() && steps.sarif-perm.outputs.can-upload == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: report.sarif
+
+    - name: Upload the HTML scorecard artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: scorecard-html
+        path: scorecard.html
+
+    - name: Enforce the scorecard gate
+      if: always()
+      shell: bash
+      run: |
+        if [ "${{ steps.postprocess.outputs.gate-passed }}" != "true" ]; then
+          echo "Scorecard gate failed: ${{ steps.postprocess.outputs.gate-reasons }}"
+          exit 1
+        fi
+        echo "Scorecard gate passed."
