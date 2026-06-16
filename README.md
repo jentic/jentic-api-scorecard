@@ -384,16 +384,16 @@ jobs:
 | Input | Default | Description |
 |---|---|---|
 | `input` | — | **Required.** `https://` URL or local file path to an OpenAPI document. |
-| `api-key` | — | Jentic API key. Required for local files and non-OAK URLs; never logged or written to outputs. |
-| `github-token` | `${{ github.token }}` | Token for the SARIF upload (see fork PRs below). |
+| `api-key` | — | Jentic API key. Required for local files and non-OAK URLs; never logged. |
+| `github-token` | workflow token | Token for the SARIF upload (see fork PRs below). |
 | `min-score` | — | Fail when the score is below this. Unset = no gate. |
-| `max-errors` | — | Fail when error-level findings exceed this count. Unset = no gate. |
-| `max-warnings` | — | Fail when warning-level findings exceed this count. Unset = no gate. |
-| `severity` | `warning` | Minimum level kept in the SARIF (`error`/`warning`/`note`). |
-| `max-findings` | `5000` | Cap on SARIF results, dropping lowest-severity first. |
-| `with-llm` | `false` | Enable LLM-backed analysis (needs provider env vars). |
-| `summary-detail` | `dimensions` | Depth of the Markdown summary only (`summary`/`dimensions`/`signals`/`diagnostics`). |
-| `cli-version` | matching release | CLI version to run; pins the matching engine image. |
+| `max-errors` | — | Fail when error-level findings exceed this. Unset = no gate. |
+| `max-warnings` | — | Fail when warning-level findings exceed this. Unset = no gate. |
+| `severity` | `warning` | Minimum level kept in the SARIF. |
+| `max-findings` | `5000` | Cap on SARIF results, lowest-severity dropped first. |
+| `with-llm` | `false` | Enable LLM-backed analysis. |
+| `summary-detail` | `dimensions` | Depth of the Markdown summary. |
+| `cli-version` | matching release | CLI version to run (pins the engine image). |
 
 **Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
 `max-warnings` to fail on too many findings. Each finding carries one of three levels — `error`,
