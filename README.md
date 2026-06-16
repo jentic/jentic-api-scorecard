@@ -377,6 +377,31 @@ jobs:
           min-score: '70'
 ```
 
+To enable LLM-backed analysis, set `with-llm: true` and provide the provider credentials and
+routing as job-level `env:` — the action forwards them to the engine but does not turn raw secrets
+into those variables for you, so the run fails fast if none are present:
+
+```yaml
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LLM_PROVIDER: OPENAI
+      LIGHT_LLM_PROVIDER: OPENAI
+      LLM_LIGHT_MODEL: gpt-4o-mini
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jentic/jentic-api-scorecard@v1.8.0
+        with:
+          input: ./openapi.yaml
+          api-key: ${{ secrets.JENTIC_API_KEY }}
+          with-llm: 'true'
+```
+
+See the **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
+for the full provider matrix (cloud and local Ollama) and the variable reference.
+
 ### Inputs
 
 | Input | Default | Description |
@@ -413,32 +438,6 @@ deliberately when you're ready to adopt a new engine.
 the action skips it with a notice and still publishes the HTML artifact and Markdown summary.
 (Uploading fork findings anyway needs a writable token from a base-context workflow, supplied via
 `github-token`.) In the Security tab, findings link to the document but not yet to a specific line.
-
-**With `--with-llm`**, set `with-llm: true` and provide the LLM provider credentials and routing as
-job-level `env:` — the action forwards them to the engine, but it does not turn raw secrets into
-those variables for you, so the run fails fast if none are present. Pin the action to a version that
-has the matching engine image (no `@latest`):
-
-```yaml
-jobs:
-  scorecard:
-    runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      LLM_PROVIDER: OPENAI
-      LIGHT_LLM_PROVIDER: OPENAI
-      LLM_LIGHT_MODEL: gpt-4o-mini
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jentic/jentic-api-scorecard@v1.8.0
-        with:
-          input: ./openapi.yaml
-          api-key: ${{ secrets.JENTIC_API_KEY }}
-          with-llm: 'true'
-```
-
-See the **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
-for the full provider matrix (cloud and local Ollama) and the variable reference.
 
 ## Prefer a browser?
 
