@@ -161,15 +161,18 @@ runs:
       env:
         # github/codeql-action/upload-sarif needs a token with security-events:
         # write. The one case where the GITHUB_TOKEN is read-only is a pull_request
-        # from a fork; for same-repo PRs, pushes, and workflow_dispatch the token
-        # can upload (provided the job granted the scope). Key off the fork flag
-        # rather than probing repo push access, which is the wrong signal for the
-        # GITHUB_TOKEN's scope.
-        IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true }}
+        # whose head repo differs from the base repo (a cross-repo / fork PR); for
+        # same-repo PRs, pushes, and workflow_dispatch the token can upload
+        # (provided the job granted the scope). Compare head repo to the current
+        # repo rather than head.repo.fork — the latter is true for ANY same-repo PR
+        # when this repository is itself a fork, which would wrongly skip uploads.
+        EVENT_NAME: ${{ github.event_name }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        BASE_REPO: ${{ github.repository }}
       run: |
-        if [ "$IS_FORK_PR" = "true" ]; then
+        if [ "$EVENT_NAME" = "pull_request" ] && [ "$HEAD_REPO" != "$BASE_REPO" ]; then
           echo "can-upload=false" >> "$GITHUB_OUTPUT"
-          echo "::notice::Skipping SARIF upload — fork PRs run with a read-only token (no security-events: write)."
+          echo "::notice::Skipping SARIF upload — a cross-repo (fork) PR runs with a read-only token (no security-events: write)."
         else
           echo "can-upload=true" >> "$GITHUB_OUTPUT"
         fi

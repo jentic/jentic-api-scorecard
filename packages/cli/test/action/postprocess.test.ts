@@ -172,6 +172,21 @@ describe('postprocess helper (black-box)', function () {
         runPostprocess({ MAX_ERRORS: '2', MAX_WARNINGS: '8' }).outputs['gate-passed'],
       ).to.equal('true');
     });
+
+    it('fails closed on a malformed numeric input rather than silently skipping the gate', function () {
+      // A typo'd threshold must not pass — it would otherwise null out and disable
+      // the gate the author thought they set.
+      const run = runPostprocess({ MIN_SCORE: '70x' });
+      expect(run.outputs['gate-passed']).to.equal('false');
+      expect(run.outputs['gate-reasons']).to.contain('min-score is not a number');
+    });
+
+    it('still produces SARIF/HTML/Markdown when an input is malformed', function () {
+      const run = runPostprocess({ MIN_SCORE: '70x', SEVERITY: 'note' });
+      expect(run.sarif.runs).to.be.an('array').that.is.not.empty;
+      expect(run.html).to.contain('<html');
+      expect(run.markdown).to.contain('# API Readiness Scorecard');
+    });
   });
 
   describe('SARIF severity filter', function () {

@@ -33,14 +33,21 @@ function parseLevel(value, fallback = 'warning') {
 }
 
 // Inputs arrive as strings via env; an empty / unset value means "no gate". A
-// non-numeric value is treated as unset rather than NaN so a typo never silently
-// fails (gate) or zeroes (cap) the build.
-function parseOptionalNumber(value) {
+// non-empty but non-numeric value (e.g. a typo like "70x") is a configuration
+// error, not "unset" — silently nulling it would disable a gate the author
+// thought they set, letting a misconfigured workflow pass. Empty/unset → null
+// (no gate); invalid → record the error so main() fails the gate. `errors` is a
+// collector array; `name` is the input label for the message.
+function parseOptionalNumber(value, name, errors) {
   if (value === undefined || value === null || String(value).trim() === '') {
     return null;
   }
   const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) {
+    errors.push(`${name} is not a number: ${JSON.stringify(value)}`);
+    return null;
+  }
+  return n;
 }
 
 // Gate reads the FULL captured diagnostics, never the severity-filtered SARIF —
@@ -189,10 +196,11 @@ async function main() {
 
   const result = JSON.parse(readFileSync(reportPath, 'utf8'));
 
-  const minScore = parseOptionalNumber(env['MIN_SCORE']);
-  const maxErrors = parseOptionalNumber(env['MAX_ERRORS']);
-  const maxWarnings = parseOptionalNumber(env['MAX_WARNINGS']);
-  const maxFindings = parseOptionalNumber(env['MAX_FINDINGS']) ?? 5000;
+  const configErrors = [];
+  const minScore = parseOptionalNumber(env['MIN_SCORE'], 'min-score', configErrors);
+  const maxErrors = parseOptionalNumber(env['MAX_ERRORS'], 'max-errors', configErrors);
+  const maxWarnings = parseOptionalNumber(env['MAX_WARNINGS'], 'max-warnings', configErrors);
+  const maxFindings = parseOptionalNumber(env['MAX_FINDINGS'], 'max-findings', configErrors) ?? 5000;
   const severity = parseLevel(env['SEVERITY']);
   const summaryDetail = env['SUMMARY_DETAIL'] ?? 'dimensions';
   // The scored input, used as the SARIF physicalLocation artifact URI so Code
@@ -227,20 +235,24 @@ async function main() {
   // Gate decision against the FULL diagnostics. The helper never fails the build
   // itself — it writes the verdict to GITHUB_OUTPUT and a final action.yml step
   // does the failing exit, ordered AFTER the publish steps so SARIF, the HTML
-  // artifact, and the summary all land even when the gate fails.
+  // artifact, and the summary all land even when the gate fails. A malformed
+  // numeric input fails the gate closed (a typo'd threshold must not pass
+  // silently), folded in alongside the score/count reasons.
   const gate = computeGate(result, { minScore, maxErrors, maxWarnings });
-  if (gate.passed) {
+  const reasons = [...configErrors, ...gate.reasons];
+  const passed = reasons.length === 0;
+  if (passed) {
     ghNotice(`Scorecard gate passed (score ${gate.score}).`);
   } else {
-    for (const reason of gate.reasons) {
+    for (const reason of reasons) {
       process.stdout.write(`::error::Scorecard gate failed: ${reason}\n`);
     }
   }
 
   const outputFile = env['GITHUB_OUTPUT'];
   if (outputFile) {
-    appendFileSync(outputFile, `gate-passed=${gate.passed}\n`);
-    appendFileSync(outputFile, `gate-reasons=${gate.reasons.join('; ')}\n`);
+    appendFileSync(outputFile, `gate-passed=${passed}\n`);
+    appendFileSync(outputFile, `gate-reasons=${reasons.join('; ')}\n`);
   }
 }
 
