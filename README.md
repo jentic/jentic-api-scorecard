@@ -370,7 +370,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jentic/jentic-api-scorecard@v1
+      - uses: jentic/jentic-api-scorecard@v1.8.0 # pin a released version (or a commit SHA)
         with:
           input: ./openapi.yaml
           api-key: ${{ secrets.JENTIC_API_KEY }}

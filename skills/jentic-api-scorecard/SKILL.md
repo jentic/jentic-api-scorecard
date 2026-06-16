@@ -140,7 +140,8 @@ release instead of `@latest` so a new publish can't shift results mid-pipeline.
 
 For an HTML artifact to upload, swap to `--format html -o scorecard.html`.
 
-For a turnkey setup, use the composite **GitHub Action** (`jentic/jentic-api-scorecard@v1`)
+For a turnkey setup, use the composite **GitHub Action**
+(`jentic/jentic-api-scorecard@<version>`, pinned to a released tag or a commit SHA)
 instead of a raw `npx` step: it gates the build on the score, uploads SARIF to the
 Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown
 run summary. The job needs `permissions: security-events: write` for the SARIF
