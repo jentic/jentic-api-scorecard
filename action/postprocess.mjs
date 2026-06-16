@@ -133,6 +133,8 @@ async function main() {
   const sarifPath = env['SARIF_PATH'] ?? 'report.sarif';
   const htmlPath = env['HTML_PATH'] ?? 'scorecard.html';
 
+  const markdownPath = env['MARKDOWN_PATH'] ?? 'scorecard.md';
+
   const result = JSON.parse(readFileSync(reportPath, 'utf8'));
 
   const minScore = parseOptionalNumber(env['MIN_SCORE']);
@@ -157,6 +159,10 @@ async function main() {
   writeFileSync(htmlPath, formatHtml(result));
 
   const markdown = formatMarkdown(result, { detail: summaryDetail });
+  // Write Markdown to a real file as well as the run summary. $GITHUB_STEP_SUMMARY
+  // is a per-step file, so a later step (or the self-test) can't read what this
+  // step appended — the file is the cross-step / artifact-friendly copy.
+  writeFileSync(markdownPath, markdown + '\n');
   const stepSummary = env['GITHUB_STEP_SUMMARY'];
   if (stepSummary) {
     appendFileSync(stepSummary, markdown + '\n');

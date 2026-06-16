@@ -72,12 +72,15 @@ jobs:
           fi
           echo "High-min-score invocation failed the gate as expected."
 
-      - name: Assert SARIF, HTML, and summary were produced on failure
+      - name: Assert SARIF, HTML, and the Markdown summary were produced on failure
         run: |
+          # The Markdown is asserted via the scorecard.md file the helper writes,
+          # not $GITHUB_STEP_SUMMARY — that summary is a per-step file the action's
+          # postprocess step appends to, which a later step cannot read.
           test -s report.sarif || { echo "report.sarif missing or empty"; exit 1; }
           test -s scorecard.html || { echo "scorecard.html missing or empty"; exit 1; }
-          test -s "$GITHUB_STEP_SUMMARY" || { echo "step summary not written"; exit 1; }
-          echo "report.sarif, scorecard.html, and the step summary are all present."
+          test -s scorecard.md || { echo "scorecard.md missing or empty"; exit 1; }
+          echo "report.sarif, scorecard.html, and scorecard.md are all present."
 
       - name: Run the action — low min-score (gate should PASS)
         uses: ./

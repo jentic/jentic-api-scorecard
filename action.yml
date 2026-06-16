@@ -124,19 +124,21 @@ runs:
       id: sarif-perm
       if: always()
       shell: bash
-      run: |
-        # github/codeql-action/upload-sarif needs security-events: write. On fork
-        # PRs the GITHUB_TOKEN is read-only, so guard the upload rather than
-        # hard-fail the action.
-        perm=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions.push // false' 2>/dev/null || echo "unknown")
-        if [ "$perm" = "true" ]; then
-          echo "can-upload=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "can-upload=false" >> "$GITHUB_OUTPUT"
-          echo "::notice::Skipping SARIF upload — the token lacks security-events: write (common on fork PRs)."
-        fi
       env:
-        GH_TOKEN: ${{ github.token }}
+        # github/codeql-action/upload-sarif needs a token with security-events:
+        # write. The one case where the GITHUB_TOKEN is read-only is a pull_request
+        # from a fork; for same-repo PRs, pushes, and workflow_dispatch the token
+        # can upload (provided the job granted the scope). Key off the fork flag
+        # rather than probing repo push access, which is the wrong signal for the
+        # GITHUB_TOKEN's scope.
+        IS_FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true }}
+      run: |
+        if [ "$IS_FORK_PR" = "true" ]; then
+          echo "can-upload=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::Skipping SARIF upload — fork PRs run with a read-only token (no security-events: write)."
+        else
+          echo "can-upload=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Upload SARIF to the Security tab
       # continue-on-error backs up the permission probe: even if the probe
