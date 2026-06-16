@@ -105,7 +105,14 @@ runs:
         # consumer's cwd. The skip path covers this repo's own self-test, where the
         # built workspace already carries the not-yet-published subpath exports.
         cd "$GITHUB_ACTION_PATH/action"
-        if node -e "import('@jentic/api-scorecard-cli/sarif').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+        # Probe all three imports the helper needs — skipping install on a partial
+        # resolution (e.g. only ./sarif present) would fail at runtime.
+        probe="Promise.all([
+          import('@jentic/api-scorecard-cli/sarif'),
+          import('@jentic/api-scorecard-cli/markdown'),
+          import('@jentic/api-scorecard-formatter-html'),
+        ]).then(()=>process.exit(0)).catch(()=>process.exit(1))"
+        if node -e "$probe" 2>/dev/null; then
           echo "Formatters already resolvable; skipping install."
         else
           npm install --no-save --no-audit --no-fund \

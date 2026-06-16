@@ -18,6 +18,7 @@
 // bundle would not carry.
 
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 // SARIF levels, ranked. The CLI's sarif formatter maps engine severity 1→error,
 // 2→warning, everything else→note; the `severity` input names the minimum level
@@ -244,7 +245,9 @@ async function main() {
 }
 
 // Only run the I/O driver when executed directly; the pure exports above are
-// imported by the unit tests with no side effects.
-if (import.meta.url === `file://${process.argv[1]}`) {
+// imported by the unit tests with no side effects. pathToFileURL handles paths
+// with spaces or characters that need URL-encoding, which a raw `file://${path}`
+// would mismatch. argv[1] is absent when the module is imported, not run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await main();
 }
