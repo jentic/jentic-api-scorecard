@@ -1,0 +1,89 @@
+name: Action self-test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: action-selftest-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  # Allowlisted OAK petstore spec — scores anonymously (no JENTIC_API_KEY), so the
+  # self-test needs no secret and works on fork PRs. The published CLI version's
+  # matching engine image is public on GHCR.
+  OAK_SPEC: 'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json'
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Required so the SARIF upload step actually runs in this self-test (the
+      # graceful-skip path is covered by reasoning about a fork PR's read-only
+      # token — see specs validation.md §5a).
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false --ignore-scripts
+
+      - name: Build workspace
+        # Builds the CLI dist (carrying the new ./sarif and ./markdown exports the
+        # published version lacks) and the formatter-html dist. The action helper's
+        # "skip install when resolvable" branch then resolves all three formatters
+        # from this built workspace instead of npm-installing the published CLI.
+        run: npm run build
+
+      - name: Run the action — high min-score (gate should FAIL)
+        id: high
+        continue-on-error: true
+        uses: ./
+        with:
+          input: ${{ env.OAK_SPEC }}
+          min-score: '100'
+          severity: 'note'
+          artifact-name: 'scorecard-html-fail'
+          # Pin the published version whose score command + GHCR image exist now.
+          # The new ./sarif and ./markdown exports the helper needs are not in any
+          # published release yet — they come from the workspace built above, which
+          # the helper's skip-install branch resolves. Real consumers get them from
+          # the release that ships this action (the action's own default).
+          cli-version: '1.7.0'
+
+      - name: Assert the high-min-score gate failed
+        run: |
+          if [ "${{ steps.high.outcome }}" != "failure" ]; then
+            echo "Expected the high-min-score invocation to fail the gate, got: ${{ steps.high.outcome }}"
+            exit 1
+          fi
+          echo "High-min-score invocation failed the gate as expected."
+
+      - name: Assert SARIF, HTML, and summary were produced on failure
+        run: |
+          test -s report.sarif || { echo "report.sarif missing or empty"; exit 1; }
+          test -s scorecard.html || { echo "scorecard.html missing or empty"; exit 1; }
+          test -s "$GITHUB_STEP_SUMMARY" || { echo "step summary not written"; exit 1; }
+          echo "report.sarif, scorecard.html, and the step summary are all present."
+
+      - name: Run the action — low min-score (gate should PASS)
+        uses: ./
+        with:
+          input: ${{ env.OAK_SPEC }}
+          min-score: '1'
+          severity: 'note'
+          artifact-name: 'scorecard-html-pass'
+          cli-version: '1.7.0'

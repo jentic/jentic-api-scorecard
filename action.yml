@@ -48,13 +48,19 @@ inputs:
     description: 'Detail depth of the Markdown run summary only: summary | dimensions | signals | diagnostics.'
     required: false
     default: 'dimensions'
+  artifact-name:
+    description: 'Name of the uploaded HTML scorecard artifact. Override when invoking the action more than once in a workflow run (upload-artifact requires unique names).'
+    required: false
+    default: 'scorecard-html'
   cli-version:
     description: >-
       The @jentic/api-scorecard-cli version to run (npm tag or exact version). The
       CLI version pins the matching engine image (CLI version = image tag
-      invariant), so pin an exact version for reproducible CI.
+      invariant), so pin an exact version for reproducible CI. The default is the
+      first release that ships the ./sarif and ./markdown subpath exports the
+      post-processor imports; it is bumped alongside this action.yml.
     required: false
-    default: 'latest'
+    default: '1.8.0'
 
 runs:
   using: 'composite'
@@ -77,9 +83,12 @@ runs:
         # the HTML formatter's format() over the captured report.json. A composite
         # action has no node_modules of its own, so install the CLI (which pulls
         # @jentic/api-scorecard-formatter-html transitively) pinned to the same
-        # version as the score step — unless the packages already resolve, which
-        # is the case in this repo's own self-test where the built workspace is on
-        # the resolution path and carries the not-yet-published subpath exports.
+        # version as the score step. The check and the install both run from the
+        # action's own directory — the same root Node uses to resolve the helper's
+        # imports — so the install lands where the helper looks, not in the
+        # consumer's cwd. The skip path covers this repo's own self-test, where the
+        # built workspace already carries the not-yet-published subpath exports.
+        cd "$GITHUB_ACTION_PATH/action"
         if node -e "import('@jentic/api-scorecard-cli/sarif').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
           echo "Formatters already resolvable; skipping install."
         else
@@ -130,7 +139,7 @@ runs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: scorecard-html
+        name: ${{ inputs.artifact-name }}
         path: scorecard.html
 
     - name: Enforce the scorecard gate
