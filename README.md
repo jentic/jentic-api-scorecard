@@ -386,13 +386,19 @@ jobs:
 | `input` | — | **Required.** `https://` URL or local file path to an OpenAPI document. |
 | `api-key` | — | Jentic API key (forwarded as `JENTIC_API_KEY`). Required for local files and non-OAK URLs; omit for allowlisted OAK URLs. Never echoed to logs, the summary, or the artifact. |
 | `min-score` | — | Fail the build when `summary.score` is **strictly below** this value. Unset = no score gate. |
-| `max-errors` | — | Fail when error-severity (severity 1) findings exceed this count. Unset = no gate. |
-| `max-warnings` | — | Fail when warning-severity (severity 2) findings exceed this count. Unset = no gate. |
-| `severity` | `warning` | Minimum SARIF level to include in the uploaded SARIF (`error`, `warning`, `note`). Findings below it are dropped from SARIF but **still count toward the gate**. |
+| `max-errors` | — | Fail when error-level findings exceed this count. Unset = no gate. |
+| `max-warnings` | — | Fail when warning-level findings exceed this count. Unset = no gate. |
+| `severity` | `warning` | Minimum level to include in the uploaded SARIF (`error`, `warning`, `note`). Findings below it are dropped from SARIF but **still count toward the gate**. |
 | `max-findings` | `5000` | Cap on SARIF results (GitHub's limit), dropping lowest-severity-first and logging the dropped count. |
 | `with-llm` | `false` | Enable LLM-backed analysis (requires LLM provider env vars on the runner). |
 | `summary-detail` | `dimensions` | Detail depth of the Markdown run summary only (`summary`, `dimensions`, `signals`, `diagnostics`); the capture is always `diagnostics`. |
 | `cli-version` | the matching release | The `@jentic/api-scorecard-cli` version to run; it pins the matching engine image (CLI version = image tag invariant). |
+
+The action speaks GitHub's three SARIF levels — `error`, `warning`, `note` — since its output lands
+in the code-scanning Security tab. These map from the engine's 1–4 severity (what `--format json`
+shows): **1 → error**, **2 → warning**, **3 and 4 → note** (info and hint both collapse to `note`,
+which SARIF has no finer level for). So `max-errors` gates engine severity 1, `max-warnings` gates
+severity 2, and `severity: note` keeps everything.
 
 The gate reads the **full** captured diagnostics, not the severity-filtered SARIF — raising
 `severity` hides findings from the Security tab but never weakens the gate. SARIF, the HTML

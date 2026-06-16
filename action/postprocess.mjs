@@ -57,10 +57,10 @@ export function computeGate(result, { minScore, maxErrors, maxWarnings }) {
     reasons.push(`score ${score} is below min-score ${minScore}`);
   }
   if (maxErrors !== null && errorCount > maxErrors) {
-    reasons.push(`${errorCount} error-severity findings exceed max-errors ${maxErrors}`);
+    reasons.push(`${errorCount} error-level findings exceed max-errors ${maxErrors}`);
   }
   if (maxWarnings !== null && warningCount > maxWarnings) {
-    reasons.push(`${warningCount} warning-severity findings exceed max-warnings ${maxWarnings}`);
+    reasons.push(`${warningCount} warning-level findings exceed max-warnings ${maxWarnings}`);
   }
 
   return { passed: reasons.length === 0, reasons, errorCount, warningCount, score };

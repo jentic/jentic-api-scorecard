@@ -25,15 +25,15 @@ inputs:
     required: false
     default: ''
   max-errors:
-    description: 'Fail when error-severity (severity 1) findings exceed this count. Unset = no error gate.'
+    description: 'Fail when error-level findings exceed this count. Unset = no error gate.'
     required: false
     default: ''
   max-warnings:
-    description: 'Fail when warning-severity (severity 2) findings exceed this count. Unset = no warning gate.'
+    description: 'Fail when warning-level findings exceed this count. Unset = no warning gate.'
     required: false
     default: ''
   severity:
-    description: 'Minimum SARIF level to include in the uploaded SARIF: error | warning | note.'
+    description: 'Minimum level to include in the uploaded SARIF: error | warning | note.'
     required: false
     default: 'warning'
   max-findings:
