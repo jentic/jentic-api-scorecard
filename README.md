@@ -406,11 +406,9 @@ gate, so quieting the Security tab to errors-only won't let a warning-heavy spec
 HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
 
 **On fork PRs**, GitHub gives the workflow a read-only token, so the Security-tab upload can't run;
-the action skips it with a notice and still publishes the HTML artifact and Markdown summary. To
-upload fork findings anyway, run the action from a separate `workflow_run` workflow that executes in
-your base repo's context (where the token is writable) and pass that token via `github-token` — the
-safe alternative to checking out untrusted PR code under `pull_request_target`. In the Security tab,
-findings link to the document but not yet to a specific line.
+the action skips it with a notice and still publishes the HTML artifact and Markdown summary.
+(Uploading fork findings anyway needs a writable token from a base-context workflow, supplied via
+`github-token`.) In the Security tab, findings link to the document but not yet to a specific line.
 
 ## Prefer a browser?
 
