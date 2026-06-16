@@ -4,11 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { expect } from 'chai';
 
 import {
+  addPhysicalLocations,
   capFindings,
   computeGate,
   filterSarifBySeverity,
   parseLevel,
   parseOptionalNumber,
+  sarifArtifactUri,
 } from '../../../../action/postprocess.mjs';
 import { ScorecardResult } from '../../src/result.ts';
 
@@ -175,6 +177,66 @@ describe('postprocess helper', function () {
       const doc = sarifWith(['note', 'note', 'note']);
       const { dropped } = capFindings(doc, null);
       expect(dropped).to.equal(0);
+    });
+  });
+
+  describe('sarifArtifactUri', function () {
+    it('uses a local path as-is, stripping a leading ./', function () {
+      expect(sarifArtifactUri('api/openapi.yaml')).to.equal('api/openapi.yaml');
+      expect(sarifArtifactUri('./openapi.yaml')).to.equal('openapi.yaml');
+    });
+
+    it('collapses a URL to its basename', function () {
+      expect(sarifArtifactUri('https://example.com/specs/openapi.json')).to.equal('openapi.json');
+      expect(sarifArtifactUri('https://example.com/specs/openapi.json?ref=main')).to.equal(
+        'openapi.json',
+      );
+    });
+
+    it('falls back to "openapi" for an empty input or path-less URL', function () {
+      expect(sarifArtifactUri('')).to.equal('openapi');
+      expect(sarifArtifactUri(undefined)).to.equal('openapi');
+      expect(sarifArtifactUri('https://example.com/')).to.equal('openapi');
+    });
+  });
+
+  describe('addPhysicalLocations', function () {
+    // Code Scanning rejects logical-only results ("expected a physical location").
+    it('attaches a physicalLocation to a result that had none', function () {
+      const doc = { runs: [{ results: [{ level: 'warning' }] }] };
+      const out = addPhysicalLocations(doc, 'openapi.yaml');
+      const loc = out.runs[0]!.results[0]!.locations![0]!;
+      expect(loc.physicalLocation!.artifactLocation.uri).to.equal('openapi.yaml');
+      expect(loc.physicalLocation!.region.startLine).to.equal(1);
+    });
+
+    it('preserves existing logicalLocations alongside the physicalLocation', function () {
+      const doc = {
+        runs: [
+          {
+            results: [
+              {
+                level: 'error',
+                locations: [{ logicalLocations: [{ fullyQualifiedName: '/paths' }] }],
+              },
+            ],
+          },
+        ],
+      };
+      const out = addPhysicalLocations(doc, 'openapi.yaml');
+      const loc = out.runs[0]!.results[0]!.locations![0]!;
+      expect(loc.logicalLocations![0]!.fullyQualifiedName).to.equal('/paths');
+      expect(loc.physicalLocation!.artifactLocation.uri).to.equal('openapi.yaml');
+    });
+
+    it('gives every result a physical location', function () {
+      const doc = sarifWith(['error', 'warning', 'note']);
+      const out = addPhysicalLocations(doc, 'openapi.yaml');
+      for (const result of out.runs[0]!.results) {
+        expect(result.locations![0]!.physicalLocation!.artifactLocation.uri).to.equal(
+          'openapi.yaml',
+        );
+      }
     });
   });
 });

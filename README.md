@@ -399,8 +399,9 @@ The gate reads the **full** captured diagnostics, not the severity-filtered SARI
 artifact, and the Markdown summary are published **even when the gate fails** (the most useful time
 to have them).
 
-**Caveats.** SARIF carries **logical locations only** (JSON Pointers into the document) — there are
-no inline PR-diff annotations yet. Uploading SARIF needs `security-events: write`; on **fork PRs**
+**Caveats.** SARIF findings carry the JSON Pointer (logical location) plus a file-level physical
+location (the scored document at line 1) so GitHub ingests them — precise per-finding line numbers
+and inline PR-diff annotations are not available yet. Uploading SARIF needs `security-events: write`; on **fork PRs**
 the `GITHUB_TOKEN` is read-only, so the action **skips the SARIF upload with a notice** (it does not
 hard-fail) and still produces the HTML artifact and the Markdown summary. Marketplace listing
 requires the `action.yml` at the repository root, which is where it lives.

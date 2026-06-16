@@ -4,8 +4,19 @@
 
 export type SarifLevel = 'error' | 'warning' | 'note';
 
+export interface SarifPhysicalLocation {
+  artifactLocation: { uri: string };
+  region: { startLine: number };
+}
+
+export interface SarifLocation {
+  physicalLocation?: SarifPhysicalLocation;
+  logicalLocations?: { fullyQualifiedName: string }[];
+}
+
 export interface SarifResult {
   level: string;
+  locations?: SarifLocation[];
 }
 
 export interface SarifRun {
@@ -37,6 +48,10 @@ export function parseOptionalNumber(value: unknown): number | null;
 export function computeGate(result: unknown, inputs: GateInputs): GateVerdict;
 
 export function filterSarifBySeverity(doc: SarifDoc, minLevel: string): SarifDoc;
+
+export function sarifArtifactUri(input: unknown): string;
+
+export function addPhysicalLocations(doc: SarifDoc, artifactUri: string): SarifDoc;
 
 export function capFindings(
   doc: SarifDoc,

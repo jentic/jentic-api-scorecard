@@ -112,6 +112,7 @@ runs:
         REPORT_JSON: report.json
         SARIF_PATH: report.sarif
         HTML_PATH: scorecard.html
+        INPUT: ${{ inputs.input }}
         MIN_SCORE: ${{ inputs.min-score }}
         MAX_ERRORS: ${{ inputs.max-errors }}
         MAX_WARNINGS: ${{ inputs.max-warnings }}
@@ -141,9 +142,9 @@ runs:
         fi
 
     - name: Upload SARIF to the Security tab
-      # continue-on-error backs up the permission probe: even if the probe
-      # misjudges the token scope, a failed upload must not hard-fail the action —
-      # the gate is the build signal, SARIF is a best-effort publish.
+      # SARIF publish is best-effort: the gate is the build signal, so a transient
+      # upload/ingestion failure (or a misjudged token scope) must not hard-fail
+      # the action. The fork-PR guard above skips it outright on read-only tokens.
       if: always() && steps.sarif-perm.outputs.can-upload == 'true'
       continue-on-error: true
       uses: github/codeql-action/upload-sarif@v3

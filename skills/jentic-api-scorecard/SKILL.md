@@ -144,8 +144,10 @@ For a turnkey setup, use the composite **GitHub Action** (`jentic/jentic-api-sco
 instead of a raw `npx` step: it gates the build on the score, uploads SARIF to the
 Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown
 run summary. It scores **once** and derives SARIF/HTML/Markdown from that single
-capture (no per-format re-scoring). Notes: SARIF carries **logical locations only**
-(no inline PR-diff annotations); uploading SARIF needs `security-events: write`, so
+capture (no per-format re-scoring). Notes: SARIF findings carry the JSON Pointer
+plus a file-level physical location (line 1) so GitHub ingests them — no precise
+per-finding lines or inline PR-diff annotations yet; uploading SARIF needs
+`security-events: write`, so
 on **fork PRs** (read-only token) the action skips the SARIF upload with a notice
 rather than hard-failing. See the README "GitHub Action" section for the input table.
 

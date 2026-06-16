@@ -77,6 +77,57 @@ export function filterSarifBySeverity(doc, minLevel) {
   return { ...doc, runs };
 }
 
+// SARIF artifact URI for the scored input. A local path is used as-is (relative,
+// leading "./" stripped); a URL collapses to its basename, since Code Scanning
+// attaches a result to a repo-relative path and a full URL is not one. Falls back
+// to "openapi" when the input is a URL with no usable path segment or is unset.
+export function sarifArtifactUri(input) {
+  const value = String(input ?? '').trim();
+  if (value === '') {
+    return 'openapi';
+  }
+  if (/^https?:\/\//i.test(value)) {
+    // Take the basename of the URL path only — never the host, so a path-less URL
+    // (https://example.com/) falls back rather than yielding "example.com".
+    let pathname;
+    try {
+      pathname = new URL(value).pathname;
+    } catch {
+      return 'openapi';
+    }
+    const tail = pathname.replace(/\/+$/, '').split('/').pop();
+    return tail && tail !== '' ? tail : 'openapi';
+  }
+  return value.replace(/^\.\//, '');
+}
+
+// GitHub Code Scanning refuses to ingest a SARIF result that has no
+// physicalLocation ("expected a physical location") — logicalLocations alone are
+// not enough to land a finding in the Security tab. The engine emits JSON
+// Pointers, not file line/column, so we attach a minimal physicalLocation
+// pointing at the scored document at line 1; existing logicalLocations are
+// preserved alongside. Real pointer→line mapping is tracked in issue #191.
+export function addPhysicalLocations(doc, artifactUri) {
+  const physicalLocation = {
+    artifactLocation: { uri: artifactUri },
+    region: { startLine: 1 },
+  };
+  const runs = (doc.runs ?? []).map((run) => ({
+    ...run,
+    results: (run.results ?? []).map((result) => {
+      const existing = Array.isArray(result.locations) ? result.locations : [];
+      // Add the physicalLocation to the first location (keeping its
+      // logicalLocations), or create one when the result had no locations.
+      const locations =
+        existing.length > 0
+          ? [{ ...existing[0], physicalLocation }, ...existing.slice(1)]
+          : [{ physicalLocation }];
+      return { ...result, locations };
+    }),
+  }));
+  return { ...doc, runs };
+}
+
 function countResults(doc) {
   return (doc.runs ?? []).reduce((sum, run) => sum + (run.results ?? []).length, 0);
 }
@@ -143,11 +194,15 @@ async function main() {
   const maxFindings = parseOptionalNumber(env['MAX_FINDINGS']) ?? 5000;
   const severity = parseLevel(env['SEVERITY']);
   const summaryDetail = env['SUMMARY_DETAIL'] ?? 'dimensions';
+  // The scored input, used as the SARIF physicalLocation artifact URI so Code
+  // Scanning can ingest the results. A bare default keeps a URL/empty input valid.
+  const artifactUri = sarifArtifactUri(env['INPUT']);
 
   const { formatSarif, formatMarkdown, formatHtml } = await loadFormatters();
 
-  // SARIF: full doc first, then severity filter, then findings cap.
-  const fullSarif = JSON.parse(formatSarif(result));
+  // SARIF: full doc, physical locations (Code Scanning needs them), then the
+  // severity filter, then the findings cap.
+  const fullSarif = addPhysicalLocations(JSON.parse(formatSarif(result)), artifactUri);
   const filtered = filterSarifBySeverity(fullSarif, severity);
   const { doc: cappedSarif, dropped } = capFindings(filtered, maxFindings);
   if (dropped > 0) {
