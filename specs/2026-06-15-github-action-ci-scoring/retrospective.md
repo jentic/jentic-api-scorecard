@@ -1,6 +1,4 @@
-# Phase 19 Retrospective Draft — GitHub Action for CI Scoring
-
-> **DRAFT** — written by `/sdd-implement-spec` from tracked implementation deviations. Promote to `retrospective.md` (edit + rename) or delete before merge if nothing here is worth capturing.
+# Phase 19 Retrospective — GitHub Action for CI Scoring
 
 ## Deviations from the spec
 
@@ -12,18 +10,27 @@
 - Pre-push review found a script-injection blocker not anticipated by the spec: `${{ inputs.input }}` and engine-derived `${{ ... gate-reasons }}` interpolated into `run:` bash. Fixed by routing all inputs through `env:`.
 - The first PR CI run failed because the self-test asserted `$GITHUB_STEP_SUMMARY`, which is a *per-step* file — a later step cannot read what the action's postprocess step appended. The helper now also writes Markdown to a real `scorecard.md` file and the self-test asserts that. The spec's validation.md §4 ("`$GITHUB_STEP_SUMMARY` was written") implied a cross-step check that GitHub's model does not support.
 - The spec's "logical locations only" assumption (`requirements.md` Out of Scope; Phase 17) was wrong about consequences: GitHub Code Scanning **rejects** logical-only SARIF (`expected a physical location`), so the Security-tab deliverable did not function at all — not merely "no inline annotations." The action helper now attaches a minimal file-level `physicalLocation` (line 1) so results ingest; precise pointer→line mapping is tracked in #191. This was caught only by the real upload in CI, not by local schema validation.
-- The SARIF upload permission guard initially probed repo push access (`.permissions.push`), the wrong signal for the `GITHUB_TOKEN`'s `security-events` scope; it wrongly skipped the upload even when granted. Corrected to key off the fork-PR flag.
+- The SARIF upload permission guard took two corrections, neither anticipated by the spec. It first probed repo push access (`.permissions.push`) — the wrong signal for the `GITHUB_TOKEN`'s `security-events` scope, which skipped the upload even when granted. The fix to `github.event.pull_request.head.repo.fork` was *also* wrong (Copilot caught it): that flag is true for any same-repo PR when the repository is itself a fork. The correct test compares the head repo's `full_name` to `github.repository`.
+- Copilot review caught a fail-open gate: a non-empty but non-numeric input (e.g. `min-score: '70x'`) was silently nulled, disabling the gate the author thought they set. Changed to fail the gate closed on a malformed numeric input while still emitting SARIF/HTML/Markdown.
 - `plan.md` task 1 / `requirements.md` / `validation.md` §2 specified the subpath exports as `"./sarif"` and `"./markdown"`. Implementation ships them as `"./formatters/sarif"` and `"./formatters/markdown"` instead — a category namespace that reserves a clean top level for future formatter (or non-formatter) exports, since subpath names are permanent public API once released. The literal `import('@jentic/api-scorecard-cli/sarif')` commands in `validation.md` §2 therefore reference the old path; the equivalent `…/formatters/sarif` check passes.
 - `plan.md` task 12 specified the README example as `uses: jentic/jentic-api-scorecard@v<major>`, implying a rolling major tag. That defeats the project's reproducibility invariant: a new release can ship a new scoring engine that scores the same document differently, so a floating `@v1` would silently change a gated build's verdict with no spec change. The docs pin a concrete `vX.Y.Z` / SHA and explain why; there is intentionally no maintained major alias.
 
 ## Root cause
 
-[ONE_OR_TWO_SHORT_PARAGRAPHS — why the spec missed this. Typical causes: missing repo context during scaffolding; an adjacent change landed after the spec was written; an assumption in the roadmap phase turned out to be wrong; a load-bearing constraint was not surfaced in `tech-stack.md`.]
+The spec was written against the *documented* shapes of GitHub's platform and the engine, not their *runtime* behavior — and a composite GitHub Action is almost entirely runtime-platform behavior. The deviations cluster into three causes:
+
+1. **GitHub-platform semantics the spec couldn't know from docs.** `$GITHUB_STEP_SUMMARY` is per-step (not cross-step readable); Code Scanning rejects logical-only SARIF outright (not just "no inline annotations"); fork-PR token scope is a cross-repo comparison, not a `head.repo.fork` flag. Each was discovered only by a real CI run, because nothing local exercises these — the spec's `validation.md` implied local checks could prove them.
+
+2. **A circular dependency the roadmap didn't model.** The action consumes CLI exports that the same PR introduces, so no published version carries them at implementation time. The spec assumed the dependency (Phases 17/18) was already published; the *exports* were, but a fresh `npm install` of the published CLI still lacked them. This forced runtime version resolution and a build-first self-test.
+
+3. **Permanent-public-API decisions the spec under-specified.** Subpath export names and the `cli-version` default are forever once released, so they got more deliberate framing than the spec's one-line treatment (namespace the exports; resolve the version rather than hardcode it).
 
 ## Lesson for future specs
 
-[LESSON_1 — actionable guidance for `/sdd-new-spec` and `/sdd-new-phase`, specific enough to apply (not generic advice).]
+- **For any spec that produces a GitHub Action or CI integration, mark platform-behavior assertions as CI-only.** `validation.md` should not imply a local command proves SARIF ingests, a step summary renders, or a fork token is read-only — those are only verifiable in a real Actions run. A self-test workflow is the load-bearing gate; local checks are a weaker pre-filter.
+- **When a phase consumes an artifact a *sibling phase in the same release* introduces, the spec must call out the publish-ordering / circular dependency explicitly** — "the export exists in the spec" is not "the export is installable," and the implementation needs a story (here: runtime version resolution + build-first self-test) the spec should anticipate.
+- **Treat any new public API surface (subpath exports, action input defaults, version pins) as permanent in the spec** — name the namespace and the default-resolution strategy up front, since renaming after a release is breaking.
 
 ## Promotion candidate
 
-no — update if this lesson names a load-bearing invariant for `specs/tech-stack.md`.
+no — these are empirical reminders for `/sdd-new-spec` (CI/Action phases), not load-bearing invariants for `specs/tech-stack.md`. The reproducibility invariant they touch (pin one CLI version → one engine → same score, hence concrete-version pinning) is already in `tech-stack.md` and `docs/architecture.md`.
