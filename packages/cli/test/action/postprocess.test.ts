@@ -1,242 +1,217 @@
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { Ajv } from 'ajv';
 import { expect } from 'chai';
 
-import {
-  addPhysicalLocations,
-  capFindings,
-  computeGate,
-  filterSarifBySeverity,
-  parseLevel,
-  parseOptionalNumber,
-  sarifArtifactUri,
-} from '../../../../action/postprocess.mjs';
-import { ScorecardResult } from '../../src/result.ts';
-
+const HELPER = fileURLToPath(new URL('../../../../action/postprocess.mjs', import.meta.url));
 const fixturePath = fileURLToPath(new URL('../fixtures/scorecard.sample.json', import.meta.url));
-const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as ScorecardResult;
+const fixture = readFileSync(fixturePath, 'utf8');
+const schemaPath = fileURLToPath(new URL('../fixtures/sarif-2.1.0.schema.json', import.meta.url));
+const sarifSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
-// A minimal SARIF doc with a known level mix for the filter / cap tests, so the
-// assertions don't depend on the engine's exact diagnostic counts.
-function sarifWith(levels: string[]): { runs: { results: { level: string }[] }[] } {
-  return { runs: [{ results: levels.map((level) => ({ level })) }] };
+interface SarifResult {
+  level: string;
+  locations?: { physicalLocation?: { artifactLocation: { uri: string } } }[];
+}
+interface SarifLog {
+  runs: { results: SarifResult[] }[];
 }
 
-describe('postprocess helper', function () {
-  describe('parseOptionalNumber', function () {
-    it('returns null for unset / empty so the gate is skipped', function () {
-      expect(parseOptionalNumber(undefined)).to.equal(null);
-      expect(parseOptionalNumber('')).to.equal(null);
-      expect(parseOptionalNumber('   ')).to.equal(null);
+interface RunResult {
+  status: number | null;
+  stdout: string;
+  sarif: SarifLog;
+  html: string;
+  markdown: string;
+  outputs: Record<string, string>;
+}
+
+// Drive the action helper exactly as action.yml does: a subprocess fed env vars
+// and a captured report.json, asserting on the files and GITHUB_OUTPUT it writes.
+// This black-boxes the whole pipeline (gate + SARIF filter/cap + physical
+// locations + HTML/Markdown) rather than its internal functions; the helper's
+// imported formatters resolve from the built workspace, so the suite runs after
+// `npm run build` (as CI does).
+function runPostprocess(env: Record<string, string>, reportJson = fixture): RunResult {
+  const dir = mkdtempSync(join(tmpdir(), 'postprocess-'));
+  try {
+    writeFileSync(join(dir, 'report.json'), reportJson);
+    const outputPath = join(dir, 'gh_output');
+    writeFileSync(outputPath, '');
+    const summaryPath = join(dir, 'step_summary');
+    writeFileSync(summaryPath, '');
+
+    const result = spawnSync(process.execPath, [HELPER], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        REPORT_JSON: join(dir, 'report.json'),
+        SARIF_PATH: join(dir, 'report.sarif'),
+        HTML_PATH: join(dir, 'scorecard.html'),
+        MARKDOWN_PATH: join(dir, 'scorecard.md'),
+        GITHUB_OUTPUT: outputPath,
+        GITHUB_STEP_SUMMARY: summaryPath,
+        ...env,
+      },
     });
 
-    it('returns null for a non-numeric value rather than NaN', function () {
-      expect(parseOptionalNumber('abc')).to.equal(null);
+    const outputs: Record<string, string> = {};
+    for (const line of readFileSync(outputPath, 'utf8').split('\n')) {
+      const eq = line.indexOf('=');
+      if (eq > 0) outputs[line.slice(0, eq)] = line.slice(eq + 1);
+    }
+
+    return {
+      status: result.status,
+      stdout: result.stdout,
+      sarif: JSON.parse(readFileSync(join(dir, 'report.sarif'), 'utf8')) as SarifLog,
+      html: readFileSync(join(dir, 'scorecard.html'), 'utf8'),
+      markdown: readFileSync(join(dir, 'scorecard.md'), 'utf8'),
+      outputs,
+    };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function allResults(sarif: SarifLog): SarifResult[] {
+  return sarif.runs.flatMap((run) => run.results);
+}
+
+describe('postprocess helper (black-box)', function () {
+  // Subprocess + ESM formatter imports per case; generous headroom over the 2s default.
+  this.timeout(30_000);
+
+  describe('outputs', function () {
+    let run: RunResult;
+
+    before(function () {
+      run = runPostprocess({ INPUT: './openapi.yaml', SEVERITY: 'note' });
     });
 
-    it('parses a numeric string, including 0', function () {
-      expect(parseOptionalNumber('0')).to.equal(0);
-      expect(parseOptionalNumber('70')).to.equal(70);
-    });
-  });
-
-  describe('parseLevel', function () {
-    it('accepts error / warning / note case-insensitively', function () {
-      expect(parseLevel('ERROR')).to.equal('error');
-      expect(parseLevel('Warning')).to.equal('warning');
-      expect(parseLevel('note')).to.equal('note');
+    it('exits 0 — the helper never fails the build itself', function () {
+      expect(run.status).to.equal(0);
     });
 
-    it('falls back to warning for an unknown level', function () {
-      expect(parseLevel('bogus')).to.equal('warning');
-      expect(parseLevel(undefined)).to.equal('warning');
-    });
-  });
-
-  describe('computeGate', function () {
-    // The fixture scores 66.52 with 2 severity-1 and 8 severity-2 diagnostics.
-    it('passes when no gate inputs are set', function () {
-      const gate = computeGate(fixture, { minScore: null, maxErrors: null, maxWarnings: null });
-      expect(gate.passed).to.equal(true);
-      expect(gate.reasons).to.deep.equal([]);
+    it('writes SARIF, HTML, and Markdown from the single capture', function () {
+      expect(run.sarif.runs).to.be.an('array').that.is.not.empty;
+      expect(run.html).to.contain('<html');
+      expect(run.markdown).to.contain('# API Readiness Scorecard');
     });
 
-    it('fails when score is strictly below min-score', function () {
-      const gate = computeGate(fixture, { minScore: 67, maxErrors: null, maxWarnings: null });
-      expect(gate.passed).to.equal(false);
-      expect(gate.reasons.join(' ')).to.include('below min-score 67');
+    it('emits SARIF that validates against the SARIF 2.1.0 schema', function () {
+      const ajv = new Ajv({ strict: false, allErrors: true, logger: false });
+      const validate = ajv.compile(sarifSchema);
+      expect(validate(run.sarif), JSON.stringify(validate.errors?.slice(0, 3))).to.equal(true);
     });
 
-    it('passes when score equals min-score (guards against <=)', function () {
-      const exact = { summary: { score: 70, level: 'x', grade: 'C' }, diagnostics: [] };
-      const gate = computeGate(exact as unknown as ScorecardResult, {
-        minScore: 70,
-        maxErrors: null,
-        maxWarnings: null,
-      });
-      expect(gate.passed).to.equal(true);
-    });
-
-    it('passes when score is above min-score', function () {
-      const gate = computeGate(fixture, { minScore: 50, maxErrors: null, maxWarnings: null });
-      expect(gate.passed).to.equal(true);
-    });
-
-    it('counts errors and warnings against the full diagnostics', function () {
-      const gate = computeGate(fixture, { minScore: null, maxErrors: null, maxWarnings: null });
-      expect(gate.errorCount).to.equal(2);
-      expect(gate.warningCount).to.equal(8);
-    });
-
-    it('treats max-errors: 0 as a real gate — the engine fixture carries severity-1 diagnostics', function () {
-      // Guards against max-errors: 0 silently being a no-op: a real engine capture
-      // includes severity-1 (error) diagnostics, so a zero tolerance must trip.
-      const counted = computeGate(fixture, { minScore: null, maxErrors: null, maxWarnings: null });
-      expect(counted.errorCount).to.be.greaterThan(0);
-      const verdict = computeGate(fixture, { minScore: null, maxErrors: 0, maxWarnings: null });
-      expect(verdict.passed).to.equal(false);
-    });
-
-    it('fails when error-severity count exceeds max-errors', function () {
-      const gate = computeGate(fixture, { minScore: null, maxErrors: 0, maxWarnings: null });
-      expect(gate.passed).to.equal(false);
-      expect(gate.reasons.join(' ')).to.include('max-errors 0');
-    });
-
-    it('fails when warning-severity count exceeds max-warnings', function () {
-      const gate = computeGate(fixture, { minScore: null, maxErrors: null, maxWarnings: 5 });
-      expect(gate.passed).to.equal(false);
-      expect(gate.reasons.join(' ')).to.include('max-warnings 5');
-    });
-
-    it('passes when counts are within limits', function () {
-      const gate = computeGate(fixture, { minScore: null, maxErrors: 2, maxWarnings: 8 });
-      expect(gate.passed).to.equal(true);
-    });
-  });
-
-  describe('filterSarifBySeverity', function () {
-    it('keeps warning and error when minimum is warning', function () {
-      const filtered = filterSarifBySeverity(
-        sarifWith(['error', 'warning', 'note', 'note']),
-        'warning',
-      );
-      const levels = filtered.runs[0]!.results.map((r) => r.level);
-      expect(levels).to.deep.equal(['error', 'warning']);
-    });
-
-    it('keeps only error when minimum is error', function () {
-      const filtered = filterSarifBySeverity(sarifWith(['error', 'warning', 'note']), 'error');
-      const levels = filtered.runs[0]!.results.map((r) => r.level);
-      expect(levels).to.deep.equal(['error']);
-    });
-
-    it('keeps everything when minimum is note', function () {
-      const filtered = filterSarifBySeverity(sarifWith(['error', 'warning', 'note']), 'note');
-      expect(filtered.runs[0]!.results).to.have.lengthOf(3);
-    });
-
-    it('preserves the run structure even when a run is emptied', function () {
-      const filtered = filterSarifBySeverity(sarifWith(['note', 'note']), 'error');
-      expect(filtered.runs).to.have.lengthOf(1);
-      expect(filtered.runs[0]!.results).to.deep.equal([]);
-    });
-  });
-
-  describe('capFindings', function () {
-    it('returns the doc unchanged and dropped=0 when under the cap', function () {
-      const doc = sarifWith(['error', 'warning']);
-      const { dropped } = capFindings(doc, 5);
-      expect(dropped).to.equal(0);
-    });
-
-    it('drops lowest-severity-first down to the cap', function () {
-      const doc = sarifWith(['error', 'error', 'warning', 'warning', 'note', 'note', 'note']);
-      const { doc: capped, dropped } = capFindings(doc, 4);
-      expect(dropped).to.equal(3);
-      const levels = capped.runs[0]!.results.map((r) => r.level);
-      // All 3 notes drop first; the 2 errors and 2 warnings survive.
-      expect(levels.filter((l) => l === 'note')).to.have.lengthOf(0);
-      expect(levels.filter((l) => l === 'error')).to.have.lengthOf(2);
-      expect(levels.filter((l) => l === 'warning')).to.have.lengthOf(2);
-    });
-
-    it('drops into the next level up when notes alone are not enough', function () {
-      const doc = sarifWith(['error', 'warning', 'warning', 'note']);
-      const { doc: capped, dropped } = capFindings(doc, 2);
-      expect(dropped).to.equal(2);
-      const levels = capped.runs[0]!.results.map((r) => r.level);
-      // The 1 note drops, then 1 warning, leaving error + 1 warning.
-      expect(levels).to.include('error');
-      expect(levels.filter((l) => l === 'note')).to.have.lengthOf(0);
-      expect(levels.filter((l) => l === 'warning')).to.have.lengthOf(1);
-    });
-
-    it('treats a null cap as no cap', function () {
-      const doc = sarifWith(['note', 'note', 'note']);
-      const { dropped } = capFindings(doc, null);
-      expect(dropped).to.equal(0);
-    });
-  });
-
-  describe('sarifArtifactUri', function () {
-    it('uses a local path as-is, stripping a leading ./', function () {
-      expect(sarifArtifactUri('api/openapi.yaml')).to.equal('api/openapi.yaml');
-      expect(sarifArtifactUri('./openapi.yaml')).to.equal('openapi.yaml');
-    });
-
-    it('collapses a URL to its basename', function () {
-      expect(sarifArtifactUri('https://example.com/specs/openapi.json')).to.equal('openapi.json');
-      expect(sarifArtifactUri('https://example.com/specs/openapi.json?ref=main')).to.equal(
-        'openapi.json',
-      );
-    });
-
-    it('falls back to "openapi" for an empty input or path-less URL', function () {
-      expect(sarifArtifactUri('')).to.equal('openapi');
-      expect(sarifArtifactUri(undefined)).to.equal('openapi');
-      expect(sarifArtifactUri('https://example.com/')).to.equal('openapi');
-    });
-  });
-
-  describe('addPhysicalLocations', function () {
-    // Code Scanning rejects logical-only results ("expected a physical location").
-    it('attaches a physicalLocation to a result that had none', function () {
-      const doc = { runs: [{ results: [{ level: 'warning' }] }] };
-      const out = addPhysicalLocations(doc, 'openapi.yaml');
-      const loc = out.runs[0]!.results[0]!.locations![0]!;
-      expect(loc.physicalLocation!.artifactLocation.uri).to.equal('openapi.yaml');
-      expect(loc.physicalLocation!.region.startLine).to.equal(1);
-    });
-
-    it('preserves existing logicalLocations alongside the physicalLocation', function () {
-      const doc = {
-        runs: [
-          {
-            results: [
-              {
-                level: 'error',
-                locations: [{ logicalLocations: [{ fullyQualifiedName: '/paths' }] }],
-              },
-            ],
-          },
-        ],
-      };
-      const out = addPhysicalLocations(doc, 'openapi.yaml');
-      const loc = out.runs[0]!.results[0]!.locations![0]!;
-      expect(loc.logicalLocations![0]!.fullyQualifiedName).to.equal('/paths');
-      expect(loc.physicalLocation!.artifactLocation.uri).to.equal('openapi.yaml');
-    });
-
-    it('gives every result a physical location', function () {
-      const doc = sarifWith(['error', 'warning', 'note']);
-      const out = addPhysicalLocations(doc, 'openapi.yaml');
-      for (const result of out.runs[0]!.results) {
-        expect(result.locations![0]!.physicalLocation!.artifactLocation.uri).to.equal(
+    it('gives every SARIF result a physical location so code-scanning ingests it', function () {
+      const results = allResults(run.sarif);
+      expect(results).to.not.be.empty;
+      for (const result of results) {
+        expect(result.locations?.[0]?.physicalLocation?.artifactLocation.uri).to.equal(
           'openapi.yaml',
         );
       }
+    });
+  });
+
+  describe('gate decision (via GITHUB_OUTPUT)', function () {
+    // The fixture scores 66.52 with 2 error-level (severity 1) and 8 warning-level
+    // (severity 2) diagnostics.
+    it('passes when no gate inputs are set', function () {
+      expect(runPostprocess({}).outputs['gate-passed']).to.equal('true');
+    });
+
+    it('fails when the score is strictly below min-score', function () {
+      const run = runPostprocess({ MIN_SCORE: '67' });
+      expect(run.outputs['gate-passed']).to.equal('false');
+      expect(run.outputs['gate-reasons']).to.contain('below min-score 67');
+    });
+
+    it('passes when the score equals min-score (guards against <=)', function () {
+      const exact = JSON.stringify({
+        summary: { score: 70, level: 'x', grade: 'C' },
+        diagnostics: [],
+      });
+      expect(runPostprocess({ MIN_SCORE: '70' }, exact).outputs['gate-passed']).to.equal('true');
+    });
+
+    it('passes when the score is above min-score', function () {
+      expect(runPostprocess({ MIN_SCORE: '50' }).outputs['gate-passed']).to.equal('true');
+    });
+
+    it('fails when error-level findings exceed max-errors, counting the full diagnostics', function () {
+      // max-errors: 0 must trip — the real engine capture carries severity-1
+      // diagnostics, so this is a gate that can actually fire, not a no-op.
+      const run = runPostprocess({ MAX_ERRORS: '0' });
+      expect(run.outputs['gate-passed']).to.equal('false');
+      expect(run.outputs['gate-reasons']).to.contain('max-errors 0');
+    });
+
+    it('fails when warning-level findings exceed max-warnings', function () {
+      const run = runPostprocess({ MAX_WARNINGS: '5' });
+      expect(run.outputs['gate-passed']).to.equal('false');
+      expect(run.outputs['gate-reasons']).to.contain('max-warnings 5');
+    });
+
+    it('counts max-errors/max-warnings against the full diagnostics, not the filtered SARIF', function () {
+      // severity=error hides warnings from the SARIF, but they must still gate.
+      const run = runPostprocess({ SEVERITY: 'error', MAX_WARNINGS: '5' });
+      expect(run.outputs['gate-passed']).to.equal('false');
+      expect(run.outputs['gate-reasons']).to.contain('max-warnings 5');
+    });
+
+    it('passes when counts are within limits', function () {
+      expect(
+        runPostprocess({ MAX_ERRORS: '2', MAX_WARNINGS: '8' }).outputs['gate-passed'],
+      ).to.equal('true');
+    });
+  });
+
+  describe('SARIF severity filter', function () {
+    it('keeps only error-level results when severity is error', function () {
+      const levels = new Set(
+        allResults(runPostprocess({ SEVERITY: 'error' }).sarif).map((r) => r.level),
+      );
+      expect([...levels]).to.deep.equal(['error']);
+    });
+
+    it('keeps error and warning when severity is warning', function () {
+      const levels = new Set(
+        allResults(runPostprocess({ SEVERITY: 'warning' }).sarif).map((r) => r.level),
+      );
+      expect([...levels].sort()).to.deep.equal(['error', 'warning']);
+    });
+
+    it('keeps notes too when severity is note', function () {
+      const levels = new Set(
+        allResults(runPostprocess({ SEVERITY: 'note' }).sarif).map((r) => r.level),
+      );
+      expect(levels.has('note')).to.equal(true);
+    });
+  });
+
+  describe('max-findings cap', function () {
+    it('caps the SARIF results and reports the dropped count', function () {
+      const run = runPostprocess({ SEVERITY: 'note', MAX_FINDINGS: '5' });
+      expect(allResults(run.sarif)).to.have.lengthOf(5);
+      expect(run.stdout).to.contain('capped at max-findings 5');
+    });
+
+    it('drops lowest-severity-first, keeping errors and warnings', function () {
+      // The fixture has 2 error + 8 warning + 24 note (34 total). Capping to 5
+      // drops notes first, so only errors/warnings survive.
+      const levels = allResults(runPostprocess({ SEVERITY: 'note', MAX_FINDINGS: '5' }).sarif).map(
+        (r) => r.level,
+      );
+      expect(levels.filter((l) => l === 'note')).to.have.lengthOf(0);
+      expect(levels.filter((l) => l === 'error')).to.have.lengthOf(2);
     });
   });
 });

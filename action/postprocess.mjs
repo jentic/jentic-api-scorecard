@@ -25,7 +25,7 @@ import { pathToFileURL } from 'node:url';
 // to keep in the SARIF output (findings below it are dropped).
 const LEVEL_RANK = { error: 3, warning: 2, note: 1 };
 
-export function parseLevel(value, fallback = 'warning') {
+function parseLevel(value, fallback = 'warning') {
   const level = String(value ?? '')
     .trim()
     .toLowerCase();
@@ -35,7 +35,7 @@ export function parseLevel(value, fallback = 'warning') {
 // Inputs arrive as strings via env; an empty / unset value means "no gate". A
 // non-numeric value is treated as unset rather than NaN so a typo never silently
 // fails (gate) or zeroes (cap) the build.
-export function parseOptionalNumber(value) {
+function parseOptionalNumber(value) {
   if (value === undefined || value === null || String(value).trim() === '') {
     return null;
   }
@@ -46,7 +46,7 @@ export function parseOptionalNumber(value) {
 // Gate reads the FULL captured diagnostics, never the severity-filtered SARIF —
 // raising `severity` hides findings from the Security tab but must not weaken the
 // build gate. Severity 1 = error, 2 = warning (engine scale).
-export function computeGate(result, { minScore, maxErrors, maxWarnings }) {
+function computeGate(result, { minScore, maxErrors, maxWarnings }) {
   const diagnostics = Array.isArray(result?.diagnostics) ? result.diagnostics : [];
   const errorCount = diagnostics.filter((d) => d.severity === 1).length;
   const warningCount = diagnostics.filter((d) => d.severity === 2).length;
@@ -69,7 +69,7 @@ export function computeGate(result, { minScore, maxErrors, maxWarnings }) {
 
 // Drop SARIF results below the minimum level, preserving run/tool structure
 // (an emptied run still records that the validator ran).
-export function filterSarifBySeverity(doc, minLevel) {
+function filterSarifBySeverity(doc, minLevel) {
   const threshold = LEVEL_RANK[minLevel] ?? LEVEL_RANK.warning;
   const runs = (doc.runs ?? []).map((run) => ({
     ...run,
@@ -82,7 +82,7 @@ export function filterSarifBySeverity(doc, minLevel) {
 // leading "./" stripped); a URL collapses to its basename, since Code Scanning
 // attaches a result to a repo-relative path and a full URL is not one. Falls back
 // to "openapi" when the input is a URL with no usable path segment or is unset.
-export function sarifArtifactUri(input) {
+function sarifArtifactUri(input) {
   const value = String(input ?? '').trim();
   if (value === '') {
     return 'openapi';
@@ -108,7 +108,7 @@ export function sarifArtifactUri(input) {
 // Pointers, not file line/column, so we attach a minimal physicalLocation
 // pointing at the scored document at line 1; existing logicalLocations are
 // preserved alongside. Real pointer→line mapping is tracked in issue #191.
-export function addPhysicalLocations(doc, artifactUri) {
+function addPhysicalLocations(doc, artifactUri) {
   const physicalLocation = {
     artifactLocation: { uri: artifactUri },
     region: { startLine: 1 },
@@ -137,7 +137,7 @@ function countResults(doc) {
 // lowest-severity-first (note before warning before error) until at the cap,
 // returning the dropped count for logging. Within a level, later results are
 // dropped first (stable: earlier findings of the same level are retained).
-export function capFindings(doc, maxFindings) {
+function capFindings(doc, maxFindings) {
   const total = countResults(doc);
   if (maxFindings === null || total <= maxFindings) {
     return { doc, dropped: 0 };
@@ -244,10 +244,10 @@ async function main() {
   }
 }
 
-// Only run the I/O driver when executed directly; the pure exports above are
-// imported by the unit tests with no side effects. pathToFileURL handles paths
-// with spaces or characters that need URL-encoding, which a raw `file://${path}`
-// would mismatch. argv[1] is absent when the module is imported, not run.
+// Run the I/O driver only when executed directly, not if the module is ever
+// imported. pathToFileURL handles paths with spaces or characters that need
+// URL-encoding, which a raw `file://${path}` would mismatch; argv[1] is absent
+// when imported rather than run.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await main();
 }
