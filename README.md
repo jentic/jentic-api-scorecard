@@ -394,23 +394,19 @@ jobs:
 | `summary-detail` | `dimensions` | Detail depth of the Markdown run summary only (`summary`, `dimensions`, `signals`, `diagnostics`); the capture is always `diagnostics`. |
 | `cli-version` | the matching release | The `@jentic/api-scorecard-cli` version to run; it pins the matching engine image (CLI version = image tag invariant). |
 
-The action speaks GitHub's three SARIF levels — `error`, `warning`, `note` — since its output lands
-in the code-scanning Security tab. These map from the engine's 1–4 severity (what `--format json`
-shows): **1 → error**, **2 → warning**, **3 and 4 → note** (info and hint both collapse to `note`,
-which SARIF has no finer level for). So `max-errors` gates engine severity 1, `max-warnings` gates
-severity 2, and `severity: note` keeps everything.
+**Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
+`max-warnings` to fail on too many findings. Findings come in three levels — `error`, `warning`,
+`note` — matching what you'll see in the Security tab. (If you also read `--format json`, those map
+from its 1–4 severity: `1` is error, `2` is warning, `3` and `4` are both note.) The `severity`
+input only trims what appears in the Security tab; it never changes your gate, so quieting the
+Security tab to errors-only won't let a warning-heavy spec slip through.
 
-The gate reads the **full** captured diagnostics, not the severity-filtered SARIF — raising
-`severity` hides findings from the Security tab but never weakens the gate. SARIF, the HTML
-artifact, and the Markdown summary are published **even when the gate fails** (the most useful time
-to have them).
+**Outputs land even on a failing build.** When a gate fails, you still get the SARIF findings, the
+HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
 
-**Caveats.** SARIF findings carry the JSON Pointer (logical location) plus a file-level physical
-location (the scored document at line 1) so GitHub ingests them — precise per-finding line numbers
-and inline PR-diff annotations are not available yet. Uploading SARIF needs `security-events: write`; on **fork PRs**
-the `GITHUB_TOKEN` is read-only, so the action **skips the SARIF upload with a notice** (it does not
-hard-fail) and still produces the HTML artifact and the Markdown summary. Marketplace listing
-requires the `action.yml` at the repository root, which is where it lives.
+**On fork PRs**, GitHub gives the workflow a read-only token, so the Security-tab upload can't run;
+the action skips it with a notice and still publishes the HTML artifact and Markdown summary. In the
+Security tab, findings link to the document but not yet to a specific line.
 
 ## Prefer a browser?
 
