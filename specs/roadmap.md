@@ -274,7 +274,7 @@ This formatter was parked in Later Phases pending "concrete CI-integrator demand
 - Add `packages/cli/test/formatters/markdown.test.ts` vs. the engine fixture: headline fields, dimension-table rows, `--detail` projection.
 - Sync README `## CLI reference` + `SKILL.md` flag tables.
 
-## Phase 19 — GitHub Action for CI Scoring
+## Phase 19 — GitHub Action for CI Scoring ✅
 
 **Goal:** Add a Marketplace-listable composite GitHub Action at the repo root that scores an OpenAPI spec via the CLI, gates the build on the score, uploads SARIF findings to the Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown summary on the run.
 **Depends on:** Phase 17 — SARIF formatter (`--format sarif`), Phase 18 — Markdown formatter (`--format markdown`)

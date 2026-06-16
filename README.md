@@ -31,6 +31,7 @@ across six dimensions and returns a single grade — so you know exactly where t
 - [CLI reference](#cli-reference)
   - [Commands](#commands)
   - [`score`](#score)
+- [GitHub Action](#github-action)
 - [Prefer a browser?](#prefer-a-browser)
 - [Enterprise-ready by default](#enterprise-ready-by-default)
   - [Your OpenAPI document never leaves your environment](#your-openapi-document-never-leaves-your-environment)
@@ -349,6 +350,60 @@ jentic-api-scorecard score <input> [options]
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 | 8 | LLM analysis failed under `--with-llm`: the provider call failed, so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr. Re-run without `--with-llm` for a valid non-LLM score. |
+
+## GitHub Action
+
+A composite GitHub Action wraps the CLI for CI: it scores an OpenAPI document, **gates the build**
+on the score, uploads SARIF findings to the **Security tab**, attaches the **HTML scorecard** as a
+downloadable artifact, and renders a **Markdown summary** on the run page. It scores **once**
+(`--format json --detail diagnostics`) and derives SARIF, HTML, and Markdown from that single
+captured result — no per-format re-scoring.
+
+```yaml
+name: API readiness
+on: [pull_request]
+
+permissions:
+  contents: read
+  security-events: write # required so SARIF uploads to the Security tab
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jentic/jentic-api-scorecard@v1
+        with:
+          input: ./openapi.yaml
+          api-key: ${{ secrets.JENTIC_API_KEY }}
+          min-score: '70'
+```
+
+### Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `input` | — | **Required.** `https://` URL or local file path to an OpenAPI document. |
+| `api-key` | — | Jentic API key (forwarded as `JENTIC_API_KEY`). Required for local files and non-OAK URLs; omit for allowlisted OAK URLs. Never echoed to logs, the summary, or the artifact. |
+| `min-score` | — | Fail the build when `summary.score` is **strictly below** this value. Unset = no score gate. |
+| `max-errors` | — | Fail when error-severity (severity 1) findings exceed this count. Unset = no gate. |
+| `max-warnings` | — | Fail when warning-severity (severity 2) findings exceed this count. Unset = no gate. |
+| `severity` | `warning` | Minimum SARIF level to include in the uploaded SARIF (`error`, `warning`, `note`). Findings below it are dropped from SARIF but **still count toward the gate**. |
+| `max-findings` | `5000` | Cap on SARIF results (GitHub's limit), dropping lowest-severity-first and logging the dropped count. |
+| `with-llm` | `false` | Enable LLM-backed analysis (requires LLM provider env vars on the runner). |
+| `summary-detail` | `dimensions` | Detail depth of the Markdown run summary only (`summary`, `dimensions`, `signals`, `diagnostics`); the capture is always `diagnostics`. |
+| `cli-version` | the matching release | The `@jentic/api-scorecard-cli` version to run; it pins the matching engine image (CLI version = image tag invariant). |
+
+The gate reads the **full** captured diagnostics, not the severity-filtered SARIF — raising
+`severity` hides findings from the Security tab but never weakens the gate. SARIF, the HTML
+artifact, and the Markdown summary are published **even when the gate fails** (the most useful time
+to have them).
+
+**Caveats.** SARIF carries **logical locations only** (JSON Pointers into the document) — there are
+no inline PR-diff annotations yet. Uploading SARIF needs `security-events: write`; on **fork PRs**
+the `GITHUB_TOKEN` is read-only, so the action **skips the SARIF upload with a notice** (it does not
+hard-fail) and still produces the HTML artifact and the Markdown summary. Marketplace listing
+requires the `action.yml` at the repository root, which is where it lives.
 
 ## Prefer a browser?
 

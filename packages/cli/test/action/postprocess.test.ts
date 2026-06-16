@@ -87,6 +87,15 @@ describe('postprocess helper', function () {
       expect(gate.warningCount).to.equal(8);
     });
 
+    it('treats max-errors: 0 as a real gate — the engine fixture carries severity-1 diagnostics', function () {
+      // Guards against max-errors: 0 silently being a no-op: a real engine capture
+      // includes severity-1 (error) diagnostics, so a zero tolerance must trip.
+      const counted = computeGate(fixture, { minScore: null, maxErrors: null, maxWarnings: null });
+      expect(counted.errorCount).to.be.greaterThan(0);
+      const verdict = computeGate(fixture, { minScore: null, maxErrors: 0, maxWarnings: null });
+      expect(verdict.passed).to.equal(false);
+    });
+
     it('fails when error-severity count exceeds max-errors', function () {
       const gate = computeGate(fixture, { minScore: null, maxErrors: 0, maxWarnings: null });
       expect(gate.passed).to.equal(false);

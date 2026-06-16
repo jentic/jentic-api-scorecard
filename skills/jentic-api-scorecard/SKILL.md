@@ -140,6 +140,15 @@ release instead of `@latest` so a new publish can't shift results mid-pipeline.
 
 For an HTML artifact to upload, swap to `--format html -o scorecard.html`.
 
+For a turnkey setup, use the composite **GitHub Action** (`jentic/jentic-api-scorecard@v1`)
+instead of a raw `npx` step: it gates the build on the score, uploads SARIF to the
+Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown
+run summary. It scores **once** and derives SARIF/HTML/Markdown from that single
+capture (no per-format re-scoring). Notes: SARIF carries **logical locations only**
+(no inline PR-diff annotations); uploading SARIF needs `security-events: write`, so
+on **fork PRs** (read-only token) the action skips the SARIF upload with a notice
+rather than hard-failing. See the README "GitHub Action" section for the input table.
+
 ## LLM-backed analysis
 
 `--with-llm` enables additional signals that an LLM evaluates. It requires LLM
