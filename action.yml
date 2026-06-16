@@ -63,17 +63,34 @@ inputs:
     default: 'scorecard-html'
   cli-version:
     description: >-
-      The @jentic/api-scorecard-cli version to run (npm tag or exact version). The
-      CLI version pins the matching engine image (CLI version = image tag
-      invariant), so pin an exact version for reproducible CI. The default is the
-      first release that ships the ./sarif and ./markdown subpath exports the
-      post-processor imports; it is bumped alongside this action.yml.
+      The @jentic/api-scorecard-cli version to run (npm tag or exact version).
+      Leave unset to use the version that ships with the action ref you pinned —
+      read from the action's own packages/cli/package.json — which keeps the CLI,
+      its engine image, and the action in lockstep (CLI version = image tag
+      invariant). Set an explicit version only to override that.
     required: false
-    default: '1.8.0'
+    default: ''
 
 runs:
   using: 'composite'
   steps:
+    - name: Resolve the CLI version
+      id: cli
+      shell: bash
+      env:
+        CLI_VERSION_INPUT: ${{ inputs.cli-version }}
+      run: |
+        # Use the explicit input when given; otherwise read the version that ships
+        # with this action ref from its own packages/cli/package.json. lerna bumps
+        # that file every release, so the default tracks the action tag the
+        # consumer pinned with no manual edit here.
+        if [ -n "$CLI_VERSION_INPUT" ]; then
+          version="$CLI_VERSION_INPUT"
+        else
+          version=$(node -p "require('$GITHUB_ACTION_PATH/packages/cli/package.json').version")
+        fi
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+
     - name: Score the OpenAPI document (one engine pass)
       shell: bash
       env:
@@ -84,7 +101,7 @@ runs:
         # is injection-safe.
         INPUT: ${{ inputs.input }}
         WITH_LLM: ${{ inputs.with-llm }}
-        CLI_VERSION: ${{ inputs.cli-version }}
+        CLI_VERSION: ${{ steps.cli.outputs.version }}
       run: |
         args=( score "$INPUT" --format json --detail diagnostics -o report.json --quiet )
         if [ "$WITH_LLM" = "true" ]; then
@@ -119,7 +136,7 @@ runs:
             "@jentic/api-scorecard-cli@${CLI_VERSION}"
         fi
       env:
-        CLI_VERSION: ${{ inputs.cli-version }}
+        CLI_VERSION: ${{ steps.cli.outputs.version }}
 
     - name: Derive SARIF, HTML, and Markdown; compute the gate
       id: postprocess

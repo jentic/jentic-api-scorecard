@@ -48,6 +48,12 @@ jobs:
         # from this built workspace instead of npm-installing the published CLI.
         run: npm run build
 
+      # cli-version is left unset, so the action resolves it from
+      # packages/cli/package.json in this checkout — the published version whose
+      # score command + GHCR image already exist. The new ./sarif and ./markdown
+      # exports the helper needs aren't in that published release yet; they come
+      # from the workspace built above, which the helper's skip-install branch
+      # resolves. Real consumers get both from the release that ships this action.
       - name: Run the action — high min-score (gate should FAIL)
         id: high
         continue-on-error: true
@@ -57,12 +63,6 @@ jobs:
           min-score: '100'
           severity: 'note'
           artifact-name: 'scorecard-html-fail'
-          # Pin the published version whose score command + GHCR image exist now.
-          # The new ./sarif and ./markdown exports the helper needs are not in any
-          # published release yet — they come from the workspace built above, which
-          # the helper's skip-install branch resolves. Real consumers get them from
-          # the release that ships this action (the action's own default).
-          cli-version: '1.7.0'
 
       - name: Assert the high-min-score gate failed
         run: |
@@ -89,4 +89,3 @@ jobs:
           min-score: '1'
           severity: 'note'
           artifact-name: 'scorecard-html-pass'
-          cli-version: '1.7.0'

@@ -391,7 +391,7 @@ jobs:
 | `max-findings` | `5000` | Cap on SARIF results, lowest-severity dropped first. |
 | `with-llm` | `false` | Enable LLM-backed analysis. |
 | `summary-detail` | `dimensions` | Depth of the Markdown summary. |
-| `cli-version` | matching release | CLI version to run (pins the engine image). |
+| `cli-version` | action's release | CLI version to run (pins the engine image); defaults to the version shipped with the action ref you pinned. |
 
 **Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
 `max-warnings` to fail on too many findings. Each finding carries one of three levels — `error`,
