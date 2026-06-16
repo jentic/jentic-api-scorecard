@@ -229,4 +229,19 @@ describe('postprocess helper (black-box)', function () {
       expect(levels.filter((l) => l === 'error')).to.have.lengthOf(2);
     });
   });
+
+  describe('summary-detail', function () {
+    // summary-detail controls only the Markdown run-summary depth; the capture is
+    // always --detail diagnostics so SARIF/HTML are never starved.
+    it('omits the per-signal section at the default dimensions depth', function () {
+      const md = runPostprocess({ SUMMARY_DETAIL: 'dimensions' }).markdown;
+      expect(md).to.contain('## Dimensions');
+      expect(md).to.not.contain('## Signals');
+    });
+
+    it('includes the per-signal section at signals depth', function () {
+      const md = runPostprocess({ SUMMARY_DETAIL: 'signals' }).markdown;
+      expect(md).to.contain('## Signals');
+    });
+  });
 });
