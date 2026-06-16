@@ -69,12 +69,19 @@ runs:
       shell: bash
       env:
         JENTIC_API_KEY: ${{ inputs.api-key }}
+        # Pass inputs through env, never via ${{ }} interpolation into the script:
+        # ${{ }} is substituted textually before bash runs, so an input containing
+        # shell metacharacters would execute. Referencing "$VAR" inside the script
+        # is injection-safe.
+        INPUT: ${{ inputs.input }}
+        WITH_LLM: ${{ inputs.with-llm }}
+        CLI_VERSION: ${{ inputs.cli-version }}
       run: |
-        args=( score "${{ inputs.input }}" --format json --detail diagnostics -o report.json --quiet )
-        if [ "${{ inputs.with-llm }}" = "true" ]; then
+        args=( score "$INPUT" --format json --detail diagnostics -o report.json --quiet )
+        if [ "$WITH_LLM" = "true" ]; then
           args+=( --with-llm )
         fi
-        npx --yes "@jentic/api-scorecard-cli@${{ inputs.cli-version }}" "${args[@]}"
+        npx --yes "@jentic/api-scorecard-cli@${CLI_VERSION}" "${args[@]}"
 
     - name: Resolve formatter libraries for the post-processor
       shell: bash
@@ -93,8 +100,10 @@ runs:
           echo "Formatters already resolvable; skipping install."
         else
           npm install --no-save --no-audit --no-fund \
-            "@jentic/api-scorecard-cli@${{ inputs.cli-version }}"
+            "@jentic/api-scorecard-cli@${CLI_VERSION}"
         fi
+      env:
+        CLI_VERSION: ${{ inputs.cli-version }}
 
     - name: Derive SARIF, HTML, and Markdown; compute the gate
       id: postprocess
@@ -130,7 +139,11 @@ runs:
         GH_TOKEN: ${{ github.token }}
 
     - name: Upload SARIF to the Security tab
+      # continue-on-error backs up the permission probe: even if the probe
+      # misjudges the token scope, a failed upload must not hard-fail the action —
+      # the gate is the build signal, SARIF is a best-effort publish.
       if: always() && steps.sarif-perm.outputs.can-upload == 'true'
+      continue-on-error: true
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: report.sarif
@@ -145,9 +158,12 @@ runs:
     - name: Enforce the scorecard gate
       if: always()
       shell: bash
+      env:
+        GATE_PASSED: ${{ steps.postprocess.outputs.gate-passed }}
+        GATE_REASONS: ${{ steps.postprocess.outputs.gate-reasons }}
       run: |
-        if [ "${{ steps.postprocess.outputs.gate-passed }}" != "true" ]; then
-          echo "Scorecard gate failed: ${{ steps.postprocess.outputs.gate-reasons }}"
+        if [ "$GATE_PASSED" != "true" ]; then
+          echo "Scorecard gate failed: $GATE_REASONS"
           exit 1
         fi
         echo "Scorecard gate passed."
