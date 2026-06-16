@@ -175,13 +175,18 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
     const pullResult = await pullImage(ref);
     if (pullResult.exitCode !== 0) {
       clearSpinner();
+      // DOCKER_MISSING means there was never an image to pull in the first place —
+      // the "failed to pull" framing would misdirect users into thinking this is a
+      // registry/network/auth problem rather than a missing prerequisite.
+      if (pullResult.exitCode === ExitCode.DOCKER_MISSING) {
+        process.stderr.write(pullResult.stderr);
+        return ExitCode.DOCKER_MISSING;
+      }
       process.stderr.write(`error: failed to pull image ${ref}\n`);
       if (pullResult.stderr) {
         process.stderr.write(pullResult.stderr);
       }
-      return pullResult.exitCode === ExitCode.DOCKER_MISSING
-        ? ExitCode.DOCKER_MISSING
-        : ExitCode.GENERIC_ERROR;
+      return ExitCode.GENERIC_ERROR;
     }
   }
 

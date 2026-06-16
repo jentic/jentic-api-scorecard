@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 
-import { buildDockerArgs, IMAGE_NAME } from '../src/docker.ts';
+import { buildDockerArgs, IMAGE_NAME, pullImage } from '../src/docker.ts';
+import { ExitCode } from '../src/exit-codes.ts';
 import { cliVersion } from '../src/version.ts';
 
 const IMAGE_REF = `${IMAGE_NAME}:${cliVersion}`;
@@ -96,5 +97,19 @@ describe('buildDockerArgs', function () {
       '--url',
       'https://example.test/spec.yaml',
     ]);
+  });
+});
+
+describe('pullImage', function () {
+  it('reports a friendly missing-docker message when docker is not on PATH', async function () {
+    const originalPath = process.env['PATH'];
+    process.env['PATH'] = '';
+    try {
+      const result = await pullImage(`${IMAGE_NAME}:${cliVersion}`);
+      expect(result.exitCode).to.equal(ExitCode.DOCKER_MISSING);
+      expect(result.stderr).to.include("'docker' command not found");
+    } finally {
+      process.env['PATH'] = originalPath;
+    }
   });
 });

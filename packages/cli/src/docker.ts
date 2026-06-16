@@ -35,8 +35,16 @@ export function pullImage(ref: string): Promise<PullResult> {
       });
     }
     child.on('error', (err: NodeJS.ErrnoException) => {
-      const exitCode = err.code === 'ENOENT' ? ExitCode.DOCKER_MISSING : ExitCode.GENERIC_ERROR;
-      resolve({ exitCode, stderr: err.message });
+      if (err.code === 'ENOENT') {
+        resolve({
+          exitCode: ExitCode.DOCKER_MISSING,
+          stderr:
+            "error: 'docker' command not found.\n" +
+            '  Install Docker: https://docs.docker.com/get-docker/\n',
+        });
+        return;
+      }
+      resolve({ exitCode: ExitCode.GENERIC_ERROR, stderr: err.message });
     });
     child.on('close', (code) => {
       resolve({
