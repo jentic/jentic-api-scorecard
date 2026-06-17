@@ -1,6 +1,6 @@
 {
   "name": "@jentic/api-scorecard-cli",
-  "version": "1.7.0",
+  "version": "1.8.4",
   "description": "Score an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF).",
   "keywords": [
     "api",
@@ -32,6 +32,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./formatters/sarif": {
+      "types": "./dist/formatters/sarif.d.ts",
+      "import": "./dist/formatters/sarif.js"
+    },
+    "./formatters/markdown": {
+      "types": "./dist/formatters/markdown.d.ts",
+      "import": "./dist/formatters/markdown.js"
     }
   },
   "bin": {
@@ -59,8 +67,8 @@
     "typescript:check-types": "tsc --noEmit && tsc --noEmit -p test/tsconfig.json"
   },
   "dependencies": {
-    "@jentic/api-scorecard-formatter-html": "1.7.0",
-    "@redocly/openapi-core": "^2.32.2",
+    "@jentic/api-scorecard-formatter-html": "1.8.4",
+    "@redocly/openapi-core": "^2.33.2",
     "chalk": "^5.6.2",
     "commander": "^14.0.0",
     "ora": "^9.4.0",

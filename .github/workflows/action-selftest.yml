@@ -1,0 +1,163 @@
+name: Action self-test
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: action-selftest-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  # Allowlisted OAK petstore spec — scores anonymously (no JENTIC_API_KEY), so the
+  # self-test needs no secret and works on fork PRs. The published CLI version's
+  # matching engine image is public on GHCR.
+  OAK_SPEC: 'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json'
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Required so the SARIF upload step actually runs in this self-test (the
+      # graceful-skip path is covered by reasoning about a fork PR's read-only
+      # token — see specs validation.md §5a).
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci --engine-strict=false --ignore-scripts
+
+      - name: Build workspace
+        # Builds the CLI dist (carrying the new ./sarif and ./markdown exports the
+        # published version lacks) and the formatter-html dist. The action helper's
+        # "skip install when resolvable" branch then resolves all three formatters
+        # from this built workspace instead of npm-installing the published CLI.
+        run: npm run build
+
+      # cli-version is left unset, so the action resolves it from
+      # packages/cli/package.json in this checkout — the published version whose
+      # score command + GHCR image already exist. The new ./sarif and ./markdown
+      # exports the helper needs aren't in that published release yet; they come
+      # from the workspace built above, which the helper's skip-install branch
+      # resolves. Real consumers get both from the release that ships this action.
+      - name: Run the action — high min-score (gate should FAIL)
+        id: high
+        continue-on-error: true
+        uses: ./
+        with:
+          input: ${{ env.OAK_SPEC }}
+          min-score: '100'
+          severity: 'note'
+          artifact-name: 'scorecard-html-fail'
+
+      - name: Assert the high-min-score gate failed
+        run: |
+          if [ "${{ steps.high.outcome }}" != "failure" ]; then
+            echo "Expected the high-min-score invocation to fail the gate, got: ${{ steps.high.outcome }}"
+            exit 1
+          fi
+          echo "High-min-score invocation failed the gate as expected."
+
+      - name: Assert SARIF, HTML, and the Markdown summary were produced on failure
+        run: |
+          # The Markdown is asserted via the scorecard.md file the helper writes,
+          # not $GITHUB_STEP_SUMMARY — that summary is a per-step file the action's
+          # postprocess step appends to, which a later step cannot read.
+          test -s report.sarif || { echo "report.sarif missing or empty"; exit 1; }
+          test -s scorecard.html || { echo "scorecard.html missing or empty"; exit 1; }
+          test -s scorecard.md || { echo "scorecard.md missing or empty"; exit 1; }
+          echo "report.sarif, scorecard.html, and scorecard.md are all present."
+
+      - name: Run the action — low min-score (gate should PASS)
+        uses: ./
+        with:
+          input: ${{ env.OAK_SPEC }}
+          min-score: '1'
+          severity: 'note'
+          artifact-name: 'scorecard-html-pass'
+
+  # The selftest job above always takes the helper's skip-install branch (it builds
+  # the workspace first), so it never exercises the published-install path — the one
+  # a real consumer hits. That path broke at v1.8.0: with no action/package.json,
+  # `npm install` from action/ walked up to the repo-root npm-workspaces package.json
+  # and satisfied @jentic/api-scorecard-cli with a SYMLINK to the unbuilt local
+  # packages/cli (no dist/ in a fresh `source: "./"` checkout), so the helper's
+  # import of dist/formatters/sarif.js hit ERR_MODULE_NOT_FOUND. This job reproduces
+  # the published-action layout (a git-archive checkout with no dist/, no
+  # node_modules) and asserts the install lands a real fetched tarball, not a
+  # workspace symlink — guarding the action/package.json anchor against deletion.
+  published-install-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+
+      - name: Reproduce a fresh published-action checkout (no dist/, no node_modules)
+        run: |
+          dest="$RUNNER_TEMP/action-checkout"
+          mkdir -p "$dest"
+          # git archive yields exactly the tracked tree — the same bytes GitHub
+          # materializes for a `source: "./"` action ref, with no build artifacts.
+          git archive HEAD | tar -x -C "$dest"
+          test ! -d "$dest/packages/cli/dist" || { echo "expected no built dist/ in a fresh checkout"; exit 1; }
+          echo "ACTION_CHECKOUT=$dest" >> "$GITHUB_ENV"
+
+      - name: Install the published CLI exactly as action.yml does
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          # Pin to the published `latest`, not the repo's own (possibly unreleased)
+          # version — a real consumer installs a published tarball. The repo's own
+          # not-yet-published exports are covered by the selftest's skip-install path.
+          version=$(npm view @jentic/api-scorecard-cli version)
+          npm install --no-save --no-audit --no-fund "@jentic/api-scorecard-cli@${version}"
+
+      - name: Assert the install resolved a real tarball, not a workspace symlink
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const pkg = "node_modules/@jentic/api-scorecard-cli";
+            if (!fs.existsSync(pkg)) { console.error("CLI not installed under action/node_modules"); process.exit(1); }
+            if (fs.lstatSync(pkg).isSymbolicLink()) {
+              console.error("CLI resolved to a symlink (workspace leak):", fs.readlinkSync(pkg));
+              process.exit(1);
+            }
+            if (fs.existsSync("../node_modules/@jentic")) {
+              console.error("install leaked to the repo-root workspaces node_modules");
+              process.exit(1);
+            }
+            console.log("OK: published CLI installed as a real tarball in action/node_modules");
+          '
+
+      - name: Assert all three formatter imports resolve (the helper's contract)
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          node -e '
+            Promise.all([
+              import("@jentic/api-scorecard-cli/formatters/sarif"),
+              import("@jentic/api-scorecard-cli/formatters/markdown"),
+              import("@jentic/api-scorecard-formatter-html"),
+            ]).then(() => { console.log("OK: all three formatter imports resolve"); })
+              .catch((e) => { console.error(String(e).split("\n")[0]); process.exit(1); });
+          '

@@ -1,0 +1,214 @@
+name: 'Jentic API Scorecard'
+description: >-
+  Score an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF),
+  gate the build on the score, upload SARIF findings to the Security tab, attach
+  the HTML scorecard as an artifact, and render a Markdown summary on the run.
+author: 'Jentic'
+
+branding:
+  icon: 'check-circle'
+  color: 'purple'
+
+inputs:
+  input:
+    description: 'https:// URL or local file path to an OpenAPI document to score.'
+    required: true
+  api-key:
+    description: >-
+      Jentic API key, forwarded to the CLI as JENTIC_API_KEY. Required for local
+      files and URLs outside the jentic-public-apis allowlist; omit for anonymous
+      allowlisted URLs.
+    required: false
+    default: ''
+  github-token:
+    description: >-
+      Token used to upload SARIF to the Security tab. Defaults to the workflow
+      GITHUB_TOKEN, which is enough for same-repo runs with security-events:
+      write. Advanced: supply a GitHub App / PAT, or a writable token from a
+      base-context workflow_run/pull_request_target workflow, to upload findings
+      that a plain fork pull_request cannot (its token is read-only by design).
+    required: false
+    default: ${{ github.token }}
+  min-score:
+    description: 'Fail the build when summary.score is strictly below this value. Unset = no score gate.'
+    required: false
+    default: ''
+  max-errors:
+    description: 'Fail when error-level findings exceed this count. Unset = no error gate.'
+    required: false
+    default: ''
+  max-warnings:
+    description: 'Fail when warning-level findings exceed this count. Unset = no warning gate.'
+    required: false
+    default: ''
+  severity:
+    description: 'Minimum level to include in the uploaded SARIF: error | warning | note.'
+    required: false
+    default: 'warning'
+  max-findings:
+    description: 'Cap the SARIF results, dropping lowest-severity-first. GitHub allows at most 5000.'
+    required: false
+    default: '5000'
+  with-llm:
+    description: 'Enable LLM-backed analysis (requires LLM provider env vars on the runner).'
+    required: false
+    default: 'false'
+  summary-detail:
+    description: 'Detail depth of the Markdown run summary only: summary | dimensions | signals | diagnostics.'
+    required: false
+    default: 'dimensions'
+  artifact-name:
+    description: 'Name of the uploaded HTML scorecard artifact. Override when invoking the action more than once in a workflow run (upload-artifact requires unique names).'
+    required: false
+    default: 'scorecard-html'
+  cli-version:
+    description: >-
+      The @jentic/api-scorecard-cli version to run (npm tag or exact version).
+      Leave unset to use the version that ships with the action ref you pinned —
+      read from the action's own packages/cli/package.json — which keeps the CLI,
+      its engine image, and the action in lockstep (CLI version = image tag
+      invariant). Set an explicit version only to override that.
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve the CLI version
+      id: cli
+      shell: bash
+      env:
+        CLI_VERSION_INPUT: ${{ inputs.cli-version }}
+      run: |
+        # Use the explicit input when given; otherwise read the version that ships
+        # with this action ref from its own packages/cli/package.json. lerna bumps
+        # that file every release, so the default tracks the action tag the
+        # consumer pinned with no manual edit here.
+        if [ -n "$CLI_VERSION_INPUT" ]; then
+          version="$CLI_VERSION_INPUT"
+        else
+          version=$(node -p "require('$GITHUB_ACTION_PATH/packages/cli/package.json').version")
+        fi
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+    - name: Score the OpenAPI document (one engine pass)
+      shell: bash
+      env:
+        JENTIC_API_KEY: ${{ inputs.api-key }}
+        # Pass inputs through env, never via ${{ }} interpolation into the script:
+        # ${{ }} is substituted textually before bash runs, so an input containing
+        # shell metacharacters would execute. Referencing "$VAR" inside the script
+        # is injection-safe.
+        INPUT: ${{ inputs.input }}
+        WITH_LLM: ${{ inputs.with-llm }}
+        CLI_VERSION: ${{ steps.cli.outputs.version }}
+      run: |
+        args=( score "$INPUT" --format json --detail diagnostics -o report.json --quiet )
+        if [ "$WITH_LLM" = "true" ]; then
+          args+=( --with-llm )
+        fi
+        npx --yes "@jentic/api-scorecard-cli@${CLI_VERSION}" "${args[@]}"
+
+    - name: Resolve formatter libraries for the post-processor
+      shell: bash
+      run: |
+        # The helper imports the CLI's formatters/sarif and formatters/markdown exports and
+        # the HTML formatter's format() over the captured report.json. A composite
+        # action has no node_modules of its own, so install the CLI (which pulls
+        # @jentic/api-scorecard-formatter-html transitively) pinned to the same
+        # version as the score step. The check and the install both run from the
+        # action's own directory — the same root Node uses to resolve the helper's
+        # imports — so the install lands where the helper looks, not in the
+        # consumer's cwd. action/package.json is the load-bearing anchor here: it
+        # stops `npm install` from walking up to the repo-root npm-workspaces
+        # package.json, which would satisfy the request with a symlink to the
+        # unbuilt local packages/cli (no dist/ in a fresh action checkout) instead
+        # of fetching the published tarball. The skip path covers this repo's own
+        # self-test, where the built workspace already carries the not-yet-published
+        # subpath exports.
+        cd "$GITHUB_ACTION_PATH/action"
+        # Probe all three imports the helper needs — skipping install on a partial
+        # resolution (e.g. only ./sarif present) would fail at runtime.
+        probe="Promise.all([
+          import('@jentic/api-scorecard-cli/formatters/sarif'),
+          import('@jentic/api-scorecard-cli/formatters/markdown'),
+          import('@jentic/api-scorecard-formatter-html'),
+        ]).then(()=>process.exit(0)).catch(()=>process.exit(1))"
+        if node -e "$probe" 2>/dev/null; then
+          echo "Formatters already resolvable; skipping install."
+        else
+          npm install --no-save --no-audit --no-fund \
+            "@jentic/api-scorecard-cli@${CLI_VERSION}"
+        fi
+      env:
+        CLI_VERSION: ${{ steps.cli.outputs.version }}
+
+    - name: Derive SARIF, HTML, and Markdown; compute the gate
+      id: postprocess
+      shell: bash
+      env:
+        REPORT_JSON: report.json
+        SARIF_PATH: report.sarif
+        HTML_PATH: scorecard.html
+        INPUT: ${{ inputs.input }}
+        MIN_SCORE: ${{ inputs.min-score }}
+        MAX_ERRORS: ${{ inputs.max-errors }}
+        MAX_WARNINGS: ${{ inputs.max-warnings }}
+        SEVERITY: ${{ inputs.severity }}
+        MAX_FINDINGS: ${{ inputs.max-findings }}
+        SUMMARY_DETAIL: ${{ inputs.summary-detail }}
+      run: node "$GITHUB_ACTION_PATH/action/postprocess.mjs"
+
+    - name: Check SARIF upload permission
+      id: sarif-perm
+      if: always()
+      shell: bash
+      env:
+        # github/codeql-action/upload-sarif needs a token with security-events:
+        # write. The one case where the GITHUB_TOKEN is read-only is a pull_request
+        # whose head repo differs from the base repo (a cross-repo / fork PR); for
+        # same-repo PRs, pushes, and workflow_dispatch the token can upload
+        # (provided the job granted the scope). Compare head repo to the current
+        # repo rather than head.repo.fork — the latter is true for ANY same-repo PR
+        # when this repository is itself a fork, which would wrongly skip uploads.
+        EVENT_NAME: ${{ github.event_name }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        BASE_REPO: ${{ github.repository }}
+      run: |
+        if [ "$EVENT_NAME" = "pull_request" ] && [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+          echo "can-upload=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::Skipping SARIF upload — a cross-repo (fork) PR runs with a read-only token (no security-events: write)."
+        else
+          echo "can-upload=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload SARIF to the Security tab
+      # SARIF publish is best-effort: the gate is the build signal, so a transient
+      # upload/ingestion failure (or a misjudged token scope) must not hard-fail
+      # the action. The fork-PR guard above skips it outright on read-only tokens.
+      if: always() && steps.sarif-perm.outputs.can-upload == 'true'
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: report.sarif
+        token: ${{ inputs.github-token }}
+
+    - name: Upload the HTML scorecard artifact
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: scorecard.html
+
+    - name: Enforce the scorecard gate
+      if: always()
+      shell: bash
+      env:
+        GATE_PASSED: ${{ steps.postprocess.outputs.gate-passed }}
+        GATE_REASONS: ${{ steps.postprocess.outputs.gate-reasons }}
+      run: |
+        if [ "$GATE_PASSED" != "true" ]; then
+          echo "Scorecard gate failed: $GATE_REASONS"
+          exit 1
+        fi
+        echo "Scorecard gate passed."

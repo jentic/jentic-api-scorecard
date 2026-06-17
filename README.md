@@ -31,6 +31,7 @@ across six dimensions and returns a single grade — so you know exactly where t
 - [CLI reference](#cli-reference)
   - [Commands](#commands)
   - [`score`](#score)
+- [GitHub Action](#github-action)
 - [Prefer a browser?](#prefer-a-browser)
 - [Enterprise-ready by default](#enterprise-ready-by-default)
   - [Your OpenAPI document never leaves your environment](#your-openapi-document-never-leaves-your-environment)
@@ -349,6 +350,96 @@ jentic-api-scorecard score <input> [options]
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 | 8 | LLM analysis failed under `--with-llm`: the provider call failed, so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr. Re-run without `--with-llm` for a valid non-LLM score. |
+
+## GitHub Action
+
+A composite GitHub Action wraps the CLI for CI: it scores an OpenAPI document, **gates the build**
+on the score, uploads SARIF findings to the **Security tab**, attaches the **HTML scorecard** as a
+downloadable artifact, and renders a **Markdown summary** on the run page.
+
+```yaml
+name: API readiness
+on: [pull_request]
+
+permissions:
+  contents: read
+  security-events: write # required so SARIF uploads to the Security tab
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jentic/jentic-api-scorecard@v1 # floating major tag (or pin a full version / commit SHA)
+        with:
+          input: ./openapi.yaml
+          api-key: ${{ secrets.JENTIC_API_KEY }}
+          min-score: '70'
+```
+
+To enable LLM-backed analysis, set `with-llm: true` and provide the provider credentials and
+routing as job-level `env:` — the action forwards them to the engine but does not turn raw secrets
+into those variables for you, so the run fails fast if none are present:
+
+```yaml
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LLM_PROVIDER: OPENAI
+      LIGHT_LLM_PROVIDER: OPENAI
+      LLM_LIGHT_MODEL: gpt-4o-mini
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jentic/jentic-api-scorecard@v1
+        with:
+          input: ./openapi.yaml
+          api-key: ${{ secrets.JENTIC_API_KEY }}
+          with-llm: 'true'
+```
+
+See the **[LLM Signals guide](https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md)**
+for the full provider matrix (cloud and local Ollama) and the variable reference.
+
+### Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `input` | — | **Required.** `https://` URL or local file path to an OpenAPI document. |
+| `api-key` | — | Jentic API key. Required for local files and non-OAK URLs; never logged. |
+| `github-token` | workflow token | Token for the SARIF upload (see fork PRs below). |
+| `min-score` | — | Fail when the score is below this. Unset = no gate. |
+| `max-errors` | — | Fail when error-level findings exceed this. Unset = no gate. |
+| `max-warnings` | — | Fail when warning-level findings exceed this. Unset = no gate. |
+| `severity` | `warning` | Minimum level kept in the SARIF. |
+| `max-findings` | `5000` | Cap on SARIF results, lowest-severity dropped first. |
+| `with-llm` | `false` | Enable LLM-backed analysis. |
+| `summary-detail` | `dimensions` | Markdown run-summary depth: `summary`, `dimensions`, `signals`, `diagnostics`. |
+| `cli-version` | action's release | CLI version to run (pins the engine image); defaults to the version shipped with the action ref you pinned. |
+
+**Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
+`max-warnings` to fail on too many findings. Each finding carries one of three levels — `error`,
+`warning`, `note` — which is how it's labelled on its Security-tab alert. (If you also read
+`--format json`, those map from its 1–4 severity: `1` is error, `2` is warning, `3` and `4` are both
+note.) The `severity` input only trims which findings reach the Security tab; it never changes your
+gate, so quieting the Security tab to errors-only won't let a warning-heavy spec slip through.
+
+**Outputs land even on a failing build.** When a gate fails, you still get the SARIF findings, the
+HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
+
+**Choose your pin deliberately.** The `@v1` major tag (used in the examples above) floats to the
+newest `v1.x.x` on every release, so you auto-receive fixes without a workflow edit and stay within
+one major — no breaking changes. The trade-off: a release can ship a new scoring engine, and the
+same document can score differently across engine versions, so a green PR can turn red when `@v1`
+moves under it. If you gate on a hard threshold and need that build reproducible, pin a full version
+(`@v1.8.3`) or a commit SHA instead, and bump it deliberately when you're ready to adopt a new
+engine.
+
+**On fork PRs**, GitHub gives the workflow a read-only token, so the Security-tab upload can't run;
+the action skips it with a notice and still publishes the HTML artifact and Markdown summary.
+(Uploading fork findings anyway needs a writable token from a base-context workflow, supplied via
+`github-token`.) In the Security tab, findings link to the document but not yet to a specific line.
 
 ## Prefer a browser?
 

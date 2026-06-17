@@ -140,6 +140,16 @@ release instead of `@latest` so a new publish can't shift results mid-pipeline.
 
 For an HTML artifact to upload, swap to `--format html -o scorecard.html`.
 
+For a turnkey setup, use the composite **GitHub Action**
+(`jentic/jentic-api-scorecard@<version>`, pinned to a released tag or a commit SHA)
+instead of a raw `npx` step: it gates the build on the score, uploads SARIF to the
+Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown
+run summary. The job needs `permissions: security-events: write` for the SARIF
+upload; on fork PRs (read-only token) that upload is skipped with a notice rather
+than hard-failing. With `with-llm: 'true'`, set the LLM provider credentials +
+routing as job-level `env:` (the action forwards them but won't materialize
+secrets for you). See the README "GitHub Action" section for the full input table.
+
 ## LLM-backed analysis
 
 `--with-llm` enables additional signals that an LLM evaluates. It requires LLM

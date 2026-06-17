@@ -274,7 +274,7 @@ This formatter was parked in Later Phases pending "concrete CI-integrator demand
 - Add `packages/cli/test/formatters/markdown.test.ts` vs. the engine fixture: headline fields, dimension-table rows, `--detail` projection.
 - Sync README `## CLI reference` + `SKILL.md` flag tables.
 
-## Phase 19 — GitHub Action for CI Scoring
+## Phase 19 — GitHub Action for CI Scoring ✅
 
 **Goal:** Add a Marketplace-listable composite GitHub Action at the repo root that scores an OpenAPI spec via the CLI, gates the build on the score, uploads SARIF findings to the Security tab, attaches the HTML scorecard as an artifact, and renders a Markdown summary on the run.
 **Depends on:** Phase 17 — SARIF formatter (`--format sarif`), Phase 18 — Markdown formatter (`--format markdown`)
@@ -301,6 +301,7 @@ This is the headline CI-integrator deliverable and the reason SARIF (Phase 17) a
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
 - Structured logger across `packages/cli/` — replace ad-hoc `process.stderr.write('error: …')` / `'warning: …'` calls with a level-based logger (likely `consola`). Not a phase on its own — refactor, no user-visible capability. The decision to introduce one (or not) belongs in Phase 7's `plan.md`, since `--verbose` is the first feature that makes log levels load-bearing. Listed here so the question isn't lost.
 - Native binary distribution via `curl -fsSL | bash` (self-extracting archive bundling Node + node_modules; platform-specific builds in CI; requires code signing for macOS/Windows)
+- Optional `bundle` input on the Phase 19 GitHub Action — forwards `--bundle` to the CLI so a host-only URL (internal-network, VPN-gated, or auth-required) can be fetched + Redocly-bundled on the runner host before scoring. Only meaningful on **self-hosted runners** inside the network that can reach the URL; on GitHub-hosted runners an internal URL is unreachable from both host and container, and public URLs the container fetches directly, so the input is a no-op there (and always a no-op for local files, which are auto-bundled). Deferred until a self-hosted-runner integrator asks; requires `api-key` (the anonymous allowlist no longer applies once the source URL stops reaching the container).
 - Multi-spec / portfolio scoring across many APIs in one invocation
 - Plugins / custom rubrics on top of JAIRF
 - `--cpus` / `--memory` flags + matching engine worker-pool hints (deferred until a concrete user-pain signal)

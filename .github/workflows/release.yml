@@ -207,3 +207,48 @@ jobs:
         with:
           subject-path: ./artifacts/jentic-api-scorecard-cli-${{ needs.release-prepare.outputs.version }}.tgz
           sbom-path: ./artifacts/cli.sbom.spdx.json
+
+  # Step 4: graduate the floating major tag (e.g. `v1`) to the freshly
+  # cut release, so consumers who pin `jentic/jentic-api-scorecard@v1`
+  # in their workflows (the README examples do) auto-receive every
+  # patch/minor without a doc edit. lerna already created the immutable
+  # `vX.Y.Z` tag; we force-move the major alias onto it.
+  #
+  # This runs LAST — only after both the GHCR image (publish-docker) and
+  # the npm tarball (release-publish) are live. The major tag must never
+  # advance past a half-shipped release: were it moved in release-prepare,
+  # a later docker/npm failure would leave `@v1` pointing at a version
+  # consumers can resolve but not run. Gating on both upstream jobs makes
+  # the alias graduate only once the release is fully usable.
+  update-major-tag:
+    name: Update floating major tag
+    needs: [release-prepare, publish-docker, release-publish]
+    runs-on: ubuntu-latest
+    # contents:write to push the tag goes through the App token below,
+    # which is on the `Protect main` ruleset bypass list; GITHUB_TOKEN
+    # needs nothing.
+    permissions: {}
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
+          private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Move major tag to the released version
+        env:
+          VERSION: ${{ needs.release-prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "${{ steps.app-token.outputs.app-slug }}[bot]"
+          git config user.email "${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          MAJOR="v${VERSION%%.*}"
+          git tag -f "$MAJOR" "v${VERSION}"
+          git push origin "refs/tags/$MAJOR" --force
