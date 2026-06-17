@@ -415,7 +415,7 @@ for the full provider matrix (cloud and local Ollama) and the variable reference
 | `severity` | `warning` | Minimum level kept in the SARIF. |
 | `max-findings` | `5000` | Cap on SARIF results, lowest-severity dropped first. |
 | `with-llm` | `false` | Enable LLM-backed analysis. |
-| `summary-detail` | `dimensions` | Depth of the Markdown summary. |
+| `summary-detail` | `dimensions` | Markdown run-summary depth: `summary`, `dimensions`, `signals`, `diagnostics`. |
 | `cli-version` | action's release | CLI version to run (pins the engine image); defaults to the version shipped with the action ref you pinned. |
 
 **Choosing your gates.** Set `min-score` to fail PRs below a readiness bar, and/or `max-errors` /
