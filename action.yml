@@ -1,13 +1,12 @@
 name: 'Jentic API Scorecard'
 description: >-
-  Score an OpenAPI document against the Jentic API AI Readiness Framework (JAIRF),
-  gate the build on the score, upload SARIF findings to the Security tab, attach
-  the HTML scorecard as an artifact, and render a Markdown summary on the run.
+  Score an OpenAPI doc against the Jentic API AI Readiness Framework; gate CI and
+  publish SARIF + an HTML scorecard.
 author: 'Jentic'
 
 branding:
   icon: 'check-circle'
-  color: 'purple'
+  color: 'green'
 
 inputs:
   input:
