@@ -428,11 +428,13 @@ gate, so quieting the Security tab to errors-only won't let a warning-heavy spec
 **Outputs land even on a failing build.** When a gate fails, you still get the SARIF findings, the
 HTML artifact, and the Markdown summary — a failing PR is exactly when you want to see them.
 
-**Pin a concrete version.** Always reference the action by a released tag (or commit SHA), never a
-rolling alias — there is no `@v1`. A new release can ship a new scoring engine, and the same
-document can score differently across engine versions; pinning is what keeps a gated build
-reproducible, so a green PR doesn't turn red because a release moved under it. Bump the pin
-deliberately when you're ready to adopt a new engine.
+**Choose your pin deliberately.** The `@v1` major tag (used in the examples above) floats to the
+newest `v1.x.x` on every release, so you auto-receive fixes without a workflow edit and stay within
+one major — no breaking changes. The trade-off: a release can ship a new scoring engine, and the
+same document can score differently across engine versions, so a green PR can turn red when `@v1`
+moves under it. If you gate on a hard threshold and need that build reproducible, pin a full version
+(`@v1.8.3`) or a commit SHA instead, and bump it deliberately when you're ready to adopt a new
+engine.
 
 **On fork PRs**, GitHub gives the workflow a read-only token, so the Security-tab upload can't run;
 the action skips it with a notice and still publishes the HTML artifact and Markdown summary.
