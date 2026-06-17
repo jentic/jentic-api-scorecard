@@ -93,6 +93,18 @@ jobs:
             echo "value=$(node -p 'require("./lerna.json").version')"
             echo "sha=$(git rev-parse HEAD)"
           } >> "$GITHUB_OUTPUT"
+      # Maintain a floating major tag (e.g. `v1`) pointing at the freshly
+      # cut release, so consumers can pin `jentic/jentic-api-scorecard@v1`
+      # in their workflows and auto-receive patch/minor releases without a
+      # doc edit (the README examples use this ref). lerna already created
+      # the immutable `vX.Y.Z` tag; we force-move the major alias to it and
+      # force-push. Uses the persisted App-token credentials from checkout.
+      - name: Update floating major tag
+        run: |
+          set -euo pipefail
+          MAJOR="v$(node -p 'require("./lerna.json").version.split(".")[0]')"
+          git tag -f "$MAJOR" "v${{ steps.version.outputs.value }}"
+          git push origin "refs/tags/$MAJOR" --force
 
   # Step 2: build and push the multi-arch GHCR image at the
   # exact tag the CLI will resolve to. Runs BEFORE npm publish so

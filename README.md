@@ -370,7 +370,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jentic/jentic-api-scorecard@v1.8.0 # pin a released version (or a commit SHA)
+      - uses: jentic/jentic-api-scorecard@v1 # floating major tag (or pin a full version / commit SHA)
         with:
           input: ./openapi.yaml
           api-key: ${{ secrets.JENTIC_API_KEY }}
@@ -392,7 +392,7 @@ jobs:
       LLM_LIGHT_MODEL: gpt-4o-mini
     steps:
       - uses: actions/checkout@v4
-      - uses: jentic/jentic-api-scorecard@v1.8.0
+      - uses: jentic/jentic-api-scorecard@v1
         with:
           input: ./openapi.yaml
           api-key: ${{ secrets.JENTIC_API_KEY }}
