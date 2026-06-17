@@ -89,3 +89,75 @@ jobs:
           min-score: '1'
           severity: 'note'
           artifact-name: 'scorecard-html-pass'
+
+  # The selftest job above always takes the helper's skip-install branch (it builds
+  # the workspace first), so it never exercises the published-install path — the one
+  # a real consumer hits. That path broke at v1.8.0: with no action/package.json,
+  # `npm install` from action/ walked up to the repo-root npm-workspaces package.json
+  # and satisfied @jentic/api-scorecard-cli with a SYMLINK to the unbuilt local
+  # packages/cli (no dist/ in a fresh `source: "./"` checkout), so the helper's
+  # import of dist/formatters/sarif.js hit ERR_MODULE_NOT_FOUND. This job reproduces
+  # the published-action layout (a git-archive checkout with no dist/, no
+  # node_modules) and asserts the install lands a real fetched tarball, not a
+  # workspace symlink — guarding the action/package.json anchor against deletion.
+  published-install-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.10.0
+
+      - name: Reproduce a fresh published-action checkout (no dist/, no node_modules)
+        run: |
+          dest="$RUNNER_TEMP/action-checkout"
+          mkdir -p "$dest"
+          # git archive yields exactly the tracked tree — the same bytes GitHub
+          # materializes for a `source: "./"` action ref, with no build artifacts.
+          git archive HEAD | tar -x -C "$dest"
+          test ! -d "$dest/packages/cli/dist" || { echo "expected no built dist/ in a fresh checkout"; exit 1; }
+          echo "ACTION_CHECKOUT=$dest" >> "$GITHUB_ENV"
+
+      - name: Install the published CLI exactly as action.yml does
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          # Pin to the published `latest`, not the repo's own (possibly unreleased)
+          # version — a real consumer installs a published tarball. The repo's own
+          # not-yet-published exports are covered by the selftest's skip-install path.
+          version=$(npm view @jentic/api-scorecard-cli version)
+          npm install --no-save --no-audit --no-fund "@jentic/api-scorecard-cli@${version}"
+
+      - name: Assert the install resolved a real tarball, not a workspace symlink
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const pkg = "node_modules/@jentic/api-scorecard-cli";
+            if (!fs.existsSync(pkg)) { console.error("CLI not installed under action/node_modules"); process.exit(1); }
+            if (fs.lstatSync(pkg).isSymbolicLink()) {
+              console.error("CLI resolved to a symlink (workspace leak):", fs.readlinkSync(pkg));
+              process.exit(1);
+            }
+            if (fs.existsSync("../node_modules/@jentic")) {
+              console.error("install leaked to the repo-root workspaces node_modules");
+              process.exit(1);
+            }
+            console.log("OK: published CLI installed as a real tarball in action/node_modules");
+          '
+
+      - name: Assert all three formatter imports resolve (the helper's contract)
+        working-directory: ${{ env.ACTION_CHECKOUT }}/action
+        run: |
+          node -e '
+            Promise.all([
+              import("@jentic/api-scorecard-cli/formatters/sarif"),
+              import("@jentic/api-scorecard-cli/formatters/markdown"),
+              import("@jentic/api-scorecard-formatter-html"),
+            ]).then(() => { console.log("OK: all three formatter imports resolve"); })
+              .catch((e) => { console.error(String(e).split("\n")[0]); process.exit(1); });
+          '

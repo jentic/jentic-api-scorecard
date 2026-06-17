@@ -119,8 +119,13 @@ runs:
         # version as the score step. The check and the install both run from the
         # action's own directory — the same root Node uses to resolve the helper's
         # imports — so the install lands where the helper looks, not in the
-        # consumer's cwd. The skip path covers this repo's own self-test, where the
-        # built workspace already carries the not-yet-published subpath exports.
+        # consumer's cwd. action/package.json is the load-bearing anchor here: it
+        # stops `npm install` from walking up to the repo-root npm-workspaces
+        # package.json, which would satisfy the request with a symlink to the
+        # unbuilt local packages/cli (no dist/ in a fresh action checkout) instead
+        # of fetching the published tarball. The skip path covers this repo's own
+        # self-test, where the built workspace already carries the not-yet-published
+        # subpath exports.
         cd "$GITHUB_ACTION_PATH/action"
         # Probe all three imports the helper needs — skipping install on a partial
         # resolution (e.g. only ./sarif present) would fail at runtime.
