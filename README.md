@@ -1,6 +1,6 @@
 # Jentic API Scorecard
 
-[![skills.sh](https://skills.sh/b/jentic/jentic-api-scorecard)](https://skills.sh/jentic/jentic-api-scorecard) [![SkillSpector](https://github.com/jentic/jentic-api-scorecard/actions/workflows/skill-security.yml/badge.svg)](https://github.com/jentic/jentic-api-scorecard/actions/workflows/skill-security.yml)
+[![skills.sh](https://skills.sh/b/jentic/jentic-api-scorecard)](https://skills.sh/jentic/jentic-api-scorecard) [![SkillSpector](https://github.com/jentic/jentic-api-scorecard/actions/workflows/skill-security.yml/badge.svg)](https://github.com/jentic/jentic-api-scorecard/actions/workflows/skill-security.yml) [![View Code Wiki](https://assets.codewiki.google/readme-badge/static.svg)](https://codewiki.google/github.com/jentic/jentic-api-scorecard?utm_source=badge&utm_medium=github&utm_campaign=github.com/jentic/jentic-api-scorecard)
 
 ![Jentic API Scorecard preview](https://github.com/jentic/jentic-api-scorecard/raw/main/assets/scorecard-preview.jpg)
 
