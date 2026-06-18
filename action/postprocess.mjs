@@ -85,26 +85,28 @@ function filterSarifBySeverity(doc, minLevel) {
   return { ...doc, runs };
 }
 
-// SARIF artifact URI for the scored input. A local path is used as-is (relative,
-// leading "./" stripped); a URL collapses to its basename, since Code Scanning
-// attaches a result to a repo-relative path and a full URL is not one. Falls back
-// to "openapi" when the input is a URL with no usable path segment or is unset.
+// Repo-relative SARIF artifact URI for the scored input: a local path as-is, or a
+// URL reduced to `host/path` (an absolute URI mismatches the `file://` checkout
+// root and Code Scanning rejects the whole upload — issue #200). A `host:port`
+// (e.g. localhost:3000/...) would itself parse as a `scheme:`, so when the result
+// starts with a scheme-like prefix it is forced relative with a leading `./`.
 function sarifArtifactUri(input) {
   const value = String(input ?? '').trim();
   if (value === '') {
     return 'openapi';
   }
   if (/^https?:\/\//i.test(value)) {
-    // Take the basename of the URL path only — never the host, so a path-less URL
-    // (https://example.com/) falls back rather than yielding "example.com".
-    let pathname;
+    let url;
     try {
-      pathname = new URL(value).pathname;
+      url = new URL(value);
     } catch {
       return 'openapi';
     }
-    const tail = pathname.replace(/\/+$/, '').split('/').pop();
-    return tail && tail !== '' ? tail : 'openapi';
+    const relative = (url.host + url.pathname).replace(/\/+$/, '');
+    if (relative === '') {
+      return 'openapi';
+    }
+    return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(relative) ? `./${relative}` : relative;
   }
   return value.replace(/^\.\//, '');
 }

@@ -121,6 +121,57 @@ describe('postprocess helper (black-box)', function () {
     });
   });
 
+  describe('SARIF artifact URI', function () {
+    // Code Scanning renders source only for a path committed to the repo, so a
+    // local input stays a repo-relative path. A URL spec is not in the repo, so it
+    // becomes a scheme-less host/path relative URI — never the absolute URL, whose
+    // https scheme mismatches the file:// checkout root and makes Code Scanning
+    // reject the whole upload. A bare basename (the old behavior) produced a
+    // phantom repo path; host/path shows the real origin instead (issue #200).
+    function firstUri(run: RunResult): string | undefined {
+      return allResults(run.sarif)[0]?.locations?.[0]?.physicalLocation?.artifactLocation.uri;
+    }
+
+    // RFC 3986 scheme prefix: an absolute URI mismatches the file:// checkout root
+    // and Code Scanning rejects the whole upload, so the artifact URI must never
+    // parse as having one.
+    const SCHEME_PREFIX = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+    it('uses a scheme-less host/path relative URI for a URL input', function () {
+      const url =
+        'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
+      const expected =
+        'raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
+      const run = runPostprocess({ INPUT: url, SEVERITY: 'note' });
+      for (const result of allResults(run.sarif)) {
+        const uri = result.locations?.[0]?.physicalLocation?.artifactLocation.uri;
+        expect(uri).to.equal(expected);
+        expect(uri).to.not.match(SCHEME_PREFIX);
+      }
+    });
+
+    it('forces ./ on a port-bearing URL so host:port is not read as a scheme', function () {
+      // localhost:3000/... would otherwise parse as scheme "localhost:" — an
+      // absolute URI that fails the checkout-root scheme match.
+      const run = runPostprocess({
+        INPUT: 'https://localhost:3000/openapi.json',
+        SEVERITY: 'note',
+      });
+      expect(firstUri(run)).to.equal('./localhost:3000/openapi.json');
+      expect(firstUri(run)).to.not.match(SCHEME_PREFIX);
+    });
+
+    it('keeps a repo-relative path for a local input, stripping a leading ./', function () {
+      expect(firstUri(runPostprocess({ INPUT: './api/openapi.yaml', SEVERITY: 'note' }))).to.equal(
+        'api/openapi.yaml',
+      );
+    });
+
+    it('falls back to "openapi" when the input is unset', function () {
+      expect(firstUri(runPostprocess({ SEVERITY: 'note' }))).to.equal('openapi');
+    });
+  });
+
   describe('gate decision (via GITHUB_OUTPUT)', function () {
     // The fixture scores 66.52 with 2 error-level (severity 1) and 8 warning-level
     // (severity 2) diagnostics.
