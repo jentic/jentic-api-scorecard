@@ -26,7 +26,7 @@ jobs:
     outputs:
       skills: ${{ steps.list.outputs.skills }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: list
         run: |
           skills=$(ls -d skills/*/ | xargs -n1 basename | jq -R . | jq -cs .)
@@ -42,7 +42,7 @@ jobs:
       matrix:
         skill: ${{ fromJSON(needs.discover.outputs.skills) }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6

@@ -50,7 +50,7 @@ jobs:
           app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
           private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -130,7 +130,7 @@ jobs:
       # publishes deterministically against the post-bump tree, not
       # whatever main looks like at the time it runs.
       - name: Checkout bump commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-prepare.outputs.sha }}
           fetch-depth: 1
@@ -236,7 +236,7 @@ jobs:
           app-id: ${{ secrets.ARAZZO_BUILDER_APP_ID }}
           private-key: ${{ secrets.ARAZZO_BUILDER_PRIVATE_KEY }}
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-prepare.outputs.sha }}
           fetch-depth: 0
