@@ -179,7 +179,7 @@ async function createSourceLocator(input) {
 // unresolvable pointers, no source). Existing logicalLocations are preserved
 // alongside. See createSourceLocator and issue #191.
 async function addPhysicalLocations(doc, artifactUri, locate) {
-  const physicalLocationForPointer = (pointer) => ({
+  const toPhysicalLocation = (pointer) => ({
     artifactLocation: { uri: artifactUri },
     region: (locate && pointer ? locate(pointer) : null) ?? { startLine: 1 },
   });
@@ -194,11 +194,11 @@ async function addPhysicalLocations(doc, artifactUri, locate) {
         existing.length > 0
           ? existing.map((location) => ({
               ...location,
-              physicalLocation: physicalLocationForPointer(
+              physicalLocation: toPhysicalLocation(
                 location.logicalLocations?.[0]?.fullyQualifiedName,
               ),
             }))
-          : [{ physicalLocation: physicalLocationForPointer(undefined) }];
+          : [{ physicalLocation: toPhysicalLocation(undefined) }];
       return { ...result, locations };
     }),
   }));
