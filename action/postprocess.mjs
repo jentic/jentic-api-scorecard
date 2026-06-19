@@ -18,6 +18,7 @@
 // bundle would not carry.
 
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 // SARIF levels, ranked. The CLI's sarif formatter maps engine severity 1→error,
@@ -111,21 +112,80 @@ function sarifArtifactUri(input) {
   return value.replace(/^\.\//, '');
 }
 
+// Build a JSON-Pointer→source-position locator for a local-file input, or null
+// when no real mapping is possible. The engine's diagnostic pointers are valid
+// against the bundled spec (discarded in the container), so a pointer that dives
+// into a $ref'd node won't resolve against the user's source; the returned
+// locate() pops the last segment and retries until a node resolves, landing on
+// the nearest existing ancestor rather than mislocating. Returns null for URL
+// inputs (the URL'd file isn't in the consumer's checkout, so code-scanning has
+// nothing to anchor a line against — mapping would be a no-op) and on any
+// failure (apidom absent, unreadable file, parse error), so the caller falls
+// back to the line-1 stopgap. apidom is imported dynamically: it's declared in
+// action/package.json (installed on the published consumer path) but absent on
+// the self-test's built-workspace skip-install path, which only ever scores a
+// URL and so never reaches this import.
+async function createSourceLocator(input) {
+  const value = String(input ?? '').trim();
+  if (value === '' || /^https?:\/\//i.test(value)) {
+    return null;
+  }
+  try {
+    const { parse } = await import('@speclynx/apidom-reference');
+    const { evaluate } = await import('@speclynx/apidom-json-pointer');
+    // input is a path relative to the consumer's checkout root, which is also
+    // the helper's cwd (the postprocess step runs with no working-directory, the
+    // same cwd the score step read it from), so resolve to an absolute file URI.
+    const fileUri = pathToFileURL(resolvePath(process.cwd(), value)).href;
+    const parseResult = await parse(fileUri, {
+      parse: { parserOpts: { sourceMap: true, strict: false } },
+      resolve: { resolverOpts: { fileAllowList: [/\.(ya?ml|json)$/i] } },
+    });
+    const api = parseResult.api;
+    if (api === undefined) {
+      return null;
+    }
+    return (pointer) => {
+      const segments = String(pointer ?? '')
+        .split('/')
+        .slice(1);
+      while (segments.length > 0) {
+        try {
+          const node = evaluate(api, `/${segments.join('/')}`);
+          // apidom positions are 0-based; SARIF regions are 1-based.
+          // startCharacter is a UTF-16 offset, matching SARIF's default column
+          // kind, so no transcoding is needed.
+          return { startLine: node.startLine + 1, startColumn: node.startCharacter + 1 };
+        } catch {
+          segments.pop();
+        }
+      }
+      return null;
+    };
+  } catch {
+    return null;
+  }
+}
+
 // GitHub Code Scanning refuses to ingest a SARIF result that has no
 // physicalLocation ("expected a physical location") — logicalLocations alone are
-// not enough to land a finding in the Security tab. The engine emits JSON
-// Pointers, not file line/column, so we attach a minimal physicalLocation
-// pointing at the scored document at line 1; existing logicalLocations are
-// preserved alongside. Real pointer→line mapping is tracked in issue #191.
-function addPhysicalLocations(doc, artifactUri) {
-  const physicalLocation = {
+// not enough to land a finding in the Security tab. Each result's logical
+// location carries the engine's JSON Pointer; when `locate` maps it to a real
+// source position we use that, otherwise we fall back to line 1 (URL inputs,
+// unresolvable pointers, no source). Existing logicalLocations are preserved
+// alongside. See createSourceLocator and issue #191.
+async function addPhysicalLocations(doc, artifactUri, locate) {
+  const physicalLocationFor = (region) => ({
     artifactLocation: { uri: artifactUri },
-    region: { startLine: 1 },
-  };
+    region,
+  });
   const runs = (doc.runs ?? []).map((run) => ({
     ...run,
     results: (run.results ?? []).map((result) => {
       const existing = Array.isArray(result.locations) ? result.locations : [];
+      const pointer = existing[0]?.logicalLocations?.[0]?.fullyQualifiedName;
+      const region = (locate && pointer ? locate(pointer) : null) ?? { startLine: 1 };
+      const physicalLocation = physicalLocationFor(region);
       // Add the physicalLocation to the first location (keeping its
       // logicalLocations), or create one when the result had no locations.
       const locations =
@@ -208,12 +268,15 @@ async function main() {
   // The scored input, used as the SARIF physicalLocation artifact URI so Code
   // Scanning can ingest the results. A bare default keeps a URL/empty input valid.
   const artifactUri = sarifArtifactUri(env['INPUT']);
+  // Parse the source once (local-file inputs only) to map JSON Pointers to real
+  // source lines; null for URLs / on any failure → line-1 fallback per result.
+  const locate = await createSourceLocator(env['INPUT']);
 
   const { formatSarif, formatMarkdown, formatHtml } = await loadFormatters();
 
   // SARIF: full doc, physical locations (Code Scanning needs them), then the
   // severity filter, then the findings cap.
-  const fullSarif = addPhysicalLocations(JSON.parse(formatSarif(result)), artifactUri);
+  const fullSarif = await addPhysicalLocations(JSON.parse(formatSarif(result)), artifactUri, locate);
   const filtered = filterSarifBySeverity(fullSarif, severity);
   const { doc: cappedSarif, dropped } = capFindings(filtered, maxFindings);
   if (dropped > 0) {

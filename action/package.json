@@ -3,5 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "description": "Install anchor for the GitHub Action post-processor (action/postprocess.mjs). Decouples its `npm install` from the repo-root npm-workspaces package.json so the published @jentic/api-scorecard-cli tarball lands in action/node_modules, not a symlink to the unbuilt local packages/cli.",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@speclynx/apidom-json-pointer": "^4.11.1",
+    "@speclynx/apidom-reference": "^4.11.1"
+  }
 }
