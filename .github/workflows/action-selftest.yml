@@ -150,14 +150,19 @@ jobs:
             console.log("OK: published CLI installed as a real tarball in action/node_modules");
           '
 
-      - name: Assert all three formatter imports resolve (the helper's contract)
+      - name: Assert the helper's imports resolve (the helper's contract)
         working-directory: ${{ env.ACTION_CHECKOUT }}/action
         run: |
+          # The three formatters plus the apidom packages the source-line mapping
+          # imports dynamically — all must resolve from a real published install,
+          # not only the build-workspace skip-install path the selftest job takes.
           node -e '
             Promise.all([
               import("@jentic/api-scorecard-cli/formatters/sarif"),
               import("@jentic/api-scorecard-cli/formatters/markdown"),
               import("@jentic/api-scorecard-formatter-html"),
-            ]).then(() => { console.log("OK: all three formatter imports resolve"); })
+              import("@speclynx/apidom-reference"),
+              import("@speclynx/apidom-json-pointer"),
+            ]).then(() => { console.log("OK: all helper imports resolve"); })
               .catch((e) => { console.error(String(e).split("\n")[0]); process.exit(1); });
           '

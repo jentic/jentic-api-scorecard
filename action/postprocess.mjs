@@ -150,14 +150,15 @@ async function createSourceLocator(input) {
       while (tokens.length > 0) {
         try {
           const node = evaluate(api, compilePointer(tokens));
-          // Source-mapped nodes carry the full range together; apidom 0-based → 1-based SARIF.
-          if (Number.isInteger(node.startLine)) {
-            return {
-              startLine: node.startLine + 1,
-              startColumn: node.startCharacter + 1,
-              endLine: node.endLine + 1,
-              endColumn: node.endCharacter + 1,
-            };
+          // apidom 0-based → 1-based SARIF. Include only integer fields so a
+          // node missing a position never emits a NaN region.
+          if (Number.isInteger(node.startLine) && Number.isInteger(node.startCharacter)) {
+            const region = { startLine: node.startLine + 1, startColumn: node.startCharacter + 1 };
+            if (Number.isInteger(node.endLine) && Number.isInteger(node.endCharacter)) {
+              region.endLine = node.endLine + 1;
+              region.endColumn = node.endCharacter + 1;
+            }
+            return region;
           }
         } catch {
           // fall through to strip the last token
