@@ -18,7 +18,6 @@
 // bundle would not carry.
 
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
-import { resolve as resolvePath } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 // SARIF levels, ranked. The CLI's sarif formatter maps engine severity 1→error,
@@ -123,18 +122,18 @@ async function createSourceLocator(input) {
 
   try {
     const { parse, url } = await import('@speclynx/apidom-reference');
-    if (!url.isFileSystemPath(uri)) {
-      return null;
-    }
+
+    if (!url.isFileSystemPath(uri)) return null;
+
     const {
       evaluate,
       parse: parsePointer,
       compile: compilePointer,
     } = await import('@speclynx/apidom-json-pointer');
     // input is relative to the checkout root, which is the helper's cwd (same cwd
-    // the score step read it from), so resolve to an absolute file URI.
-    const fileUri = pathToFileURL(resolvePath(process.cwd(), uri)).href;
-    const parseResult = await parse(fileUri, {
+    // the score step read it from); resolve it against that.
+    const sourcePath = url.toFileSystemPath(url.resolve(url.cwd(), uri));
+    const parseResult = await parse(sourcePath, {
       parse: { parserOpts: { sourceMap: true, strict: false } },
       resolve: { resolverOpts: { fileAllowList: [/\.(ya?ml|json)$/i] } },
     });
