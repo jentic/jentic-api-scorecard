@@ -123,8 +123,6 @@ async function createSourceLocator(input) {
 
   try {
     const { parse, url } = await import('@speclynx/apidom-reference');
-    // Only a checkout-local file can be mapped; a URL/non-file input has nothing
-    // for code-scanning to anchor against.
     if (!url.isFileSystemPath(uri)) {
       return null;
     }
