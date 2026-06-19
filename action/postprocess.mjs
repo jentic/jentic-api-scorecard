@@ -126,8 +126,6 @@ async function createSourceLocator(input) {
     if (!url.isFileSystemPath(uri)) {
       return null;
     }
-    // apidom-json-pointer re-exports the RFC 6901 parse/compile helpers, which
-    // handle ~0/~1 and slash-bearing tokens (e.g. 'application/json').
     const {
       evaluate,
       parse: parsePointer,
