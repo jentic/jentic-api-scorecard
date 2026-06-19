@@ -13,9 +13,31 @@ const fixture = readFileSync(fixturePath, 'utf8');
 const schemaPath = fileURLToPath(new URL('../fixtures/sarif-2.1.0.schema.json', import.meta.url));
 const sarifSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
+// A real engine capture of ../fixtures/ref-source.yaml (a $ref-bearing spec), so
+// a bundled diagnostic pointer that dives into the inlined response
+// over-specifies against the source entry document — exercising strip-fallback.
+// Regenerate via the engine: see docker/ run against ref-source.yaml.
+const refSourcePath = fileURLToPath(new URL('../fixtures/ref-source.yaml', import.meta.url));
+const refReportPath = fileURLToPath(
+  new URL('../fixtures/scorecard.ref-source.json', import.meta.url),
+);
+const refReport = readFileSync(refReportPath, 'utf8');
+
+interface SarifRegion {
+  startLine: number;
+  startColumn?: number;
+}
+interface SarifPhysicalLocation {
+  artifactLocation: { uri: string };
+  region?: SarifRegion;
+}
+interface SarifLocation {
+  physicalLocation?: SarifPhysicalLocation;
+  logicalLocations?: { fullyQualifiedName: string }[];
+}
 interface SarifResult {
   level: string;
-  locations?: { physicalLocation?: { artifactLocation: { uri: string } } }[];
+  locations?: SarifLocation[];
 }
 interface SarifLog {
   runs: { results: SarifResult[] }[];
@@ -293,6 +315,83 @@ describe('postprocess helper (black-box)', function () {
     it('includes the per-signal section at signals depth', function () {
       const md = runPostprocess({ SUMMARY_DETAIL: 'signals' }).markdown;
       expect(md).to.contain('## Signals');
+    });
+  });
+
+  describe('SARIF source line mapping', function () {
+    // Find the first result whose logical pointer matches (RFC 6901), to assert
+    // the physical region the mapping stamped onto that specific diagnostic.
+    function regionForPointer(sarif: SarifLog, pointer: string): SarifRegion | undefined {
+      for (const result of allResults(sarif)) {
+        const loc = result.locations?.[0];
+        if (loc?.logicalLocations?.[0]?.fullyQualifiedName === pointer) {
+          return loc.physicalLocation?.region;
+        }
+      }
+      return undefined;
+    }
+
+    let sarif: SarifLog;
+
+    before(function () {
+      // INPUT is the absolute ref-source.yaml path: createSourceLocator resolves
+      // it (absolute → unchanged) and apidom parses the real source, so pointers
+      // map to real lines. SEVERITY note keeps all findings for richer coverage.
+      sarif = runPostprocess({ INPUT: refSourcePath, SEVERITY: 'note' }, refReport).sarif;
+    });
+
+    it('maps an exactly-resolving pointer to its real source line', function () {
+      // ref-source.yaml line 11 is `      operationId: listPets`.
+      const region = regionForPointer(sarif, '/paths/~1pets/get/operationId');
+      expect(region?.startLine).to.equal(11);
+      expect(region?.startColumn).to.be.a('number').and.greaterThan(1);
+    });
+
+    it('strips an over-specified pointer to its nearest existing ancestor', function () {
+      // The bundled pointer dives into the inlined 200 response; in the source
+      // that node is a bare $ref (line 14), so it strips back to the 200 response
+      // value node — apidom maps the value, not the "200" key on line 13.
+      const region = regionForPointer(
+        sarif,
+        '/paths/~1pets/get/responses/200/content/application~1json/schema',
+      );
+      expect(region?.startLine).to.equal(14);
+    });
+
+    it('falls back to line 1 for a pointer absent from the source', function () {
+      // The spec declares no servers, so the `servers` pointer resolves to nothing.
+      const region = regionForPointer(sarif, '/servers');
+      expect(region?.startLine).to.equal(1);
+    });
+
+    it('still emits SARIF that validates against the schema with real regions', function () {
+      const ajv = new Ajv({ strict: false, allErrors: true, logger: false });
+      const validate = ajv.compile(sarifSchema);
+      expect(validate(sarif), JSON.stringify(validate.errors?.slice(0, 3))).to.equal(true);
+      const lines = allResults(sarif).map(
+        (r) => r.locations?.[0]?.physicalLocation?.region?.startLine,
+      );
+      expect(lines.some((line) => typeof line === 'number' && line > 1)).to.equal(true);
+    });
+  });
+
+  describe('SARIF source line mapping — graceful degradation', function () {
+    function startLines(sarif: SarifLog): (number | undefined)[] {
+      return allResults(sarif).map((r) => r.locations?.[0]?.physicalLocation?.region?.startLine);
+    }
+
+    it('keeps every result at line 1 for a URL input (no source in the checkout)', function () {
+      const url =
+        'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json';
+      const run = runPostprocess({ INPUT: url, SEVERITY: 'note' });
+      expect(run.status).to.equal(0);
+      expect(startLines(run.sarif).every((line) => line === 1)).to.equal(true);
+    });
+
+    it('keeps every result at line 1 when the local file does not exist', function () {
+      const run = runPostprocess({ INPUT: './does-not-exist.yaml', SEVERITY: 'note' });
+      expect(run.status).to.equal(0);
+      expect(startLines(run.sarif).every((line) => line === 1)).to.equal(true);
     });
   });
 });

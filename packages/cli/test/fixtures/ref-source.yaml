@@ -1,0 +1,27 @@
+openapi: "3.0.3"
+info:
+  title: Ref Source API
+  version: "0.0.1"
+  description: >-
+    Fixture with a $ref'd response so a bundled diagnostic pointer over-specifies
+    against this source entry document, exercising SARIF strip-fallback mapping.
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses:
+        "200":
+          $ref: "#/components/responses/PetList"
+components:
+  responses:
+    PetList:
+      description: A list of pets
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string

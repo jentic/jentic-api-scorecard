@@ -1,0 +1,975 @@
+{
+  "metadata": {
+    "version": "0.0.1",
+    "releaseDate": null,
+    "engine": {
+      "name": "Jentic API Scoring Framework",
+      "version": "0.4.2+jairf.1.0.0"
+    },
+    "disclaimer": "Scores are indicative and opinion biased based on Jentic's view of what is important to deliver APIs which higher levels of interpretability for AI systems."
+  },
+  "apiMetadata": {
+    "apiId": "",
+    "name": "Ref Source API",
+    "apiDescriptionVersion": "0.0.1",
+    "specification": "openapi",
+    "specificationVersion": "3.0.3",
+    "sourceUrl": "content://uploaded",
+    "vendor": {
+      "name": "cap",
+      "domain": null,
+      "contact": {
+        "name": "",
+        "email": ""
+      }
+    },
+    "operationCount": 1,
+    "schemaCount": 3,
+    "securitySchemeCount": 0,
+    "securitySchemeTypes": [],
+    "tagCount": 0
+  },
+  "summary": {
+    "scoringDate": "2026-06-19T09:34:53Z",
+    "score": 57.92,
+    "level": "foundational",
+    "grade": "C+",
+    "dimensions": [
+      {
+        "kind": "FC",
+        "name": "Foundational Compliance",
+        "intention": "Base layer of spec validity and structural soundness.",
+        "score": 73.88,
+        "grade": "A-"
+      },
+      {
+        "kind": "DXJ",
+        "name": "Developer Experience & Jentic Compatibility",
+        "intention": "Clarity, completeness, and ingestion readiness for developers and tooling.",
+        "score": 54.58,
+        "grade": "C"
+      },
+      {
+        "kind": "ARAX",
+        "name": "AI-Readiness & Agent Experience",
+        "intention": "Semantic breadth, depth, and agent comprehension for AI systems.",
+        "score": 32.14,
+        "grade": "F"
+      },
+      {
+        "kind": "AU",
+        "name": "Agent Usability",
+        "intention": "Functional utility, complexity comfort, and AI orchestration readiness.",
+        "score": 93.7,
+        "grade": "A+"
+      },
+      {
+        "kind": "SEC",
+        "name": "Security",
+        "intention": "Trust, risk posture, and security compliance.",
+        "score": 100.0,
+        "grade": "A+"
+      },
+      {
+        "kind": "AID",
+        "name": "AI Discoverability",
+        "intention": "Findability, semantic richness, and reasoning readiness.",
+        "score": 100.0,
+        "grade": "A+"
+      }
+    ]
+  },
+  "details": [
+    {
+      "kind": "FDX",
+      "name": "Foundational & DX",
+      "description": "Human-oriented and tooling alignment - standards compliance, linting, and developer usability.",
+      "score": 63.67,
+      "grade": "B",
+      "dimensions": [
+        {
+          "kind": "FC",
+          "name": "Foundational Compliance",
+          "intention": "Base layer of spec validity and structural soundness.",
+          "score": 73.88,
+          "grade": "A-",
+          "signals": [
+            {
+              "kind": "lint_results",
+              "name": "Lint Results",
+              "description": "Aggregated quality score from linter diagnostics, weighted by severity.",
+              "score": 0.96,
+              "metadata": {
+                "severity_counts": {
+                  "critical": 0,
+                  "error": 2,
+                  "warning": 9,
+                  "info": 25,
+                  "hint": 0
+                },
+                "weighted_cost": 1.2474999999999998,
+                "max_cost": 25.0,
+                "provenance": {
+                  "diagnostics": {
+                    "severity": [1, 2, 3, 4]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "resolution_completeness",
+              "name": "Resolution Completeness",
+              "description": "Percentage of `$ref` references that resolve successfully.",
+              "score": 1.0,
+              "metadata": {
+                "total_refs": 1,
+                "resolved_refs": 1,
+                "unresolved_refs": 0,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["total_refs", "resolved_refs"],
+                    "source": ["speclynx-validator"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "spec_validity",
+              "name": "Specification Validity",
+              "description": "Checks whether the API description parses successfully and conforms to its declared specification (e.g., OpenAPI).",
+              "score": 0.0,
+              "metadata": {
+                "failure_reason": "validation_errors",
+                "diagnostic_counts": {
+                  "error": 2,
+                  "warning": 9,
+                  "information": 25,
+                  "hint": 0
+                },
+                "provenance": {
+                  "diagnostics": {
+                    "severity": [1]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "structural_integrity",
+              "name": "Structural Integrity",
+              "description": "Structural correctness score based on schema issues using logarithmic dampening.",
+              "score": 1.0,
+              "metadata": {
+                "structural_issues": 0,
+                "structural_issue_threshold": 15.0,
+                "category_counts": {
+                  "invalid_model_shape": 0,
+                  "contradictory_typing": 0,
+                  "impossible_constraints": 0,
+                  "broken_polymorphism": 0,
+                  "request_response_undefined": 0,
+                  "non_evaluable_example": 0,
+                  "unresolvable_or_circular_schema": 0
+                },
+                "provenance": {
+                  "diagnostics": {
+                    "code": [
+                      "jentic-object-should-have-shape",
+                      "jentic-format-must-match-type-numeric",
+                      "jentic-format-must-match-type-stringy",
+                      "jentic-oneof-requires-discriminator-for-objects",
+                      "jentic-request-body-must-have-schema",
+                      "jentic-response-content-should-have-schema",
+                      "schema_invalid_min_max"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "kind": "DXJ",
+          "name": "Developer Experience & Jentic Compatibility",
+          "intention": "Clarity, completeness, and ingestion readiness for developers and tooling.",
+          "score": 54.58,
+          "grade": "C",
+          "signals": [
+            {
+              "kind": "example_density",
+              "name": "Example Density",
+              "description": "How richly the API is illustrated with examples.",
+              "score": 0.0,
+              "metadata": {
+                "present_examples": 0,
+                "expected_examples": 4,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["present_examples", "expected_examples"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "example_validity",
+              "name": "Example Validity",
+              "description": "Percentage of examples that conform to their schemas.",
+              "score": 1.0,
+              "metadata": {
+                "valid_examples": 0,
+                "invalid_examples": 0,
+                "total_examples": 0,
+                "provenance": {
+                  "diagnostics": {
+                    "code": [
+                      "total_examples",
+                      "oas3-valid-schema-example",
+                      "oas3-valid-media-example"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "response_coverage",
+              "name": "Response Coverage",
+              "description": "Percentage of operations with complete response definitions (success, client error, server error).",
+              "score": 0.25,
+              "metadata": {
+                "total_operations": 1,
+                "response_coverage_sum": 0.25,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["operation_response_coverage", "total_operations"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "tooling_readiness",
+              "name": "Tooling Readiness",
+              "description": "Health of API ingestion, bundling, and resolution within Jentic pipelines.",
+              "score": 0.93,
+              "metadata": {
+                "ingestion_errors": 1,
+                "threshold": 15.0,
+                "interpretation": "Easily ingested",
+                "provenance": {
+                  "diagnostics": {
+                    "code": [
+                      "MISSING_SERVER_URL",
+                      "INVALID_SERVER_OBJECT_FORMAT",
+                      "SERVER_URL_MISSING_OR_EMPTY",
+                      "RELATIVE_SERVER_URL",
+                      "UNDEFINED_SECURITY_SCHEME_REFERENCE",
+                      "UNUSED_SECURITY_SCHEME_DEFINED",
+                      "OPENAPI_MISSING_INFO",
+                      "OPENAPI_MISSING_PATHS"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "AIRU",
+      "name": "AI-Readiness & Usability",
+      "description": "Machine-oriented semantic clarity - interpretability, structure, and AI agent comprehension.",
+      "score": 60.12,
+      "grade": "B-",
+      "dimensions": [
+        {
+          "kind": "ARAX",
+          "name": "AI-Readiness & Agent Experience",
+          "intention": "Semantic breadth, depth, and agent comprehension for AI systems.",
+          "score": 32.14,
+          "grade": "F",
+          "signals": [
+            {
+              "kind": "description_coverage",
+              "name": "Description Coverage",
+              "description": "Coverage of descriptions across API elements.",
+              "score": 0.29,
+              "metadata": {
+                "described_elements": 2,
+                "undescribed_elements": 5,
+                "describable_elements": 7,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["described_elements", "describable_elements"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "error_standardization",
+              "name": "Error Standardization",
+              "description": "Coverage of RFC 9457 Problem Details for error responses.",
+              "score": 0.0,
+              "metadata": {
+                "operations_using_rfc9457": 0,
+                "operations_without_rfc9457": 1,
+                "total_operations": 1,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["operations_using_RFC9457", "total_operations"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "opid_quality",
+              "name": "OperationId Quality",
+              "description": "Coverage, uniqueness, and casing consistency of operationIds for AI inference.",
+              "score": 1.0,
+              "metadata": {
+                "ops_with_operation_id": 1,
+                "total_operations": 1,
+                "coverage": 1.0,
+                "unambiguous_operation_ids": 1,
+                "ambiguous_operation_ids": 0,
+                "uniqueness": 1.0,
+                "total_collision_issues": 0,
+                "casing_consistency": 1.0,
+                "dominant_casing": "camelCase",
+                "dominant_casing_count": 1,
+                "casing_breakdown": {
+                  "camelCase": 1
+                },
+                "provenance": {
+                  "diagnostics": {
+                    "code": [
+                      "total_operations",
+                      "operations_with_operationId",
+                      "operation_id_casing",
+                      "ambiguous_operation_id",
+                      "operation-operationId-unique"
+                    ],
+                    "source": ["speclynx-validator", "spectral-validator"]
+                  }
+                }
+              }
+            },
+            {
+              "kind": "summary_coverage",
+              "name": "Summary Coverage",
+              "description": "Coverage of summaries across operations/tags/info.",
+              "score": 0.0,
+              "metadata": {
+                "summaries_present": 0,
+                "missing_summaries": 2,
+                "summaries_expected": 2,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["summaries_present", "summaries_expected"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "kind": "AU",
+          "name": "Agent Usability",
+          "intention": "Functional utility, complexity comfort, and AI orchestration readiness.",
+          "score": 93.7,
+          "grade": "A+",
+          "signals": [
+            {
+              "kind": "complexity_comfort",
+              "name": "Complexity Comfort",
+              "description": "Agent comfort level based on API operational and structural complexity.",
+              "score": 0.94,
+              "metadata": {
+                "total_operations": 1,
+                "max_schema_depth": 3,
+                "schema_count": 3,
+                "schemas_exceeding_threshold": 0,
+                "pct_schemas_exceeding": 0.0,
+                "normalised_endpoint_count": 0.0,
+                "normalised_schema_depth": 0.0,
+                "raw_complexity": 0.0,
+                "endpoint_baseline_start": 50.0,
+                "endpoint_baseline_range": 150.0,
+                "depth_baseline": 18.0,
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["total_operations", "max_schema_depth", "schema_count"],
+                    "source": ["speclynx-validator"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "TSD",
+      "name": "Trust/Safety & Discoverability",
+      "description": "Ecosystem-oriented governance - security, findability, and safe AI agent interaction.",
+      "score": 100.0,
+      "grade": "A+",
+      "dimensions": [
+        {
+          "kind": "SEC",
+          "name": "Security",
+          "intention": "Trust, risk posture, and security compliance.",
+          "score": 100.0,
+          "grade": "A+",
+          "signals": [
+            {
+              "kind": "auth_strength",
+              "name": "Authentication Strength",
+              "description": "Average quality of security schemes based on authentication method strength (weakest link for OAuth2).",
+              "score": 1.0,
+              "metadata": {
+                "strength_scores": [],
+                "schemes_count": 0,
+                "schemes": [],
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["security_schemes"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "kind": "AID",
+          "name": "AI Discoverability",
+          "intention": "Findability, semantic richness, and reasoning readiness.",
+          "score": 100.0,
+          "grade": "A+",
+          "signals": [
+            {
+              "kind": "descriptive_richness",
+              "name": "Descriptive Richness",
+              "description": "Clarity and depth of descriptions across API elements.",
+              "score": 1.0,
+              "metadata": {
+                "number_of_describable_elements": 0,
+                "operations_with_issues": 0,
+                "operations_without_issues": 0,
+                "sum_of_element_descriptive_scores": 0.0,
+                "operations_scored": [],
+                "provenance": {
+                  "diagnostics": {
+                    "code": ["semantic-analysis-summary", "POOR_OPERATION_SEMANTICS"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "MISSING_SERVER_URL",
+      "message": "OpenAPI spec must define at least one server in the 'servers' array.",
+      "severity": 1,
+      "source": "default-validator",
+      "data": {
+        "fixable": false,
+        "path": ["servers"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "no-empty-servers",
+      "message": "Servers must be present. [path: openapi]",
+      "severity": 1,
+      "source": "redocly-validator",
+      "data": {
+        "fixable": true,
+        "path": ["openapi"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "info-license",
+      "message": "Info object should contain `license` field. [path: info]",
+      "severity": 2,
+      "source": "redocly-validator",
+      "data": {
+        "fixable": true,
+        "path": ["info"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "operation-summary",
+      "message": "Operation object should contain `summary` field. [path: paths./pets.get.summary]",
+      "severity": 2,
+      "source": "redocly-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get", "summary"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "operation-4xx-response",
+      "message": "Operation must have at least one `4XX` response. [path: paths./pets.get.responses]",
+      "severity": 2,
+      "source": "redocly-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get", "responses"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "security-defined",
+      "message": "Every operation should have security defined on it or on the root level. [path: paths./pets.get]",
+      "severity": 2,
+      "source": "redocly-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "oas3-api-servers",
+      "message": "OpenAPI \"servers\" must be present and non-empty array. []",
+      "severity": 2,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "info-contact",
+      "message": "Info object must have \"contact\" object. [path: info]",
+      "severity": 2,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": ["info"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "api-health",
+      "message": "APIs MUST have a health path (`/health`) defined. [path: paths]",
+      "severity": 2,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "monite-openapi-operation-summary",
+      "message": "Each operation should have a summary [path: paths./pets.get]",
+      "severity": 3,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "operation-description",
+      "message": "Operation \"description\" must be present and non-empty string. [path: paths./pets.get]",
+      "severity": 2,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "operation-tags",
+      "message": "Operation must have non-empty \"tags\" array. [path: paths./pets.get]",
+      "severity": 2,
+      "source": "spectral-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get"],
+        "target": "bundled-spec"
+      }
+    },
+    {
+      "code": "total_refs",
+      "message": "Total references: 1",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "total_refs": 1,
+        "paths": [["paths", "/pets", "get", "responses", "200"]]
+      }
+    },
+    {
+      "code": "schema_count",
+      "message": "Schemas count: 3",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "schema_count": 3,
+        "paths": [
+          ["components", "responses", "PetList", "content", "application/json", "schema"],
+          ["components", "responses", "PetList", "content", "application/json", "schema", "items"],
+          [
+            "components",
+            "responses",
+            "PetList",
+            "content",
+            "application/json",
+            "schema",
+            "items",
+            "properties",
+            "name"
+          ]
+        ]
+      }
+    },
+    {
+      "code": "describable_elements",
+      "message": "Describable elements: 7",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "describable_elements": 7,
+        "paths": [
+          ["info"],
+          ["paths", "/pets"],
+          ["paths", "/pets", "get"],
+          ["components", "responses", "PetList"],
+          ["components", "responses", "PetList", "content", "application/json", "schema"],
+          ["components", "responses", "PetList", "content", "application/json", "schema", "items"],
+          [
+            "components",
+            "responses",
+            "PetList",
+            "content",
+            "application/json",
+            "schema",
+            "items",
+            "properties",
+            "name"
+          ]
+        ]
+      }
+    },
+    {
+      "code": "described_elements",
+      "message": "Described elements: 2",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "described_elements": 2,
+        "paths": [["info"], ["components", "responses", "PetList"]]
+      }
+    },
+    {
+      "code": "summaries_expected",
+      "message": "Summaries expected: 2",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "summaries_expected": 2,
+        "paths": [
+          ["paths", "/pets"],
+          ["paths", "/pets", "get"]
+        ]
+      }
+    },
+    {
+      "code": "summaries_present",
+      "message": "Summaries present: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "summaries_present": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "expected_examples",
+      "message": "Expected examples: 4",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "expected_examples": 4,
+        "paths": [
+          ["components", "responses", "PetList", "content", "application/json"],
+          ["components", "responses", "PetList", "content", "application/json", "schema"],
+          ["components", "responses", "PetList", "content", "application/json", "schema", "items"],
+          [
+            "components",
+            "responses",
+            "PetList",
+            "content",
+            "application/json",
+            "schema",
+            "items",
+            "properties",
+            "name"
+          ]
+        ]
+      }
+    },
+    {
+      "code": "present_examples",
+      "message": "Present examples: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "present_examples": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "total_examples",
+      "message": "Total examples: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "total_examples": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "max_schema_depth",
+      "message": "Deepest nesting found across all schemas: 3",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [
+          "paths",
+          "/pets",
+          "get",
+          "responses",
+          "200",
+          "content",
+          "application/json",
+          "schema"
+        ],
+        "target": "bundled-spec",
+        "max_schema_depth": 3,
+        "paths": []
+      }
+    },
+    {
+      "code": "operation_id_casing",
+      "message": "OperationId 'listPets' uses camelCase casing",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get", "operationId"],
+        "target": "bundled-spec",
+        "casing": "camelCase",
+        "operation_id": "listPets"
+      }
+    },
+    {
+      "code": "operations_using_RFC9457",
+      "message": "Operations using RFC 9457: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "operations_using_RFC9457": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "operation_response_coverage",
+      "message": "Response coverage: 2XX=true, 4XX=false, 5XX=false, default=false",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": ["paths", "/pets", "get"],
+        "target": "bundled-spec",
+        "2XX": true,
+        "4XX": false,
+        "5XX": false,
+        "default": false
+      }
+    },
+    {
+      "code": "operations_with_operationId",
+      "message": "Operations with operationId: 1",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "operations_with_operationId": 1,
+        "operation_ids": ["listPets"],
+        "paths": [["paths", "/pets", "get"]]
+      }
+    },
+    {
+      "code": "resolved_refs",
+      "message": "Resolved references: 1",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "resolved_refs": 1,
+        "paths": []
+      }
+    },
+    {
+      "code": "security_scheme_count",
+      "message": "Security Schemes count: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "security_scheme_count": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "security_schemes",
+      "message": "Security schemes: 0 Security Schemes",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "security_schemes": [],
+        "paths": []
+      }
+    },
+    {
+      "code": "security_scheme_types",
+      "message": "Security scheme types: []",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "security_scheme_types": [],
+        "paths": []
+      }
+    },
+    {
+      "code": "tag_count",
+      "message": "Tags count: 0",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "tag_count": 0,
+        "paths": []
+      }
+    },
+    {
+      "code": "total_operations",
+      "message": "Total Operations count: 1",
+      "severity": 3,
+      "source": "speclynx-validator",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "total_operations": 1,
+        "paths": [["paths", "/pets", "get"]]
+      }
+    },
+    {
+      "code": "relative_refs",
+      "message": "API has 0 relative references",
+      "severity": 3,
+      "source": "loader",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "relative_refs": 0
+      }
+    },
+    {
+      "code": "absolute_http_refs",
+      "message": "API has 0 http absolute references",
+      "severity": 3,
+      "source": "loader",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "absolute_http_refs": 0
+      }
+    },
+    {
+      "code": "total_refs",
+      "message": "API has 1 total references",
+      "severity": 3,
+      "source": "loader",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "total_refs": 1
+      }
+    },
+    {
+      "code": "resolved_refs",
+      "message": "API has 1 resolved references",
+      "severity": 3,
+      "source": "loader",
+      "data": {
+        "fixable": true,
+        "path": [],
+        "target": "bundled-spec",
+        "resolved_refs": 1
+      }
+    }
+  ]
+}
