@@ -296,6 +296,18 @@ This is the headline CI-integrator deliverable and the reason SARIF (Phase 17) a
 - Add a verification step confirming the engine emits severity-1 diagnostics on an error-bearing spec (so `max-errors: 0` is a gate that can actually trip).
 - Document the action in README; note the Marketplace listing requires `action.yml` at the repo root.
 
+## Phase 20 — SARIF Source Line/Column Mapping
+
+**Goal:** Map each diagnostic's JSON Pointer to its real source line/column so GitHub code-scanning findings land on the correct line instead of line 1, falling back to file-level when a pointer doesn't resolve against the source.
+**Depends on:** none (self-contained — builds on Phase 19's already-shipped action)
+**Priority:** High
+
+The Phase 19 action attaches a stopgap `physicalLocation` at `startLine: 1` to every SARIF result so code-scanning ingests findings at all. Findings link to the file but all point at line 1. This phase gives each located finding its real source position. Refs issue #191.
+
+- A located diagnostic's SARIF result points at its real `startLine`/`startColumn` in the Security tab, not line 1.
+- A diagnostic whose pointer can't be located keeps a sensible file-level fallback.
+- `$ref`-heavy / multi-file specs do not silently mislocate — either correct, or honestly file-level.
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
