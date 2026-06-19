@@ -162,9 +162,10 @@ async function createSourceLocator(input) {
         try {
           const node = evaluate(api, compilePointer(tokens));
           // A node can resolve yet carry no source-map position (a defensive case
-          // against an apidom build that returns a positionless node); treat that
-          // like a miss and strip to the ancestor rather than emit a NaN region.
-          if (Number.isFinite(node.startLine) && Number.isFinite(node.startCharacter)) {
+          // against an apidom build that returns a positionless node); positions
+          // are integer offsets, so a non-integer (undefined/NaN) means "no
+          // position" — strip to the ancestor rather than emit a bogus region.
+          if (Number.isInteger(node.startLine) && Number.isInteger(node.startCharacter)) {
             // apidom positions are 0-based; SARIF regions are 1-based.
             // startCharacter is a UTF-16 offset, matching SARIF's default column
             // kind, so no transcoding is needed.
