@@ -132,7 +132,14 @@ async function createSourceLocator(input) {
   }
   try {
     const { parse } = await import('@speclynx/apidom-reference');
-    const { evaluate } = await import('@speclynx/apidom-json-pointer');
+    // apidom-json-pointer re-exports the RFC 6901 parse/compile helpers; use them
+    // rather than hand-splitting on '/' — they decode ~0/~1 and round-trip a
+    // slash-bearing token (e.g. 'application/json') correctly.
+    const {
+      evaluate,
+      parse: parsePointer,
+      compile: compilePointer,
+    } = await import('@speclynx/apidom-json-pointer');
     // input is a path relative to the consumer's checkout root, which is also
     // the helper's cwd (the postprocess step runs with no working-directory, the
     // same cwd the score step read it from), so resolve to an absolute file URI.
@@ -146,12 +153,14 @@ async function createSourceLocator(input) {
       return null;
     }
     return (pointer) => {
-      const segments = String(pointer ?? '')
-        .split('/')
-        .slice(1);
-      while (segments.length > 0) {
+      const parsed = parsePointer(String(pointer ?? ''));
+      if (!parsed.result.success) {
+        return null;
+      }
+      const tokens = parsed.tree;
+      while (tokens.length > 0) {
         try {
-          const node = evaluate(api, `/${segments.join('/')}`);
+          const node = evaluate(api, compilePointer(tokens));
           // A node can resolve yet carry no source-map position (a defensive case
           // against an apidom build that returns a positionless node); treat that
           // like a miss and strip to the ancestor rather than emit a NaN region.
@@ -162,9 +171,9 @@ async function createSourceLocator(input) {
             return { startLine: node.startLine + 1, startColumn: node.startCharacter + 1 };
           }
         } catch {
-          // fall through to strip the last segment
+          // fall through to strip the last token
         }
-        segments.pop();
+        tokens.pop();
       }
       return null;
     };
