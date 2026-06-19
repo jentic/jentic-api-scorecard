@@ -150,10 +150,14 @@ async function createSourceLocator(input) {
       while (tokens.length > 0) {
         try {
           const node = evaluate(api, compilePointer(tokens));
-          // A node can resolve yet lack a source position; integer offsets only,
-          // else strip to the ancestor. apidom is 0-based UTF-16 → 1-based SARIF.
-          if (Number.isInteger(node.startLine) && Number.isInteger(node.startCharacter)) {
-            return { startLine: node.startLine + 1, startColumn: node.startCharacter + 1 };
+          // Source-mapped nodes carry the full range together; apidom 0-based → 1-based SARIF.
+          if (Number.isInteger(node.startLine)) {
+            return {
+              startLine: node.startLine + 1,
+              startColumn: node.startCharacter + 1,
+              endLine: node.endLine + 1,
+              endColumn: node.endCharacter + 1,
+            };
           }
         } catch {
           // fall through to strip the last token
@@ -175,23 +179,26 @@ async function createSourceLocator(input) {
 // unresolvable pointers, no source). Existing logicalLocations are preserved
 // alongside. See createSourceLocator and issue #191.
 async function addPhysicalLocations(doc, artifactUri, locate) {
-  const physicalLocationFor = (region) => ({
+  const physicalLocationForPointer = (pointer) => ({
     artifactLocation: { uri: artifactUri },
-    region,
+    region: (locate && pointer ? locate(pointer) : null) ?? { startLine: 1 },
   });
   const runs = (doc.runs ?? []).map((run) => ({
     ...run,
     results: (run.results ?? []).map((result) => {
       const existing = Array.isArray(result.locations) ? result.locations : [];
-      const pointer = existing[0]?.logicalLocations?.[0]?.fullyQualifiedName;
-      const region = (locate && pointer ? locate(pointer) : null) ?? { startLine: 1 };
-      const physicalLocation = physicalLocationFor(region);
-      // Add the physicalLocation to the first location (keeping its
-      // logicalLocations), or create one when the result had no locations.
+      // Give every location its own physicalLocation mapped from its own logical
+      // pointer (a diagnostic may carry several), keeping its logicalLocations.
+      // A result with no locations still needs one so code-scanning ingests it.
       const locations =
         existing.length > 0
-          ? [{ ...existing[0], physicalLocation }, ...existing.slice(1)]
-          : [{ physicalLocation }];
+          ? existing.map((location) => ({
+              ...location,
+              physicalLocation: physicalLocationForPointer(
+                location.logicalLocations?.[0]?.fullyQualifiedName,
+              ),
+            }))
+          : [{ physicalLocation: physicalLocationForPointer(undefined) }];
       return { ...result, locations };
     }),
   }));

@@ -26,6 +26,8 @@ const refReport = readFileSync(refReportPath, 'utf8');
 interface SarifRegion {
   startLine: number;
   startColumn?: number;
+  endLine?: number;
+  endColumn?: number;
 }
 interface SarifPhysicalLocation {
   artifactLocation: { uri: string };
@@ -319,16 +321,13 @@ describe('postprocess helper (black-box)', function () {
   });
 
   describe('SARIF source line mapping', function () {
-    // Find the first result whose logical pointer matches (RFC 6901), to assert
-    // the physical region the mapping stamped onto that specific diagnostic.
+    // The region mapped onto the location whose logical pointer matches (RFC 6901),
+    // scanning every location since a diagnostic may carry several pointers.
     function regionForPointer(sarif: SarifLog, pointer: string): SarifRegion | undefined {
-      for (const result of allResults(sarif)) {
-        const loc = result.locations?.[0];
-        if (loc?.logicalLocations?.[0]?.fullyQualifiedName === pointer) {
-          return loc.physicalLocation?.region;
-        }
-      }
-      return undefined;
+      return allResults(sarif)
+        .flatMap((result) => result.locations ?? [])
+        .find((loc) => loc.logicalLocations?.[0]?.fullyQualifiedName === pointer)?.physicalLocation
+        ?.region;
     }
 
     let sarif: SarifLog;
@@ -340,11 +339,23 @@ describe('postprocess helper (black-box)', function () {
       sarif = runPostprocess({ INPUT: refSourcePath, SEVERITY: 'note' }, refReport).sarif;
     });
 
-    it('maps an exactly-resolving pointer to its real source line', function () {
-      // ref-source.yaml line 11 is `      operationId: listPets`.
+    it('maps an exactly-resolving pointer to its real source range', function () {
+      // ref-source.yaml line 11 is `      operationId: listPets`; the mapped
+      // range spans the whole value node so code-scanning highlights it all.
       const region = regionForPointer(sarif, '/paths/~1pets/get/operationId');
       expect(region?.startLine).to.equal(11);
       expect(region?.startColumn).to.be.a('number').and.greaterThan(1);
+      expect(region?.endLine).to.equal(11);
+      expect(region?.endColumn)
+        .to.be.a('number')
+        .and.greaterThan(region?.startColumn ?? 0);
+    });
+
+    it('spans a multi-line node from its start to its end line', function () {
+      // The PetList component object opens on line 18 and closes on line 28.
+      const region = regionForPointer(sarif, '/components/responses/PetList');
+      expect(region?.startLine).to.equal(18);
+      expect(region?.endLine).to.equal(28);
     });
 
     it('strips an over-specified pointer to its nearest existing ancestor', function () {
