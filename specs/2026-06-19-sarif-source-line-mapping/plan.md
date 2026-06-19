@@ -37,7 +37,7 @@
 
 ## Group 6 — Verify
 
-14. `npm run lint -w @jentic/api-scorecard-cli` exits 0 (ESLint + Prettier clean on the touched `.ts` test file; `postprocess.mjs` is linted per the repo's JS config).
+14. `npm run lint -w @jentic/api-scorecard-cli` exits 0 (ESLint + Prettier clean on the touched `.ts` test file). Note: `action/postprocess.mjs` is **not** covered by this lint — `eslint.config.js` globally ignores `**/*.mjs` and the CLI lint script targets only `src test`. Match the existing helper's style by hand; do not assume lint will catch a `.mjs` regression.
 15. `npm run build -w @jentic/api-scorecard-cli` exits 0 (the black-box suite imports the built workspace formatters).
 16. `npm test -w @jentic/api-scorecard-cli` exits 0, including the new source-line-mapping and graceful-degradation cases and the existing `postprocess.test.ts` cases (which pass `INPUT: './openapi.yaml'` with no file present — must still produce line-1 SARIF).
 17. End-to-end (manual): run the action helper against the paired source fixture and confirm `report.sarif` contains a result with `region.startLine > 1` matching the known fixture line, and that a URL input run still yields `startLine: 1`. Optionally drive the full action via `.github/workflows/action-selftest.yml` semantics — note the self-test's OAK input is a **URL**, so it exercises the line-1 (no-op) path; real-line mapping is exercised by the local-file fixture test in Group 4.

@@ -10,7 +10,7 @@ All of the following must be true before this branch is merged.
 npm run lint -w @jentic/api-scorecard-cli
 ```
 
-Exits 0. ESLint + Prettier pass on the extended `packages/cli/test/action/postprocess.test.ts` and on `action/postprocess.mjs`.
+Exits 0. ESLint + Prettier pass on the extended `packages/cli/test/action/postprocess.test.ts`. This lint does **not** cover `action/postprocess.mjs` — `eslint.config.js` globally ignores `**/*.mjs` and the CLI lint script targets only `src test` — so the helper's style is matched by hand, not enforced here.
 
 ### 2. Build is clean
 
@@ -57,7 +57,7 @@ The helper performs **no** `score` / `docker run` invocation; it reads and parse
 
 ### 9. Docs updated
 
-`docs/architecture.md` (action SARIF section) and `.claude/CLAUDE.md` (`action/` description) describe real pointer→source-line mapping for local-file inputs, the strip-fallback behavior, the two new `action/` dependencies, and that URL inputs keep the file-level fallback — replacing the line-1 stopgap language and the open-#191 reference.
+`docs/architecture.md` (action SARIF section) and `.claude/CLAUDE.md` (`action/` description) describe real pointer→source-line mapping for local-file inputs, the strip-fallback behavior, the two new `action/` dependencies, and that URL inputs keep the file-level fallback — replacing the line-1 stopgap language and the open issue #191 reference.
 
 ### 10. Roadmap lifecycle marker
 
