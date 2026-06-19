@@ -123,15 +123,21 @@ function sarifArtifactUri(input) {
 // failure (apidom absent, unreadable file, parse error), so the caller falls
 // back to the line-1 stopgap. apidom is imported dynamically: it's declared in
 // action/package.json (installed on the published consumer path) but absent on
-// the self-test's built-workspace skip-install path, which only ever scores a
-// URL and so never reaches this import.
+// the self-test's built-workspace skip-install path — there the import throws and
+// the catch returns null, so that path degrades to line 1 without a hard failure.
 async function createSourceLocator(input) {
   const value = String(input ?? '').trim();
-  if (value === '' || /^https?:\/\//i.test(value)) {
+  if (value === '') {
     return null;
   }
   try {
-    const { parse } = await import('@speclynx/apidom-reference');
+    const { parse, url } = await import('@speclynx/apidom-reference');
+    // A URL'd spec isn't in the consumer's checkout, so code-scanning has nothing
+    // to anchor a line against — mapping is a no-op. Use apidom's URL predicate
+    // rather than a hand-rolled scheme regex.
+    if (url.isHttpUrl(value)) {
+      return null;
+    }
     // apidom-json-pointer re-exports the RFC 6901 parse/compile helpers; use them
     // rather than hand-splitting on '/' — they decode ~0/~1 and round-trip a
     // slash-bearing token (e.g. 'application/json') correctly.
