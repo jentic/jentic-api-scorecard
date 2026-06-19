@@ -1,0 +1,23 @@
+# Phase 20 Retrospective — SARIF Source Line/Column Mapping
+
+## Deviations from the spec
+
+- **Dynamic import instead of a top-level import** (`plan.md` task 3 / Group 2). The plan specified `import { parse } from '@speclynx/apidom-reference'` at module top. The implementation imports apidom *dynamically* inside `createSourceLocator`, behind the URL/empty guard and a `try/catch`. A static top-level import crashes `action/postprocess.mjs` on module load whenever apidom is absent — which is exactly the action-selftest's built-workspace skip-install path, where apidom is never installed (that path only ever scores a URL, so it never needs the mapping). The dynamic import doubles as the graceful-degradation mechanism the spec already required.
+- **apidom added as a `packages/cli` devDependency, not only `action/package.json`** (`plan.md` task 1, `requirements.md` Constraints). The plan named only `action/package.json` (the runtime/consumer path). But the black-box test spawns `node action/postprocess.mjs`, which resolves bare imports from the repo-root `node_modules`; apidom only hoists there if a workspace member declares it. Mirroring how `ajv` is already a `packages/cli` devDependency, apidom was added there too so `npm test` exercises real mapping instead of silently hitting the line-1 fallback. The `action/package.json` runtime dep stays for the consumer path.
+- **`docs/architecture.md` not updated** (`plan.md` task 11, `validation.md` §9). The plan and DoD assumed an action/SARIF section to update. `docs/architecture.md` has none — it is a "Delivery 1" document that predates the Phase 19 action; the action is documented only in `.claude/CLAUDE.md`. Task 11 had nothing to edit; only the CLAUDE.md update (task 12) was real.
+
+## Root cause
+
+All three trace to the spec being written from the *runtime/consumer* mental model without exercising the *test and self-test* execution paths. The dynamic-import and devDep deviations are two faces of one missing fact: `action/postprocess.mjs` is a non-workspace `.mjs` helper that runs in three different dependency environments (consumer `npm install`, root `npm test` spawn, self-test skip-install build) — the spec reasoned only about the first. The architecture.md deviation is a stale-cross-reference: the roadmap and spec carried "update docs/architecture.md" by analogy to earlier formatter phases, without checking that the action was never documented there in the first place (it landed in CLAUDE.md only).
+
+A secondary, smaller item: the existing `scorecard.sample.json` fixture came from a single-file spec (bundled == source), so it could not exercise strip-fallback-to-ancestor at all; a `$ref`-bearing source plus a fresh real engine capture (`ref-source.yaml` + `scorecard.ref-source.json`) had to be produced. The spec's task 8 *did* anticipate this ("pick the source for that property"), so it is not a true miss — but it confirms the cost of fixture pairing was real and worth the explicit instruction.
+
+## Lesson for future specs
+
+- When a spec touches a **non-workspace helper** (`action/`, scripts outside `packages/*`), enumerate every environment it runs in — consumer install, `npm test` spawn, CI self-test — and state where each dependency must be declared (runtime vs. devDep, which `package.json`) and whether imports must be static or dynamic. A bare "add dep X to package.json Y" is insufficient when the file runs in more than one resolution root.
+- A spec that promises a doc edit must name a doc section that **exists**. Before writing a "update `docs/architecture.md`" task, grep the doc for the feature; if it is documented elsewhere (e.g. `.claude/CLAUDE.md`), point the task there. Stale "update the architecture doc" tasks copied by analogy waste an implementation step.
+- For pointer/location work, the fixture must be chosen so the hard case (here, strip-fallback against a `$ref`'d source) is genuinely reachable — a single-file capture where bundled == source cannot exercise it. Capturing a real engine report from a purpose-built `$ref` source via `score_openapi` (no mocking) is the right call.
+
+## Promotion candidate
+
+`no` — these are empirical authoring reminders for `/sdd-new-spec`, not load-bearing invariants. The non-workspace-helper dependency-environment lesson is the strongest candidate and may warrant promotion to `specs/tech-stack.md` if it recurs in a future `action/` or scripts phase, but one occurrence is not enough.
