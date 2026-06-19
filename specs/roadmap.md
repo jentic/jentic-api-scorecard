@@ -296,7 +296,7 @@ This is the headline CI-integrator deliverable and the reason SARIF (Phase 17) a
 - Add a verification step confirming the engine emits severity-1 diagnostics on an error-bearing spec (so `max-errors: 0` is a gate that can actually trip).
 - Document the action in README; note the Marketplace listing requires `action.yml` at the repo root.
 
-## Phase 20 — SARIF Source Line/Column Mapping
+## Phase 20 — SARIF Source Line/Column Mapping ✅
 
 **Goal:** Map each diagnostic's JSON Pointer to its real source line/column so GitHub code-scanning findings land on the correct line instead of line 1, falling back to file-level when a pointer doesn't resolve against the source.
 **Depends on:** none (self-contained — builds on Phase 19's already-shipped action)
