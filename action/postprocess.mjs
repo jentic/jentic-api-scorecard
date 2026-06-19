@@ -112,44 +112,32 @@ function sarifArtifactUri(input) {
   return value.replace(/^\.\//, '');
 }
 
-// Build a JSON-Pointer→source-position locator for a local-file input, or null
-// when no real mapping is possible. The engine's diagnostic pointers are valid
-// against the bundled spec (discarded in the container), so a pointer that dives
-// into a $ref'd node won't resolve against the user's source; the returned
-// locate() pops the last segment and retries until a node resolves, landing on
-// the nearest existing ancestor rather than mislocating. Returns null for URL
-// inputs (the URL'd file isn't in the consumer's checkout, so code-scanning has
-// nothing to anchor a line against — mapping would be a no-op) and on any
-// failure (apidom absent, unreadable file, parse error), so the caller falls
-// back to the line-1 stopgap. apidom is imported dynamically: it's declared in
-// action/package.json (installed on the published consumer path) but absent on
-// the self-test's built-workspace skip-install path — there the import throws and
-// the catch returns null, so that path degrades to line 1 without a hard failure.
+// Build a locator mapping a diagnostic's JSON Pointer to a source line/column,
+// or null when no mapping is possible (URL/non-file input, or apidom absent —
+// the caller then falls back to line 1). apidom is imported dynamically so the
+// self-test's skip-install path degrades via the catch instead of a load error.
 async function createSourceLocator(input) {
-  const value = String(input ?? '').trim();
-  if (value === '') {
-    return null;
-  }
+  const uri = String(input ?? '').trim();
+
+  if (uri === '') return null;
+
   try {
     const { parse, url } = await import('@speclynx/apidom-reference');
-    // A URL'd spec isn't in the consumer's checkout, so code-scanning has nothing
-    // to anchor a line against — mapping is a no-op. Use apidom's URL predicate
-    // rather than a hand-rolled scheme regex.
-    if (url.isHttpUrl(value)) {
+    // Only a checkout-local file can be mapped; a URL/non-file input has nothing
+    // for code-scanning to anchor against.
+    if (!url.isFileSystemPath(uri)) {
       return null;
     }
-    // apidom-json-pointer re-exports the RFC 6901 parse/compile helpers; use them
-    // rather than hand-splitting on '/' — they decode ~0/~1 and round-trip a
-    // slash-bearing token (e.g. 'application/json') correctly.
+    // apidom-json-pointer re-exports the RFC 6901 parse/compile helpers, which
+    // handle ~0/~1 and slash-bearing tokens (e.g. 'application/json').
     const {
       evaluate,
       parse: parsePointer,
       compile: compilePointer,
     } = await import('@speclynx/apidom-json-pointer');
-    // input is a path relative to the consumer's checkout root, which is also
-    // the helper's cwd (the postprocess step runs with no working-directory, the
-    // same cwd the score step read it from), so resolve to an absolute file URI.
-    const fileUri = pathToFileURL(resolvePath(process.cwd(), value)).href;
+    // input is relative to the checkout root, which is the helper's cwd (same cwd
+    // the score step read it from), so resolve to an absolute file URI.
+    const fileUri = pathToFileURL(resolvePath(process.cwd(), uri)).href;
     const parseResult = await parse(fileUri, {
       parse: { parserOpts: { sourceMap: true, strict: false } },
       resolve: { resolverOpts: { fileAllowList: [/\.(ya?ml|json)$/i] } },
@@ -167,14 +155,9 @@ async function createSourceLocator(input) {
       while (tokens.length > 0) {
         try {
           const node = evaluate(api, compilePointer(tokens));
-          // A node can resolve yet carry no source-map position (a defensive case
-          // against an apidom build that returns a positionless node); positions
-          // are integer offsets, so a non-integer (undefined/NaN) means "no
-          // position" — strip to the ancestor rather than emit a bogus region.
+          // A node can resolve yet lack a source position; integer offsets only,
+          // else strip to the ancestor. apidom is 0-based UTF-16 → 1-based SARIF.
           if (Number.isInteger(node.startLine) && Number.isInteger(node.startCharacter)) {
-            // apidom positions are 0-based; SARIF regions are 1-based.
-            // startCharacter is a UTF-16 offset, matching SARIF's default column
-            // kind, so no transcoding is needed.
             return { startLine: node.startLine + 1, startColumn: node.startCharacter + 1 };
           }
         } catch {

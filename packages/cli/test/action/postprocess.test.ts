@@ -393,5 +393,13 @@ describe('postprocess helper (black-box)', function () {
       expect(run.status).to.equal(0);
       expect(startLines(run.sarif).every((line) => line === 1)).to.equal(true);
     });
+
+    it('keeps every result at line 1 for a non-filesystem, non-URL input', function () {
+      // A host:port input is neither an http URL nor a filesystem path; the
+      // positive isFileSystemPath check rejects it rather than trying to parse it.
+      const run = runPostprocess({ INPUT: 'localhost:3000/openapi.json', SEVERITY: 'note' });
+      expect(run.status).to.equal(0);
+      expect(startLines(run.sarif).every((line) => line === 1)).to.equal(true);
+    });
   });
 });
