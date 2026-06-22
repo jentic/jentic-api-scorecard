@@ -170,7 +170,7 @@ Check these to react correctly to failures — they are a stable contract.
 | 2 | Auth: `JENTIC_API_KEY` unrecognized, or a local/stdin input ran without a key. | Set a valid `JENTIC_API_KEY`. |
 | 3 | Gate rejected: a non-OAK URL with no key set. | Set a key, or use an OAK URL. |
 | 4 | Docker not installed or daemon unreachable. | Start Docker. |
-| 5 | Spec fetch, parse, or host-side bundling failure (local files and `--bundle` URLs). | Verify the spec is reachable and valid OpenAPI. |
+| 5 | Spec fetch, parse, or host-side bundling failure (local files and `--bundle` URLs), or an unsupported OpenAPI version (3.2). | Verify the spec is reachable and valid OpenAPI 3.0.x / 3.1.x (2.0 is auto-converted; 3.2 is rejected). |
 | 6 | Engine invocation failure. | Re-run; inspect stderr. |
 | 7 | Rate limited: key valid but over the monthly quota. | Wait for reset (see `Retry-After`) or upgrade. |
 | 8 | LLM analysis failed under `--with-llm`. | Fix provider credentials, or re-run **without** `--with-llm`. |
