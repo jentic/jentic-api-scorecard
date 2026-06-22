@@ -14,6 +14,9 @@ from jentic.apitools.pipelines import score_openapi
 
 from jentic_scorecard_runner.exit_codes import ExitCode
 from jentic_scorecard_runner.version_guard import (
+    GOOGLE_DISCOVERY_DIAGNOSTIC_CODE,
+    SWAGGER_2_DIAGNOSTIC_CODE,
+    conversion_notice_message,
     detect_version,
     is_unsupported,
     scorecard_version,
@@ -99,6 +102,14 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
         sys.stdout.buffer.write(scorecard_bytes)
         sys.stdout.buffer.flush()
 
+        # 2.0 / Discovery inputs are scored against a machine-generated 3.0 copy,
+        # so the diagnostic locations won't match the author's file. The engine
+        # emits an informational diagnostic when it converts; surface it as a
+        # stderr notice so the caveat reaches every --detail level. See issue #113.
+        notice = _conversion_notice(result.diagnostics)
+        if notice is not None:
+            print(notice, file=sys.stderr, end="")
+
         # The engine reports success even when LLM batches fail: the affected
         # LLM-derived signals are scored as perfect, inflating their dimension(s)
         # and the overall score. When the caller opted into --with-llm, treat
@@ -113,6 +124,17 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             )
             return ExitCode.LLM_FAILURE
     return ExitCode.SUCCESS
+
+
+def _conversion_notice(diagnostics: list[object]) -> str | None:
+    """Return the conversion notice if the engine converted the input, else None."""
+    for diag in diagnostics or []:
+        code = getattr(diag, "code", None)
+        if code == SWAGGER_2_DIAGNOSTIC_CODE:
+            return conversion_notice_message("Swagger/OpenAPI 2.0")
+        if code == GOOGLE_DISCOVERY_DIAGNOSTIC_CODE:
+            return conversion_notice_message("Google Discovery")
+    return None
 
 
 def _llm_analysis_failed(diagnostics: list[object]) -> bool:

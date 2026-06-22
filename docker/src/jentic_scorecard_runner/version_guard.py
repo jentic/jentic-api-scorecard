@@ -68,3 +68,17 @@ def unsupported_version_message(version: str) -> str:
         "auto-converted to 3.0 and scored).\n"
         "See https://github.com/jentic/jentic-api-scorecard/issues/113.\n"
     )
+
+
+# Informational diagnostics the engine emits when it converts the input to OAS3.
+SWAGGER_2_DIAGNOSTIC_CODE = "imported-spec-is-swagger-2"
+GOOGLE_DISCOVERY_DIAGNOSTIC_CODE = "imported-spec-is-google-discovery"
+
+
+def conversion_notice_message(source_format: str) -> str:
+    """The stderr notice shown when the input was auto-converted to OpenAPI 3.0."""
+    return (
+        f"notice: input is {source_format}; scored against an auto-converted OpenAPI 3.0 "
+        "copy. Diagnostic locations (line/column, JSON Pointer) may not match your "
+        "original file.\n"
+    )

@@ -3,6 +3,7 @@
 import json
 
 from jentic_scorecard_runner.version_guard import (
+    conversion_notice_message,
     detect_version,
     is_unsupported,
     scorecard_version,
@@ -63,3 +64,15 @@ class TestScorecardVersion:
 
     def test_invalid_json(self):
         assert scorecard_version(b"not json") is None
+
+
+class TestConversionNotice:
+    def test_names_source_format(self):
+        message = conversion_notice_message("Swagger/OpenAPI 2.0")
+        assert "Swagger/OpenAPI 2.0" in message
+        assert "auto-converted OpenAPI 3.0" in message
+
+    def test_warns_about_locations(self):
+        message = conversion_notice_message("Google Discovery")
+        assert "Google Discovery" in message
+        assert "line/column" in message

@@ -73,7 +73,7 @@ tend to produce outsized gains for both human developers and AI agents:
 |---|---|
 | OpenAPI 3.0.x | ✅ Fully supported — scored as authored. |
 | OpenAPI 3.1.x | ✅ Fully supported — scored as authored. |
-| Swagger / OpenAPI 2.0 | ✅ Supported via conversion. Auto-converted to OpenAPI 3.0 first, then scored. You are scored against the converted copy, so diagnostic locations (line/column, JSON Pointer) may not line up exactly with your original 2.0 file, but the substance of each finding holds and can be located manually. |
+| Swagger / OpenAPI 2.0 | ✅ Supported via conversion. Auto-converted to OpenAPI 3.0 first, then scored. You are scored against the converted copy, so diagnostic locations (line/column, JSON Pointer) may not line up exactly with your original 2.0 file, but the substance of each finding holds and can be located manually. The CLI prints a one-line notice on stderr when this happens. |
 | Google Discovery | ✅ Supported via conversion — same caveat as 2.0. |
 | OpenAPI 3.2 | ❌ Not supported. The scoring engine cannot parse 3.2 and would emit an inflated, meaningless score, so the CLI **rejects it** with exit code 5 rather than return a wrong number. Tracked in [#113](https://github.com/jentic/jentic-api-scorecard/issues/113). |
 

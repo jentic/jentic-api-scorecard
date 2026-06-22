@@ -127,6 +127,33 @@ class TestVersionGuard:
         assert "OpenAPI 3.2.0 is not supported" in result.stderr
         assert result.stdout == ""
 
+    def test_stdin_swagger_2_scores_with_conversion_notice(self, httpserver):
+        # Swagger 2.0 is scored against an engine-converted 3.0 copy: the run
+        # succeeds and streams a scorecard, but stderr carries the location caveat.
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            json.dumps({"status": "ok"}), status=200, content_type="application/json"
+        )
+        swagger_2 = json.dumps(
+            {
+                "swagger": "2.0",
+                "info": {"title": "X", "version": "1.0.0"},
+                "paths": {"/x": {"get": {"responses": {"200": {"description": "ok"}}}}},
+            }
+        )
+        result = run_runner(
+            "score",
+            stdin_data=swagger_2,
+            env_override={
+                "JENTIC_API_KEY": "real-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
+            timeout=120,
+        )
+        assert result.returncode == 0, result.stderr
+        assert '"summary"' in result.stdout
+        assert "Swagger/OpenAPI 2.0" in result.stderr
+        assert "may not match your" in result.stderr
+
 
 class TestLlmFailure:
     _OAK_PETSTORE_URL = (
