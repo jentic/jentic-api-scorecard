@@ -35,9 +35,27 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     apt-get install -y --no-install-recommends \
         openssl libssl3t64 openssl-provider-legacy && \
     rm -rf /var/lib/apt/lists/* && \
-    # Refresh bundled npm so its transitive deps (ip-address, brace-expansion, …) carry current fixes.
+    # Refresh bundled npm so its transitive deps (picomatch via tinyglobby,
+    # ip-address, brace-expansion, …) carry current fixes. Required: stock npm
+    # bundles vulnerable picomatch 4.0.3 (CVE-2026-33671); npm@latest ships the
+    # fixed 4.0.4. The trade-off is that npm@latest also bundles undici 6.26.0
+    # (CVE-2026-12151), patched just below.
     npm install -g npm@latest && \
     npm cache clean --force && \
+    # Patch undici CVE-2026-12151 (WebSocket-client DoS): npm@latest bundles
+    # undici 6.26.0, below the 6.27.0 fix, and the npx-warmed validators pull
+    # 6.24.0 into the cache. The flaw is unreachable here (the validators only
+    # GET specs over HTTP — no WebSocket client), but we ship the image, so
+    # consumers' scanners flag it and can't patch; only an in-image bump reaches
+    # them. Stash the latest 6.x to /opt (always >= 6.27.0, never a downgrade)
+    # and overwrite npm's bundled copy now; the cache copy is patched as runner
+    # after the warm-cache run below. Drop once both carry undici >= 6.27.0.
+    mkdir -p /opt/undici-6 && \
+    npm pack undici@6 --pack-destination /opt/undici-6 > /dev/null && \
+    tar -xzf /opt/undici-6/undici-*.tgz -C /opt/undici-6 && \
+    rm -f /opt/undici-6/undici-*.tgz && \
+    rm -rf /usr/local/lib/node_modules/npm/node_modules/undici && \
+    cp -a /opt/undici-6/package /usr/local/lib/node_modules/npm/node_modules/undici && \
     # System pip is unused at runtime — venv ships via uv. Remove it to drop pip CVEs from the scan.
     rm -rf /usr/local/lib/python3.14/site-packages/pip \
            /usr/local/lib/python3.14/site-packages/pip-*.dist-info \
@@ -61,8 +79,13 @@ USER runner
 
 # Warm npm cache: run a real score so npx-invoked validators get cached.
 # The OAK petstore URL is on the gate's allowlist, so no key is required.
+# Then overwrite the vulnerable undici 6.24.0 the validators pulled into the
+# npx cache with the patched 6.x stashed at /opt (see CVE-2026-12151 above);
+# runner owns the cache, so this must run in the unprivileged layer.
 RUN python -m jentic_scorecard_runner score \
         --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json \
-        > /dev/null
+        > /dev/null && \
+    find /var/cache/npm -type d -path '*/node_modules/undici' \
+        -exec sh -c 'rm -rf "$1" && cp -a /opt/undici-6/package "$1"' _ {} \;
 
 ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
