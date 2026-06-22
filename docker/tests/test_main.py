@@ -108,6 +108,26 @@ class TestGateIntegration:
         assert "requires a Jentic API key" in result.stderr
 
 
+class TestVersionGuard:
+    def test_stdin_3_2_rejected_before_scoring(self, httpserver):
+        # Gate-allow so the request reaches the version guard; the guard reads the
+        # buffered stdin bytes and rejects 3.2 before the engine ever runs.
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            json.dumps({"status": "ok"}), status=200, content_type="application/json"
+        )
+        result = run_runner(
+            "score",
+            stdin_data='{"openapi":"3.2.0","info":{"title":"X","version":"1.0.0"},"paths":{}}',
+            env_override={
+                "JENTIC_API_KEY": "real-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
+        )
+        assert result.returncode == 5, result.stderr
+        assert "OpenAPI 3.2.0 is not supported" in result.stderr
+        assert result.stdout == ""
+
+
 class TestLlmFailure:
     _OAK_PETSTORE_URL = (
         "https://raw.githubusercontent.com/jentic/jentic-public-apis/"

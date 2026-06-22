@@ -1,6 +1,5 @@
 """Score an OpenAPI spec in-process and stream the scorecard JSON to stdout."""
 
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -14,6 +13,12 @@ from jentic.apitools.common.models import (
 from jentic.apitools.pipelines import score_openapi
 
 from jentic_scorecard_runner.exit_codes import ExitCode
+from jentic_scorecard_runner.version_guard import (
+    detect_version,
+    is_unsupported,
+    scorecard_version,
+    unsupported_version_message,
+)
 
 
 _LLM_ANALYSIS_ERROR_CODE = "llm-analysis-error"
@@ -33,6 +38,13 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
         stdin_tempfile = _stdin_to_tempfile()
         if stdin_tempfile is None:
             return ExitCode.GENERIC_ERROR
+        # The spec bytes are already on disk, so reject an unsupported version
+        # before scoring — this also avoids burning an LLM pass on --with-llm.
+        version = detect_version(stdin_tempfile.read_text(encoding="utf-8", errors="replace"))
+        if is_unsupported(version):
+            print(unsupported_version_message(version), file=sys.stderr, end="")
+            stdin_tempfile.unlink(missing_ok=True)
+            return ExitCode.SPEC_FAILURE
         spec_url = stdin_tempfile.as_uri()
 
     try:
@@ -73,8 +85,19 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
             print("error: engine returned no output directory", file=sys.stderr)
             return ExitCode.ENGINE_FAILURE
 
-        with (Path(result.version_dir) / "scorecard.json").open("rb") as src:
-            shutil.copyfileobj(src, sys.stdout.buffer)
+        scorecard_bytes = (Path(result.version_dir) / "scorecard.json").read_bytes()
+
+        # stdin inputs are version-checked before scoring; URL inputs are fetched
+        # by the engine, so this is the first point we can read their version. A
+        # 3.2 document scores high here precisely because the engine couldn't parse
+        # it — refuse to emit that inflated number. See version_guard / issue #113.
+        version = scorecard_version(scorecard_bytes)
+        if is_unsupported(version):
+            print(unsupported_version_message(version), file=sys.stderr, end="")
+            return ExitCode.SPEC_FAILURE
+
+        sys.stdout.buffer.write(scorecard_bytes)
+        sys.stdout.buffer.flush()
 
         # The engine reports success even when LLM batches fail: the affected
         # LLM-derived signals are scored as perfect, inflating their dimension(s)
