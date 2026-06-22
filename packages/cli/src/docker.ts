@@ -10,6 +10,14 @@ const DOCKER_MISSING_MESSAGE =
   "error: 'docker' command not found.\n" +
   '  Install Docker: https://docs.docker.com/get-docker/\n';
 
+const DOCKER_NOT_RUNNING_MESSAGE =
+  'error: Docker is installed but the daemon is not running.\n' +
+  '  Start Docker Desktop, or on Linux: sudo systemctl start docker\n';
+
+export function isDaemonDown(stderr: string): boolean {
+  return /Cannot connect to the Docker daemon|the daemon is running/i.test(stderr);
+}
+
 export function imageRef(): string {
   return `${IMAGE_NAME}:${cliVersion}`;
 }
@@ -46,10 +54,12 @@ export function pullImage(ref: string): Promise<PullResult> {
       resolve({ exitCode: ExitCode.GENERIC_ERROR, stderr: err.message });
     });
     child.on('close', (code) => {
-      resolve({
-        exitCode: code ?? ExitCode.GENERIC_ERROR,
-        stderr: Buffer.concat(stderrChunks).toString('utf8'),
-      });
+      const stderr = Buffer.concat(stderrChunks).toString('utf8');
+      if (code !== 0 && isDaemonDown(stderr)) {
+        resolve({ exitCode: ExitCode.DOCKER_MISSING, stderr: DOCKER_NOT_RUNNING_MESSAGE });
+        return;
+      }
+      resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR, stderr });
     });
   });
 }
@@ -178,6 +188,16 @@ export function runDocker(opts: DockerRunOptions): Promise<DockerRunResult> {
       if (signal !== null) {
         const signo = osConstants.signals[signal] ?? 0;
         settle(() => resolve({ exitCode: 128 + signo, stdout, stderr }));
+        return;
+      }
+      if (code !== 0 && isDaemonDown(stderr)) {
+        settle(() =>
+          resolve({
+            exitCode: ExitCode.DOCKER_MISSING,
+            stdout: '',
+            stderr: DOCKER_NOT_RUNNING_MESSAGE,
+          }),
+        );
         return;
       }
       settle(() => resolve({ exitCode: code ?? ExitCode.GENERIC_ERROR, stdout, stderr }));

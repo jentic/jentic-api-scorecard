@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 
-import { buildDockerArgs, IMAGE_NAME, pullImage } from '../src/docker.ts';
+import { buildDockerArgs, IMAGE_NAME, isDaemonDown, pullImage } from '../src/docker.ts';
 import { ExitCode } from '../src/exit-codes.ts';
 import { cliVersion } from '../src/version.ts';
 
@@ -97,6 +97,32 @@ describe('buildDockerArgs', function () {
       '--url',
       'https://example.test/spec.yaml',
     ]);
+  });
+});
+
+describe('isDaemonDown', function () {
+  const daemonErrors = [
+    'Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?',
+    'failed to connect to the docker API at unix:///home/user/.docker/run/docker.sock; check if the path is correct and if the daemon is running: dial unix /home/user/.docker/run/docker.sock: connect: no such file or directory',
+    'Cannot connect to the Docker daemon at tcp://docker:2375. Is the Docker daemon running?',
+  ];
+
+  for (const stderr of daemonErrors) {
+    it(`detects daemon-down in: ${stderr.slice(0, 60)}…`, function () {
+      expect(isDaemonDown(stderr)).to.equal(true);
+    });
+  }
+
+  it('returns false for a normal pull failure', function () {
+    expect(isDaemonDown('Error response from daemon: manifest unknown')).to.equal(false);
+  });
+
+  it('returns false for an ENOENT message', function () {
+    expect(isDaemonDown("error: 'docker' command not found.")).to.equal(false);
+  });
+
+  it('returns false for an empty string', function () {
+    expect(isDaemonDown('')).to.equal(false);
   });
 });
 
