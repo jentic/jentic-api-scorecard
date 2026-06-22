@@ -86,6 +86,6 @@ RUN python -m jentic_scorecard_runner score \
         --url https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json \
         > /dev/null && \
     find /var/cache/npm -type d -path '*/node_modules/undici' \
-        -exec sh -c 'rm -rf "$1" && cp -a /opt/undici-6/package "$1"' _ {} \;
+        -exec sh -c 'rm -rf "$1" && cp -r /opt/undici-6/package "$1"' _ {} \;
 
 ENTRYPOINT ["python", "-m", "jentic_scorecard_runner"]
