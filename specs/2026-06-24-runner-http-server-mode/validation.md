@@ -51,7 +51,11 @@ This proves the allowlist + `api.jentic.com` metering survive the move to per-re
 node packages/cli/bin/jentic-api-scorecard.mjs score <oak-petstore-url> --api-url http://localhost:<port>
 ```
 
-Against a running server, exits 0 and renders the scorecard (and `--format json` yields a numeric `summary.score`). CLI unit tests assert that with `--api-url` set, the CLI **never spawns a `docker` process** for the score call, and that **no LLM provider env vars are sent** in the HTTP request (credentials stay server-side). The engine JSON is formatted through the same `--detail`/formatter pipeline as the one-shot path.
+Against a running server, exits 0 and renders the scorecard (and `--format json` yields a numeric `summary.score`). CLI unit tests assert that with `--api-url` set, the CLI **never spawns a `docker` process** for the score call, that the key is sent in the `X-Jentic-API-Key` header, and that **no LLM provider env vars are sent** in the HTTP request (credentials stay server-side). The engine JSON is formatted through the same `--detail`/formatter pipeline as the one-shot path.
+
+### 5a. `--with-llm` over `--api-url` requests LLM analysis and preserves exit 8
+
+With `--with-llm` set, the remote-mode HTTP request body carries `enable_llm_analysis: true` (a CLI unit test asserts this — without it the server defaults to `false` and silently skips LLM analysis). An LLM-analysis failure returned by the server maps to exit code **8** (`LLM_FAILURE`), matching the one-shot path's `test_main.py::TestLlmFailure` contract.
 
 ### 6. Vendored OpenAPI contract is checked in
 
