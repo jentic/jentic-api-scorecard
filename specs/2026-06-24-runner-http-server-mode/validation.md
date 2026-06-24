@@ -55,7 +55,7 @@ Against a running server, exits 0 and renders the scorecard (and `--format json`
 
 ### 5a. `--with-llm` over `--api-url` requests LLM analysis and preserves exit 8
 
-With `--with-llm` set, the remote-mode HTTP request body carries `enable_llm_analysis: true` (a CLI unit test asserts this — without it the server defaults to `false` and silently skips LLM analysis). An LLM-analysis failure returned by the server maps to exit code **8** (`LLM_FAILURE`), matching the one-shot path's `test_main.py::TestLlmFailure` contract.
+With `--with-llm` set, the remote-mode HTTP request body carries `enable_llm_analysis: true` (a CLI unit test asserts this — without it the server defaults to `false` and silently skips LLM analysis). In remote mode `--with-llm` does **not** require host LLM credentials: a CLI unit test asserts that `score … --with-llm --api-url <url>` with no host provider env vars set does **not** hard-fail with `GENERIC_ERROR` (the `detectLlmEnv` gate is skipped), while the same flags on the Docker path still hard-fail as today. An LLM-analysis failure returned by the server maps to exit code **8** (`LLM_FAILURE`), matching the one-shot path's `test_main.py::TestLlmFailure` contract.
 
 ### 6. Vendored OpenAPI contract is checked in
 
