@@ -2,6 +2,8 @@
 name: sdd-new-spec
 description: Scaffold a feature spec for a roadmap phase and open it as a PR for human review. Reads specs/roadmap.md, lets the user pick a phase (or accepts one as argument), runs preflight checks, cuts a feature branch, writes specs/YYYY-MM-DD-<slug>/ (requirements.md, plan.md, validation.md — grounded in specs/mission.md and specs/tech-stack.md), commits, pushes, and opens a PR. Makes zero code changes — the PR is for review of the spec itself; implementation follows in a separate PR once the spec is approved. Groups clarifying questions (one per output file) via AskUserQuestion before any disk write.
 argument-hint: "[phase-number | \"phase title fragment\"] (optional)"
+metadata:
+  internal: true
 ---
 
 # /sdd-new-spec — scaffold a feature spec for a roadmap phase

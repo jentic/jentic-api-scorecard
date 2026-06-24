@@ -2,6 +2,8 @@
 name: review-community
 description: Review a pull request authored by someone other than the current GitHub user, applying the team's diplomatic review-comments tone. Use when the PR author's GitHub login differs from the current user's `gh api user` login. For own PRs, use the built-in /review directly. Detects authorship automatically and refuses on self-authored PRs.
 argument-hint: "[pr-number | pr-url] (optional — defaults to the PR for the current branch)"
+metadata:
+  internal: true
 ---
 
 # /review-community — review someone else's PR with the community tone

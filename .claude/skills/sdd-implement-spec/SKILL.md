@@ -2,6 +2,8 @@
 name: sdd-implement-spec
 description: Implement an existing feature spec end-to-end — pick an unprocessed feature spec (one whose `## Phase N — ...` heading in `specs/roadmap.md` does not yet carry the `✅` lifecycle marker), cut a feature branch, walk `plan.md` task groups in order with one primary atomic Conventional-Commits commit per group (plus optional small fix-up commits during verification or pre-push review), run `plan.md`'s Verify group plus every check in `validation.md`, then run a pre-push review pairing the built-in `/review` skill with three parallel deep-review subagents (spec-adherence, code-quality, risk-and-robustness) before pushing and opening the PR. The spec is read-only during implementation; if it is wrong or incomplete, the skill stops and surfaces the gap rather than patching the spec mid-flight. Reports implementation, review, and verification results at the end. When `$ARGUMENTS` is empty, enumerates unprocessed specs via AskUserQuestion.
 argument-hint: "[phase-number | slug-fragment | spec-dir-path] (optional)"
+metadata:
+  internal: true
 ---
 
 # /sdd-implement-spec — implement a feature spec

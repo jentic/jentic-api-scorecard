@@ -2,6 +2,8 @@
 name: sdd-new-phase
 description: Append a new active phase to specs/roadmap.md. Parses existing phases (active and ✅-completed) to compute the next stable phase number per the lifecycle rule, grounds the proposal against specs/mission.md and specs/tech-stack.md, groups structured questions (goal, dependencies, priority) via AskUserQuestion, then collects a freeform bullet list for the phase body. Edits specs/roadmap.md in place, then invokes the built-in /review skill against the pending change before stopping — committing, pushing, and opening a PR are left to the user. Does not create a feature spec; that is /sdd-new-spec's job.
 argument-hint: "[short title or one-sentence intent] (optional)"
+metadata:
+  internal: true
 ---
 
 # /sdd-new-phase — add a new active phase to the roadmap

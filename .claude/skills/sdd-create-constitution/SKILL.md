@@ -2,6 +2,8 @@
 name: sdd-create-constitution
 description: Bootstrap the SDD constitution (specs/mission.md, specs/tech-stack.md, specs/roadmap.md) from current repository evidence. Refuses by default if any of the three files already exists — overwriting requires explicit confirmation via AskUserQuestion. Loads the constitution templates, runs parallel Explore subagents over the code trees that exist (e.g. `docker/`, `packages/`), `docs/`, and top-level config to ground claims in evidence, synthesizes findings, then issues a single grouped AskUserQuestion call (Mission / Tech Stack / Roadmap) before writing the three files. Edits files in place and stops — committing, branching, and opening a PR are user actions.
 argument-hint: "(no arguments)"
+metadata:
+  internal: true
 ---
 
 # /sdd-create-constitution — bootstrap the SDD constitution

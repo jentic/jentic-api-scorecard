@@ -2,6 +2,8 @@
 name: sdd-distill-lessons
 description: Distil per-spec retrospectives into specs/lessons.md so future spec authoring absorbs the learning. Reads specs/*/retrospective.md, groups recurring patterns, surfaces candidate lessons and tech-stack.md promotion candidates via AskUserQuestion, writes confirmed additions to specs/lessons.md, then invokes /review against the pending change before stopping.
 argument-hint: "(no arguments)"
+metadata:
+  internal: true
 ---
 
 # /sdd-distill-lessons — distil retrospectives into specs/lessons.md
