@@ -6,41 +6,22 @@ document scores *higher* than the same document at 3.0.x. The score is silently
 inflated and meaningless, so we refuse it rather than emit a wrong number. See
 ``docs/architecture.md`` §6 and issue #113.
 
-This guard depends on nothing from the scoring engine. It reads the spec bytes
-the runner already buffers (stdin mode) and the ``specificationVersion`` the
-scorecard contract already emits (URL mode) — both seams survive a future move
-to a remote scoring API.
+Version *detection* delegates to the engine's canonical
+``jentic.apitools.openapi.common.version_detection`` (the single source of truth
+for parsing OpenAPI/Swagger version strings); the *policy* — which versions we
+refuse — stays here. The runner feeds it the spec bytes it already buffers
+(stdin mode) and the ``specificationVersion`` the scorecard contract emits (URL
+mode).
 """
 
 import json
-import re
 
-
-# Matches the top-level version key in JSON or YAML, e.g.
-#   "openapi": "3.2.0"   |   openapi: 3.2.0   |   swagger: "2.0"
-_VERSION_PATTERN = re.compile(
-    r'^\s*["\']?(?:openapi|swagger)["\']?\s*:\s*["\']?(?P<version>\d+\.\d+(?:\.\d+)?)',
-    re.MULTILINE,
-)
+from jentic.apitools.openapi.common.version_detection import is_openapi_32
 
 
 def is_unsupported(version: str | None) -> bool:
     """True if the version string is an OpenAPI 3.2.x we refuse to score."""
-    return version is not None and (version == "3.2" or version.startswith("3.2."))
-
-
-def detect_version(spec_text: str) -> str | None:
-    """Extract the OpenAPI/Swagger version from raw spec text (JSON or YAML)."""
-    try:
-        document = json.loads(spec_text)
-    except (json.JSONDecodeError, ValueError):
-        document = None
-    if isinstance(document, dict):
-        version = document.get("openapi") or document.get("swagger")
-        if isinstance(version, str):
-            return version
-    match = _VERSION_PATTERN.search(spec_text)
-    return match.group("version") if match else None
+    return version is not None and is_openapi_32({"openapi": version})
 
 
 def scorecard_version(scorecard_bytes: bytes) -> str | None:

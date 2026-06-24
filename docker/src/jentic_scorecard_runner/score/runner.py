@@ -10,6 +10,7 @@ from jentic.apitools.common.models import (
     OASRequestMeta,
     SpecSourceUrl,
 )
+from jentic.apitools.openapi.common.version_detection import get_version
 from jentic.apitools.pipelines import score_openapi
 
 from jentic_scorecard_runner.exit_codes import ExitCode
@@ -17,7 +18,6 @@ from jentic_scorecard_runner.version_guard import (
     GOOGLE_DISCOVERY_DIAGNOSTIC_CODE,
     SWAGGER_2_DIAGNOSTIC_CODE,
     conversion_notice_message,
-    detect_version,
     is_unsupported,
     scorecard_version,
     unsupported_version_message,
@@ -43,7 +43,7 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
             return ExitCode.GENERIC_ERROR
         # The spec bytes are already on disk, so reject an unsupported version
         # before scoring — this also avoids burning an LLM pass on --with-llm.
-        version = detect_version(stdin_tempfile.read_text(encoding="utf-8", errors="replace"))
+        version = get_version(stdin_tempfile.read_text(encoding="utf-8", errors="replace"))
         if is_unsupported(version):
             print(unsupported_version_message(version), file=sys.stderr, end="")
             stdin_tempfile.unlink(missing_ok=True)

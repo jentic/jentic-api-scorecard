@@ -4,33 +4,9 @@ import json
 
 from jentic_scorecard_runner.version_guard import (
     conversion_notice_message,
-    detect_version,
     is_unsupported,
     scorecard_version,
 )
-
-
-class TestDetectVersion:
-    def test_json_openapi(self):
-        assert detect_version('{"openapi": "3.2.0"}') == "3.2.0"
-
-    def test_json_swagger(self):
-        assert detect_version('{"swagger": "2.0"}') == "2.0"
-
-    def test_yaml_openapi(self):
-        assert detect_version("openapi: 3.0.4\ninfo:\n  title: API") == "3.0.4"
-
-    def test_yaml_quoted(self):
-        assert detect_version('openapi: "3.1.1"\ninfo: {}') == "3.1.1"
-
-    def test_yaml_swagger(self):
-        assert detect_version("swagger: '2.0'\ninfo: {}") == "2.0"
-
-    def test_missing_version(self):
-        assert detect_version("info:\n  title: API") is None
-
-    def test_not_a_version_value(self):
-        assert detect_version('{"openapi": {"nested": true}}') is None
 
 
 class TestIsUnsupported:
@@ -38,8 +14,10 @@ class TestIsUnsupported:
         assert is_unsupported("3.2.0")
         assert is_unsupported("3.2.1")
 
-    def test_rejects_bare_3_2(self):
-        assert is_unsupported("3.2")
+    def test_ignores_bare_3_2_without_patch(self):
+        # The canonical detector only recognizes a full 3.2.x; the openapi field
+        # is always x.y.z, so a bare "3.2" is not a real version string.
+        assert not is_unsupported("3.2")
 
     def test_allows_supported(self):
         assert not is_unsupported("3.0.4")

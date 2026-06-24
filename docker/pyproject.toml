@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "jentic-apitools-pipelines==1.0.0a18",
     "jentic-apitools-common==1.0.0a18",
+    "jentic-openapi-common==1.0.0a57",
     "requests>=2.34.2,<3",
 ]
 
