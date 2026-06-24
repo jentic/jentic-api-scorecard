@@ -15,7 +15,7 @@ const DOCKER_NOT_RUNNING_MESSAGE =
   '  Start Docker Desktop, or on Linux: sudo systemctl start docker\n';
 
 export function isDaemonDown(stderr: string): boolean {
-  return /Cannot connect to the Docker daemon|the daemon is running/i.test(stderr);
+  return /Cannot connect to the Docker daemon|if the daemon is running/i.test(stderr);
 }
 
 export function imageRef(): string {
