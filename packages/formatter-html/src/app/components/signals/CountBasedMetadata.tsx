@@ -31,7 +31,7 @@ const COUNT_SIGNAL_CONFIG: Record<string, CountConfig> = {
     denominatorField: 'expected_examples',
     label: 'Examples Present',
     denominatorLabel: 'expected',
-    note: 'Diagnostics list the locations where examples are expected (expected_examples) or already present (present_examples). The two sets overlap when all expected locations already have examples.',
+    note: 'expected_examples marks every element that can hold an example value; present_examples marks the subset that already has at least one. The gap between the two is where density can be improved.',
   },
   example_validity: {
     numeratorField: 'valid_examples',
