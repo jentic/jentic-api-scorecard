@@ -219,19 +219,19 @@ The HTML formatter is scaffolded in `packages/formatter-html/` after Phase 2 but
 - Lift `"private": true` from `packages/formatter-html/package.json` so the package starts publishing on the same alpha cuts as the CLI.
 - Snapshot-test the formatter against a representative result JSON.
 
-## Phase 15 — Runner becomes a long-lived HTTP server; CLI talks to it via `--api-url`
+## Phase 15 — Runner gains a long-lived HTTP server mode; CLI talks to it via `--api-url`
 
-**Goal:** convert the runner from a one-shot process into a long-lived HTTP server. The CLI auto-manages a local container in local mode and bypasses Docker in remote mode (`--api-url <url>`), so multiple CLIs can share one deployment.
-**Depends on:** Phase 12 (load-bearing breaking change to the container contract — needs the alpha channel to be the surface where it ships)
+**Goal:** add a long-lived HTTP server mode to the runner **alongside** the existing one-shot `score` path, which keeps working unchanged. The CLI auto-manages a local container in local mode and bypasses Docker in remote mode (`--api-url <url>`), so multiple CLIs can share one deployment.
+**Depends on:** Phase 12 (the alpha/release channel the server mode ships on)
 **Priority:** Medium–High
 
-Today every `npx … score` is a fresh `docker run` — cold engine, cold validator caches, no path to a shared deployment. A long-lived server fixes both, and gives Phase 7 (`--verbose`) the structured progress channel that today's `'inherit'` stdio cannot provide.
+Today every `npx … score` is a fresh `docker run` — cold engine, cold validator caches, no path to a shared deployment. A long-lived server fixes both, and gives Phase 7 (`--verbose`) the structured progress channel that today's `'inherit'` stdio cannot provide. The server is built **in parallel** with the current one-shot runner: the existing `docker run … score` invocation and the in-container `score` CLI stay fully functional after this phase, so nothing that works today regresses. (Removing the one-shot path, if ever desired, is deferred to a separate future phase — that removal would be the breaking change, and is out of scope here. Now that stable 1.0.0 has shipped (Phase 16), keeping this phase additive also avoids a post-1.0 breaking change to the container contract.)
 
-- Container's only entrypoint is the HTTP server; the in-container `score` CLI is removed.
+- Add the HTTP server as a **new, additive** container entrypoint; the existing one-shot `score` CLI and `docker run … score` path remain intact and supported.
 - Local mode: CLI auto-starts and reuses a container; teardown is a user action.
 - Remote mode (`--api-url`): pure HTTP, no Docker on the client.
 - LLM credentials stay server-side (set at container start in local mode, operator-configured in remote mode) — never per-request.
-- Auth is the existing gate (`docker/src/jentic_scorecard_runner/gate.py`), promoted to per-request. Per-key throughput caps and API-level auth on top of the gate are sequenced separately.
+- Auth is the existing gate (`docker/src/jentic_scorecard_runner/gate.py`), promoted to per-request in server mode while the one-shot path keeps its current per-invocation gate. Per-key throughput caps and API-level auth on top of the gate are sequenced separately.
 
 This phase replaces the prior "Later Phases" entry "CLI connecting to remote docker instance with `--api-url` option" — removed in this change.
 
