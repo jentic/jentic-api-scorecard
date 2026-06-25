@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { DIAGNOSTIC_HELP } from '../diagnosticHelp.ts';
 import type { Diagnostic } from '../types.ts';
 
 // Severity mapping: 1=Error, 2=Warning, 3=Information, 4=Hint
@@ -182,6 +183,7 @@ interface DiagnosticItemProps {
 function DiagnosticItem({ diagnostic, pathsExpanded, onTogglePaths }: DiagnosticItemProps) {
   const { code, message, severity, source, data } = diagnostic;
   const config = SEVERITY_CONFIG[severity as SeverityKey] || SEVERITY_CONFIG[3];
+  const help = DIAGNOSTIC_HELP[code];
 
   const paths = data?.paths && data.paths.length > 0 ? data.paths : null;
   const singlePath = !paths && data?.path && data.path.length > 0 ? formatPath(data.path) : null;
@@ -193,7 +195,17 @@ function DiagnosticItem({ diagnostic, pathsExpanded, onTogglePaths }: Diagnostic
   return (
     <div className={`p-3 rounded border ${config.color}`}>
       <div className="flex items-start justify-between gap-2">
-        <span className="font-mono font-semibold text-sm">{code}</span>
+        <span className="flex items-center gap-1">
+          <span className="font-mono font-semibold text-sm">{code}</span>
+          {help && (
+            <span className="relative group inline-flex items-center cursor-help">
+              <span className="text-xs opacity-40 select-none leading-none">ⓘ</span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-60 rounded bg-gray-800 px-2.5 py-2 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-normal text-left shadow-lg">
+                {help.description}
+              </span>
+            </span>
+          )}
+        </span>
         <span className="text-xs opacity-70">{source}</span>
       </div>
       <p className="mt-1 text-sm text-gray-700">{message}</p>
