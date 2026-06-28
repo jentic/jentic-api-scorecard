@@ -143,3 +143,39 @@ class TestLlmFailure:
     def test_without_with_llm_exits_0(self):
         result = run_runner("score", "--url", self._OAK_PETSTORE_URL, timeout=120)
         assert result.returncode == 0, result.stderr
+
+
+class TestOpenApi32Rejection:
+    """OpenAPI 3.2 specs are rejected before the engine is called."""
+
+    _SPEC_32 = json.dumps({"openapi": "3.2.0", "info": {"title": "T", "version": "1"}, "paths": {}})
+    _SPEC_321 = json.dumps(
+        {"openapi": "3.2.1", "info": {"title": "T", "version": "1"}, "paths": {}}
+    )
+
+    def test_stdin_with_32_is_rejected(self, httpserver):
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data("", status=204)
+        result = run_runner(
+            "score",
+            stdin_data=self._SPEC_32,
+            env_override={
+                "JENTIC_API_KEY": "real-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
+        )
+        assert result.returncode == 5
+        assert "3.2.0" in result.stderr
+        assert "not supported" in result.stderr
+
+    def test_stdin_with_321_patch_is_also_rejected(self, httpserver):
+        httpserver.expect_request(_USAGE_PATH, method="POST").respond_with_data("", status=204)
+        result = run_runner(
+            "score",
+            stdin_data=self._SPEC_321,
+            env_override={
+                "JENTIC_API_KEY": "real-key",
+                "JENTIC_API_BASE_URL": httpserver.url_for("").rstrip("/"),
+            },
+        )
+        assert result.returncode == 5
+        assert "not supported" in result.stderr
