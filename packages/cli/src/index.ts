@@ -37,6 +37,10 @@ export async function main(argv: string[] = process.argv): Promise<void> {
     )
     .option('-o, --output <file>', 'Write the formatted report to <file> instead of stdout')
     .option('-q, --quiet', 'Suppress the stderr spinner regardless of TTY', false)
+    .option(
+      '--no-spinner',
+      'Emit plain-text progress lines to stderr instead of the animated spinner (useful in Emacs shell and other terminals that do not support in-place cursor rewriting)',
+    )
     .action(
       async (
         input: string,
@@ -47,6 +51,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           format: Format;
           output?: string;
           quiet?: boolean;
+          spinner: boolean;
         },
         command: Command,
       ) => {
@@ -76,6 +81,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
           format: opts.format,
           output: opts.output,
           quiet: opts.quiet,
+          noSpinner: opts.spinner === false,
         });
         process.exitCode = exitCode;
       },

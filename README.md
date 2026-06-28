@@ -173,6 +173,11 @@ npx @jentic/api-scorecard-cli@latest score ./openapi.yaml \
 `--quiet` (`-q`) suppresses the stderr spinner even in interactive terminals (the spinner already
 auto-suppresses when stderr isn't a TTY). Engine warnings still pass through stderr.
 
+`--no-spinner` emits plain append-only progress lines (`Bundling…`, `Scoring…`) instead of an
+in-place animated spinner. Use it in terminals like GNU Emacs's shell that do not support ANSI
+cursor-control sequences — the spinner rewrites a single line in place, which garbles as repeated
+text in those environments. `-q` takes priority and suppresses output entirely.
+
 ## HTML report
 
 Add `--format html` to render an interactive, self-contained HTML scorecard — a single file
@@ -327,6 +332,7 @@ jentic-api-scorecard score <input> [options]
 | `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown`, `sarif` | Output encoding (`markdown` is a GitHub-flavored projection for `$GITHUB_STEP_SUMMARY` / PR comments; `sarif` projects diagnostics only as SARIF 2.1.0 for GitHub code-scanning and always emits full diagnostics regardless of `--detail`; see also [Machine-readable output](#machine-readable-output) and [HTML report](#html-report)). |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
+| `--no-spinner` | off | — | Emit plain-text progress lines to stderr instead of the animated spinner. Useful in Emacs shell and other terminals that do not support in-place cursor rewriting. `-q` takes priority. |
 | `-h, --help` | — | — | Show usage for `score`. |
 
 #### Environment
