@@ -91,10 +91,21 @@ function locationsFor(diagnostic: Diagnostic): SarifLocation[] | undefined {
   return location !== undefined ? [location] : undefined;
 }
 
+// Strips the engine-baked " [path: <dotted.path>]" suffix from a SARIF message.
+// Before PR #218 added physical locations, this suffix was the only usable location
+// hint in the Security tab. Now that each finding carries a real physicalLocation,
+// the suffix is redundant noise. Only the SARIF projection strips it; --format json
+// leaves the engine message verbatim per the architecture invariant.
+const PATH_SUFFIX_RE = / \[path: [^\]]+\]$/;
+
+export function stripPathSuffix(message: string): string {
+  return message.replace(PATH_SUFFIX_RE, '');
+}
+
 function toSarifResult(diagnostic: Diagnostic): SarifResult {
   const result: SarifResult = {
     level: severityToLevel(diagnostic.severity),
-    message: { text: diagnostic.message },
+    message: { text: stripPathSuffix(diagnostic.message) },
   };
   if (diagnostic.code !== undefined) {
     result.ruleId = diagnostic.code;
