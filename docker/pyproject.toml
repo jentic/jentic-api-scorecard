@@ -5,7 +5,7 @@ description = "Container-internal runner for jentic-api-scorecard"
 requires-python = ">=3.12"
 dependencies = [
     "jentic-apitools-pipelines==1.0.0a18",
-    "jentic-apitools-common==1.0.0a18",
+    "jentic-apitools-common==1.0.0a23",
     "requests>=2.34.2,<3",
 ]
 
