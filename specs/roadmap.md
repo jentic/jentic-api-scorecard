@@ -308,7 +308,7 @@ The Phase 19 action attaches a stopgap `physicalLocation` at `startLine: 1` to e
 - A diagnostic whose pointer can't be located keeps a sensible file-level fallback.
 - `$ref`-heavy / multi-file specs do not silently mislocate — either correct, or honestly file-level.
 
-## Phase 21 — Add jentic-api-improve skill and agent
+## Phase 21 — Add jentic-api-improve skill and agent ✅
 
 **Goal:** Port the `jentic-api-improve` agent skill and its companion subagent out of the private `jentic-skills-internal` repo into this repository as public Apache-2.0 OSS, distributed and documented the same way the existing `jentic-api-scorecard` skill is.
 **Depends on:** the published `@jentic/api-scorecard-cli` (the skill orchestrates `score --with-llm --detail diagnostics`); the existing `skills/` distribution wiring (Phases that shipped the scorecard skill, plugin marketplace, and tarball packaging)
