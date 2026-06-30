@@ -308,6 +308,22 @@ The Phase 19 action attaches a stopgap `physicalLocation` at `startLine: 1` to e
 - A diagnostic whose pointer can't be located keeps a sensible file-level fallback.
 - `$ref`-heavy / multi-file specs do not silently mislocate — either correct, or honestly file-level.
 
+## Phase 21 — Add jentic-api-improve skill and agent
+
+**Goal:** Port the `jentic-api-improve` agent skill and its companion subagent out of the private `jentic-skills-internal` repo into this repository as public Apache-2.0 OSS, distributed and documented the same way the existing `jentic-api-scorecard` skill is.
+**Depends on:** the published `@jentic/api-scorecard-cli` (the skill orchestrates `score --with-llm --detail diagnostics`); the existing `skills/` distribution wiring (Phases that shipped the scorecard skill, plugin marketplace, and tarball packaging)
+**Priority:** Medium–High
+
+Scoring tells a user *what* is wrong with their API's AI-readiness; this skill closes the loop — it runs a baseline score, identifies weak dimensions and `POOR_OPERATION_SEMANTICS` diagnostics, applies non-breaking improvements (adding `summary`/`description`/`example`/`tags`, never changing existing contracts), and emits an improved spec, an OpenAPI Overlay 1.1.0 (the reusable delta), and a before/after changelog. It is the second public consumer of the scorecard CLI and the public counterpart to `jentic-apitools verify-improvement` and the Overlay format. The port is a wiring-and-documentation exercise: the skill is markdown-only and orchestrates already-shipped, user-installed tooling. Feature spec: `specs/2026-06-30-jentic-api-improve-skill/`.
+
+- Land the skill at `skills/jentic-api-improve/` (SKILL.md + six `references/` files) and the companion subagent at a new repo-root `agents/jentic-api-improve.md`, copied verbatim (all source frontmatter preserved).
+- Ship the agent via the Claude Code plugin **and** the npm tarball; degrade to the skill's inline-brief subagent fallback where the agent is not installed (Vercel `skills` CLI and TanStack Intent are skill-only).
+- Add a **separate** `api-improve` plugin entry to `.claude-plugin/marketplace.json` (own `skills[]` + `agents[]`), leaving the existing `api-scorecard` plugin untouched.
+- Package the new repo-root `agents/` tree into the CLI tarball with the same `files` + `prepack`/`postpack` mechanism as `skills/`; the second skill needs no `files` change (the `skills/` glob already covers it).
+- Document the skill in a **new dedicated README section** and a **new `docs/publish-config.json` page** (`api-improve-skill` → `docs/cli/api-improve-skill.md`).
+- Update `docs/architecture.md` §4 (layout tree + distribution notes: two plugins, the `agents/` directory, tarball packaging) and `.claude/CLAUDE.md` (both skills, two plugin entries, the `agents/` directory) in lockstep.
+- The new skill must pass the automated SkillSpector `SAFE` gate (`skill-security.yml` globs `skills/*`, so it is scanned with no workflow edit).
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
