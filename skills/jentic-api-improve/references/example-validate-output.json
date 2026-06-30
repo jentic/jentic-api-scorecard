@@ -1,0 +1,27 @@
+{
+  "valid": true,
+  "diagnostics": [
+    {
+      "range": {
+        "start": { "line": 0, "character": 0 },
+        "end": { "line": 0, "character": 0 }
+      },
+      "message": "Server URL '/api/v3' at index 0 must be an absolute URL (e.g., start with http:// or https://).",
+      "severity": 2,
+      "code": "RELATIVE_SERVER_URL",
+      "source": "default-validator",
+      "data": {
+        "fixable": true,
+        "path": ["servers", 0, "url"],
+        "target": ""
+      }
+    }
+  ],
+  "summary": {
+    "errors": 0,
+    "warnings": 1,
+    "information": 0,
+    "hints": 0,
+    "total": 1
+  }
+}
