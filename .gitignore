@@ -12,6 +12,7 @@ packages/*/LICENSE
 packages/*/NOTICE
 packages/cli/README.md
 packages/cli/skills/
+packages/cli/agents/
 !/.claude
 /.claude/settings.local.json
 /.claude/worktrees/*

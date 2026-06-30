@@ -50,6 +50,7 @@
     "dist/",
     "skills/",
     "!skills/_artifacts",
+    "agents/",
     "LICENSE",
     "NOTICE",
     "README.md"
@@ -58,8 +59,8 @@
     "build": "npm run build:typescript",
     "build:typescript": "tsc -p tsconfig.json",
     "clean": "rimraf dist *.tsbuildinfo",
-    "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE . && copyfiles -u 2 ../../README.md . && copyfiles -u 2 \"../../skills/**/*\" .",
-    "postpack": "rimraf NOTICE LICENSE README.md skills",
+    "prepack": "copyfiles -u 2 ../../LICENSE . && copyfiles -u 2 ../../NOTICE . && copyfiles -u 2 ../../README.md . && copyfiles -u 2 \"../../skills/**/*\" . && copyfiles -u 2 \"../../agents/**/*\" .",
+    "postpack": "rimraf NOTICE LICENSE README.md skills agents",
     "lint": "eslint src test",
     "lint:fix": "eslint src test --fix",
     "test": "mocha",
