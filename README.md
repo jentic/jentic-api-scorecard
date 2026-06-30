@@ -27,6 +27,10 @@ across six dimensions and returns a single grade — so you know exactly where t
   - [Claude Code](#claude-code)
   - [Vercel `skills` CLI](#vercel-skills-cli)
   - [TanStack Intent](#tanstack-intent)
+- [The api-improve skill](#the-api-improve-skill)
+  - [Claude Code](#claude-code-1)
+  - [Vercel `skills` CLI](#vercel-skills-cli-1)
+  - [TanStack Intent](#tanstack-intent-1)
 - [CLI reference](#cli-reference)
   - [Commands](#commands)
   - [`score`](#score)
@@ -289,6 +293,63 @@ It's also listed in the [skills.sh directory](https://skills.sh/jentic/jentic-ap
 The `@jentic/api-scorecard-cli` npm package also ships this skill inside its published
 tarball, so it's discoverable by [TanStack Intent](https://tanstack.com/intent) for
 projects that already depend on the CLI and want version-aligned agent guidance.
+
+## The api-improve skill
+
+Scoring tells you _what_ to fix; the `jentic-api-improve` skill closes the loop and
+_fixes_ it. Point an AI coding agent at an OpenAPI document and it runs a baseline
+score, identifies the weak dimensions and the semantic diagnostics, applies
+**non-breaking** improvements (adding `summary`/`description`/`example`/`tags` — never
+changing existing paths, parameters, or response shapes), and produces three artifacts:
+an improved spec, an [OpenAPI Overlay](https://spec.openapis.org/overlay/v1.1.0.html)
+(the reusable, non-breaking delta), and a changelog with before/after scores.
+
+This skill orchestrates the scorecard CLI plus a few extra command-line tools, so it
+needs more than the CLI alone. In addition to the scorecard CLI's
+[Requirements](#requirements) (Node.js ≥ 20.19, a running Docker daemon, and a
+`JENTIC_API_KEY` for local-file scoring), install:
+
+```bash
+pipx install jentic-openapi-tools     # validation
+pipx install jentic-apitools-cli      # overlay verification (command: jentic-apitools)
+pipx install check-jsonschema         # overlay schema validation
+# plus python3 and jq, which most systems already have
+```
+
+Install the skill through whichever path fits your agent — the same three channels as
+the [scoring skill](#agent-skills):
+
+### Claude Code
+
+The improve skill is a **separate plugin** in this repository's marketplace:
+
+```
+/plugin marketplace add jentic/jentic-api-scorecard
+/plugin install api-improve@jentic-api-scorecard
+```
+
+Installing the plugin also registers the companion `jentic-api-improve` subagent (used
+for multi-iteration improvement loops). Once installed, ask Claude to improve a spec:
+
+```
+> Improve ./openapi.yaml for AI-readiness
+> Raise the JAIRF score of my API and give me an overlay
+```
+
+### Vercel `skills` CLI
+
+```bash
+npx skills add jentic/jentic-api-scorecard --skill jentic-api-improve
+```
+
+### TanStack Intent
+
+The `@jentic/api-scorecard-cli` npm package ships this skill (and the companion agent
+definition) inside its published tarball, so it's discoverable by
+[TanStack Intent](https://tanstack.com/intent) for projects that already depend on the
+CLI. The agent file lands at `agents/jentic-api-improve.md`; copy it into your
+`.claude/agents/` to enable the declarative subagent (optional — the skill falls back to
+spawning a subagent from an inline brief).
 
 ## CLI reference
 

@@ -21,6 +21,7 @@
       "relatedLinks": [
         { "text": "API Scoring \u2013 Getting Started", "href": "../getting-started/api-scoring.md" },
         { "text": "Agent Skill", "href": "./api-scorecard-skill.md" },
+        { "text": "Agent Improve Skill", "href": "./api-improve-skill.md" },
         { "text": "GitHub Action", "href": "./api-scorecard-action.md" },
         { "text": "Enterprise Readiness", "href": "./api-scorecard-enterprise.md" },
         { "text": "JAIRF Overview", "href": "../reference/api-readiness-framework/overview.md" },
@@ -37,9 +38,26 @@
       ],
       "relatedLinks": [
         { "text": "CLI Reference", "href": "./api-scorecard.md" },
+        { "text": "Agent Improve Skill", "href": "./api-improve-skill.md" },
         { "text": "GitHub Action", "href": "./api-scorecard-action.md" },
         { "text": "API Scoring \u2013 Getting Started", "href": "../getting-started/api-scoring.md" },
         { "text": "Skill definition (SKILL.md)", "href": "https://github.com/jentic/jentic-api-scorecard/blob/main/skills/jentic-api-scorecard/SKILL.md" }
+      ]
+    },
+    {
+      "id": "agent-improve-skill",
+      "output": "docs/cli/api-improve-skill.md",
+      "title": "API Scorecard \u2013 Improve Skill",
+      "intro": "The Jentic API Scorecard ships a second **agent skill**, `jentic-api-improve`, that closes the loop on scoring: it raises an OpenAPI document's JAIRF score with non-breaking improvements and produces an improved spec, a reusable OpenAPI Overlay, and a before/after changelog. Install it through whichever path fits your agent.\n\n---",
+      "sections": [
+        { "heading": "The api-improve skill" }
+      ],
+      "relatedLinks": [
+        { "text": "CLI Reference", "href": "./api-scorecard.md" },
+        { "text": "Agent Skill", "href": "./api-scorecard-skill.md" },
+        { "text": "GitHub Action", "href": "./api-scorecard-action.md" },
+        { "text": "API Scoring \u2013 Getting Started", "href": "../getting-started/api-scoring.md" },
+        { "text": "Skill definition (SKILL.md)", "href": "https://github.com/jentic/jentic-api-scorecard/blob/main/skills/jentic-api-improve/SKILL.md" }
       ]
     },
     {
@@ -53,6 +71,7 @@
       "relatedLinks": [
         { "text": "CLI Reference", "href": "./api-scorecard.md" },
         { "text": "Agent Skill", "href": "./api-scorecard-skill.md" },
+        { "text": "Agent Improve Skill", "href": "./api-improve-skill.md" },
         { "text": "API Scoring \u2013 Getting Started", "href": "../getting-started/api-scoring.md" },
         { "text": "LLM Signals guide", "href": "https://github.com/jentic/jentic-api-scorecard/blob/main/docs/llm-signals.md" },
         { "text": "jentic/jentic-api-scorecard \u2013 source and full documentation", "href": "https://github.com/jentic/jentic-api-scorecard" }
