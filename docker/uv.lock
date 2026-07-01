@@ -22,30 +22,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.18"
+version = "1.43.39"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/37/2ae45d06423182b4561c03bc33494fafa21a0d1e847f0554f590e3cbbc62/boto3-1.43.18.tar.gz", hash = "sha256:33138883e984eb1937d1553da699182c8ad2099138091e885b65c9accbccea16", size = 113154, upload-time = "2026-05-29T19:33:30.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/35/d936d1f77098a84365ab57798cbf41cf935c07a6c397a4892dc95046a277/boto3-1.43.39.tar.gz", hash = "sha256:ca5701ddf1215ba25b9d973d18505bb4def3a75d3daa9b263c6d8c713b601cb3", size = 112679, upload-time = "2026-07-01T19:37:26.165Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/75/fcb2c10d516496536c50e397248de42a673d8ea8137caf5b578a72b11293/boto3-1.43.18-py3-none-any.whl", hash = "sha256:7b62ce5c0a51428d692aa4f2adc9dc2a4a4c2989bf65a0a12834eeffa99b0b84", size = 140538, upload-time = "2026-05-29T19:33:27.131Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/b4/2a105025fa85e27022d55b0dae02b490c74acd20e904e81003d3b622fbbe/boto3-1.43.39-py3-none-any.whl", hash = "sha256:f4eef8bf98559342466a9a1a063b7efcf3e337e98a819479bc2f7a603b8b8ba7", size = 140030, upload-time = "2026-07-01T19:37:24.756Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.43.18"
+version = "1.43.39"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/6d/436d69ec484ffc43635b38d7fb7d717d38824671f10e12e77924019ca929/botocore-1.43.18.tar.gz", hash = "sha256:dc8c105351b49688c667065cd5a45fc5b9db982657cefc9e3fbfb9417a55c7df", size = 15424886, upload-time = "2026-05-29T19:33:16.251Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/03/8800770b04e6b306172af15c7e0e049cb06ae6fb6eff6744a09563c1b80c/botocore-1.43.39.tar.gz", hash = "sha256:a95b90ea13aca409d79cc90d87c75df7db1a104a4c8e93707b62a3593bfdd17d", size = 15640021, upload-time = "2026-07-01T19:37:16.076Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/21/5a/35c92c0af1514581031fe66c398b622176b3c928a6d5cf8133c7207e3bd7/botocore-1.43.18-py3-none-any.whl", hash = "sha256:e2610fce16df9f89deab5f3c163430a814e6804034eb95bef8957c8db60b7dbc", size = 15106258, upload-time = "2026-05-29T19:33:11.18Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/de/1155cade4db5fb1121b66d9936b5e958b663db446752d47acc56ad5d380a/botocore-1.43.39-py3-none-any.whl", hash = "sha256:7cd5fab9d33f487777e2c508573bca6ae230779230263d47a617f4af960d3003", size = 15321601, upload-time = "2026-07-01T19:37:12.952Z" },
 ]
 
 [[package]]
@@ -373,7 +373,7 @@ wheels = [
 
 [[package]]
 name = "jentic-apitools-analyze"
-version = "1.0.0a18"
+version = "1.0.0a24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deepdiff" },
@@ -385,9 +385,9 @@ dependencies = [
     { name = "jentic-openapi-validator-spectral" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/93/8e2550e86adfc31fec00629acd3e0496390e03a03dac915b9b337f9a7bd4/jentic_apitools_analyze-1.0.0a18.tar.gz", hash = "sha256:8c1ba2451361cbdd1483a0aec90202043ba5ec0f00dc4584ee3e89a9c6fcea6a", size = 30769, upload-time = "2026-06-11T08:57:01.952Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/b0/452b2896a84e4977fb797bb2aecd4b8bf83cfa95562c16d3bc5147927fe2/jentic_apitools_analyze-1.0.0a24.tar.gz", hash = "sha256:398e6b577776826a912a1de4b81677bbe03397734afca17c98cce1e6f2902e76", size = 31176, upload-time = "2026-06-30T07:25:10.657Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/6a/eaa2d14e3404a0adb08acf53ec64567487e5b1c51b164a28b81a9c7be11b/jentic_apitools_analyze-1.0.0a18-py3-none-any.whl", hash = "sha256:c913ff3b8004f59994f6e61c1d4e4cb1798ef350ca9013420c9242ce543e5ee0", size = 51096, upload-time = "2026-06-11T08:56:53.12Z" },
+    { url = "https://files.pythonhosted.org/packages/63/7f/5cc554b3563a74401835bf4bd6a1f2c71cdae0122a2c39a32e5328c9ffb8/jentic_apitools_analyze-1.0.0a24-py3-none-any.whl", hash = "sha256:f8dc7f00f18a1457ec858fac3dab82f94a57df33cb70b7cdecee906742764503", size = 51350, upload-time = "2026-06-30T07:25:01.942Z" },
 ]
 
 [[package]]
@@ -407,7 +407,7 @@ wheels = [
 
 [[package]]
 name = "jentic-apitools-llm"
-version = "1.0.0a18"
+version = "1.0.0a24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -416,14 +416,14 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/d0/7443dbb6944df3803a907a1e1c6e9c11497ea1c9cab30766524637363cd4/jentic_apitools_llm-1.0.0a18.tar.gz", hash = "sha256:16b6a5ca446b733af96b1c671fe8c52e3614087203d667bfc27a37e1c63e9c1f", size = 16551, upload-time = "2026-06-11T08:57:04.926Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/75/614cf615f1ecdbfba6ee3cc03cb69075c5b308612ce62af34e9181fd1d7f/jentic_apitools_llm-1.0.0a24.tar.gz", hash = "sha256:afa5d960c2d5bcc1cadf9ee09a2b4a753b36eef97b379966e4ad828a6b80c460", size = 16575, upload-time = "2026-06-30T07:25:13.383Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/7d/ac32c014804c6756a1e105f82d296d7b1c95f733a9e239f422c6ad09240a/jentic_apitools_llm-1.0.0a18-py3-none-any.whl", hash = "sha256:997749095efac09710dc3d8a16564381180709c412886e8f9fb25eaed69e7f30", size = 23743, upload-time = "2026-06-11T08:56:57.029Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/33/76571c47f922ce7ca9b5be89de7142233fa303f1badb63d8da90d256f469/jentic_apitools_llm-1.0.0a24-py3-none-any.whl", hash = "sha256:2906308944cad6b7e96f2e8d93dd91e52b691b34290e1ce139a71a537c53afd8", size = 23731, upload-time = "2026-06-30T07:25:05.798Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-pipelines"
-version = "1.0.0a18"
+version = "1.0.0a24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datadog" },
@@ -439,28 +439,28 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/74/bc1ddfd742b4fead43c126a934d85530fa3a621f00be057f6d095c8ead86/jentic_apitools_pipelines-1.0.0a18.tar.gz", hash = "sha256:534af77483f47ee86ba745568019912e987f3f5cd29cf68fe73a528d54947257", size = 43812, upload-time = "2026-06-11T08:57:05.591Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/61/8fbbc89b12f0f5edf1693467cbbd03231a23f1e75c325f5444a9ec3209e1/jentic_apitools_pipelines-1.0.0a24.tar.gz", hash = "sha256:88a31d296b708dd36f9564a44c3f2e02a85410e21df5fcf32a461881ce453eed", size = 45922, upload-time = "2026-06-30T07:25:14.224Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/80/5e19dedc9477ce4fd507f5ed3f819ea342b835f38a070bedf354d3ca7519/jentic_apitools_pipelines-1.0.0a18-py3-none-any.whl", hash = "sha256:58dcfdf766df6c62f4f9fcdb25884d11ac627089323590b7c78bc5a6fb16657c", size = 53218, upload-time = "2026-06-11T08:56:58.12Z" },
+    { url = "https://files.pythonhosted.org/packages/34/0b/42c0d89cc3b1dd5fc60447ced91fc9933d0748f80754ea5eedd324f08575/jentic_apitools_pipelines-1.0.0a24-py3-none-any.whl", hash = "sha256:504b175f6128e92324e8d31ef8e08511c0f2b68322ea8e8876ef0361e00246ee", size = 55724, upload-time = "2026-06-30T07:25:06.737Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-score"
-version = "1.0.0a18"
+version = "1.0.0a24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jentic-apitools-analyze" },
     { name = "jentic-apitools-common" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/50/76dae005d3a5e720c51c9ddfd3f95e8481f239e1932a7fcf27fa674faa0a/jentic_apitools_score-1.0.0a18.tar.gz", hash = "sha256:502b149d844d874fbb5773d843fcd806e9bacbd9451e3bbbaee973d3d7888e93", size = 55797, upload-time = "2026-06-11T08:57:06.953Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/de/181c87e5daa1aed0d65a7b9aff7c769b5890c0cfaa911b797596e2475370/jentic_apitools_score-1.0.0a24.tar.gz", hash = "sha256:0c0b1ed3a62184d4f2c7a42454cd1201c003c0a46ae4510b35be4235dcd1024e", size = 55915, upload-time = "2026-06-30T07:25:15.726Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/08/7da0c9139a22efde986004e6a4f302dc51ff40a6d6ca653e120197949912/jentic_apitools_score-1.0.0a18-py3-none-any.whl", hash = "sha256:fc68935c0e5b8b7e2bc83aabe3d14c92389de8d3f5ebcfc3874b9fad9426ed3a", size = 95049, upload-time = "2026-06-11T08:57:00.034Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/25/93694bf5cc8b8589555bcece098ca3033adf5350f99ce64805bc4f9b5fde/jentic_apitools_score-1.0.0a24-py3-none-any.whl", hash = "sha256:92a7bf29a73c5104fb5b8c1a443aaf4673c4bffa00a9eec7697926b3029b12e7", size = 95033, upload-time = "2026-06-30T07:25:08.803Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-storage"
-version = "1.0.0a18"
+version = "1.0.0a24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jentic-apitools-common" },
@@ -468,9 +468,9 @@ dependencies = [
     { name = "pygithub" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/d2/c26da27b8186348f198d0050a18d9592fbda3194d432087a5ad14ee18913/jentic_apitools_storage-1.0.0a18.tar.gz", hash = "sha256:5942f36a6e215edd863662ec3aa1befff80be45013338a4a8fe24190316975a2", size = 17157, upload-time = "2026-06-11T08:57:08.022Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/16/e9efb5037bbebd8a511818b100b9a0686cc48994358dea9f28df2eb4272f/jentic_apitools_storage-1.0.0a24.tar.gz", hash = "sha256:2955b745e71fd4100efba870ac42f2509ed935de5b83b3fdbbb96a97459a91a1", size = 17258, upload-time = "2026-06-30T07:25:16.47Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/ac/9f7c01d8ecbc4e9a375f3d6851260b497b22a0af85ed1b4f40313c904e42/jentic_apitools_storage-1.0.0a18-py3-none-any.whl", hash = "sha256:c66248086daa8753f4db00bccce9d06a1a1b0bf36b640d77036afba4914e373c", size = 25031, upload-time = "2026-06-11T08:57:01.082Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/9b/6ef3f179793f8c759b932e767e5013f8c84825364e8a7cdf53310ae04d05/jentic_apitools_storage-1.0.0a24-py3-none-any.whl", hash = "sha256:005123a04f21256504b22dbf799291cb8512ece13898d1e932b9c908813fa93c", size = 25018, upload-time = "2026-06-30T07:25:09.776Z" },
 ]
 
 [[package]]
@@ -629,7 +629,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jentic-apitools-common", specifier = "==1.0.0a24" },
-    { name = "jentic-apitools-pipelines", specifier = "==1.0.0a18" },
+    { name = "jentic-apitools-pipelines", specifier = "==1.0.0a24" },
     { name = "requests", specifier = ">=2.34.2,<3" },
 ]
 
@@ -1450,14 +1450,14 @@ wheels = [
 
 [[package]]
 name = "s3transfer"
-version = "0.18.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/1f/12417f7f493fc45e1f9fd5d4a9b6c125cf8d2cf3f8ddbdfab3e76406e9d6/s3transfer-0.18.0.tar.gz", hash = "sha256:3760b8b7ec1315da54048b2d626276732bee4300d054d492d4e1d43e20d4ecbd", size = 160560, upload-time = "2026-05-28T19:39:09.124Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/94/dcdaeb1713cab9c84def276cfac7388b17c7d9855bbcfe88d77e4dbafd44/s3transfer-0.19.0.tar.gz", hash = "sha256:ce436931687addc4c1712d52d40b32f53e88315723f107ffa20ba82b05a0f685", size = 165171, upload-time = "2026-06-16T19:44:51.599Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2b/58/a58fc997655386daa2e25784e30c288aa3e3819e401f77029ee4899fb55a/s3transfer-0.18.0-py3-none-any.whl", hash = "sha256:239c13b09e65ad0346e1be7348b8a202dcad44ac7ea7c6eb858fc881dce739b6", size = 88572, upload-time = "2026-05-28T19:39:07.999Z" },
+    { url = "https://files.pythonhosted.org/packages/46/5f/4c174edad94f82de888ac00a5ddd8d07b35609b6c94f0bdf4d74af57703e/s3transfer-0.19.0-py3-none-any.whl", hash = "sha256:777cc2415536f1debadb5c2ef7779275d0fc0fe0e042411cdd6caebeb2685262", size = 90101, upload-time = "2026-06-16T19:44:50.439Z" },
 ]
 
 [[package]]
