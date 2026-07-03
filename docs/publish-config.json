@@ -50,7 +50,7 @@
       "title": "API Scorecard \u2013 Agent Skill (Improvements)",
       "intro": "The `jentic-api-improve` **agent skill** closes the loop on scoring: it raises an OpenAPI document\u2019s JAIRF score with non-breaking improvements and produces an improved spec, a reusable OpenAPI Overlay, and a before/after changelog. Install it through whichever path fits your agent.\n\n---",
       "sections": [
-        { "heading": "jentic-api-improve", "level": 3, "headingShift": -1, "contentReplacements": [{ "from": "(#jentic-api-scorecard)", "to": "(./api-scorecard-skill.md#jentic-api-scorecard)" }] }
+        { "heading": "jentic-api-improve", "level": 3, "headingShift": -1, "contentReplacements": [{ "from": "(#jentic-api-scorecard)", "to": "(./api-scorecard-skill.md#jentic-api-scorecard)" }, { "from": "(#requirements)", "to": "(./api-scorecard.md#requirements)" }] }
       ],
       "relatedLinks": [
         { "text": "CLI Reference", "href": "./api-scorecard.md" },
