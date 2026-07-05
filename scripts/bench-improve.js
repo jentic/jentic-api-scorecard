@@ -25,12 +25,13 @@
  *
  *   node scripts/bench-improve.js --render-only --data <file> [--output-dir <dir>]
  *       Render docs/improve-cost-benchmark.md from an existing results data file.
- *       Pure function of the data file; no measurement. (Implemented in Group 4.)
+ *       Pure function of the data file; no measurement.
  *
  *   node scripts/bench-improve.js [--output <file>]
  *       Perform the real measurement run (manual; needs Docker, JENTIC_API_KEY,
  *       an authenticated `claude` CLI, and PROXY_UPSTREAM_URL/KEY). Writes the
- *       results data file, then renders the doc. (Real run wired in Group 5.)
+ *       results data file, then renders the doc. Not yet implemented — see the
+ *       dispatch block at the bottom of this file.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
@@ -44,6 +45,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+import { startProxy } from './token-proxy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -74,7 +77,7 @@ const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
 
 // The engine `--with-llm` provider, held fixed across every cell so the
 // agent-model comparison isn't confounded. Pointed at the token-counting proxy
-// at run time (Group 5); the model id here is the fixed engine light model.
+// at run time; the model id here is the fixed engine light model.
 const ENGINE_FIXED_MODEL = 'claude-haiku-4-5-20251001';
 
 // The input-spec axis: OAK specs (raw githubusercontent.com URLs under the gate
@@ -91,7 +94,6 @@ const INPUT_SPECS = [
     id: 'petstore',
     url: `${OAK_BASE}/swagger-api/petstore/1.0.27/openapi.json`,
     baselineScore: null,
-    note: 'anchor spec — used across the repo test suite',
   },
 ];
 
@@ -106,23 +108,109 @@ function buildMatrix() {
   return cells;
 }
 
-/** Print the planned matrix and per-cell plumbing without spending anything. */
-function runDryRun() {
+/**
+ * Assemble the engine `--with-llm` env for one cell, pointed at the given proxy
+ * URL. The provider is held fixed (OpenAI-compatible → proxy); only the proxy
+ * URL varies per run. This is the exact env a real run exports before scoring.
+ */
+function engineEnv(proxyUrl) {
+  return {
+    LLM_PROVIDER: 'OPENAI',
+    LIGHT_LLM_PROVIDER: 'OPENAI',
+    OPENAI_API_URL: proxyUrl,
+    OPENAI_API_KEY: 'proxy-forwards-real-key',
+    LLM_LIGHT_MODEL: ENGINE_FIXED_MODEL,
+  };
+}
+
+/**
+ * Assemble the `claude -p` argv that drives the skill headlessly for one cell.
+ * This is the exact command a real run would spawn (kept as an array so it is
+ * never shell-interpolated).
+ */
+function claudeArgv(model, spec, outDir) {
+  return [
+    '-p',
+    `Use the jentic-api-improve skill to improve ${spec.url} into ${outDir}`,
+    '--model',
+    model,
+    '--output-format',
+    'json',
+    '--permission-mode',
+    'bypassPermissions',
+  ];
+}
+
+/**
+ * Self-check the token proxy against a canned stub upstream (no real network):
+ * start it, send one request whose stub response carries a known usage block,
+ * assert the running tally matches, then shut down. This exercises the exact
+ * proxy the real engine surface relies on, without spending anything.
+ */
+async function selfCheckProxy() {
+  const KNOWN = { prompt: 123, completion: 45 };
+  const proxy = await startProxy({
+    port: 0,
+    upstreamHandler: async () => ({
+      status: 200,
+      body: {
+        choices: [{ message: { content: 'ok' } }],
+        usage: { prompt_tokens: KNOWN.prompt, completion_tokens: KNOWN.completion },
+      },
+    }),
+  });
+  try {
+    await fetch(proxy.url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'stub', messages: [], stream: true }),
+    }).then((r) => r.json());
+    const usage = proxy.usage();
+    const ok =
+      usage.promptTokens === KNOWN.prompt &&
+      usage.completionTokens === KNOWN.completion &&
+      usage.requests === 1 &&
+      usage.unknown === false;
+    if (!ok) {
+      console.error(`❌  proxy self-check tally mismatch: ${JSON.stringify(usage)}`);
+      process.exit(1);
+    }
+    return { url: proxy.url, usage };
+  } finally {
+    await proxy.stop();
+  }
+}
+
+/**
+ * Exercise the matrix and all per-cell plumbing without spending anything:
+ * run the proxy self-check, then for each cell assemble (and print) the real
+ * engine env and `claude -p` argv. No `claude` / model / `score` call is made.
+ */
+async function runDryRun() {
   const cells = buildMatrix();
   console.log(
     `Benchmark matrix — ${AGENT_MODELS.length} models × ${INPUT_SPECS.length} specs = ${cells.length} cells`,
   );
   console.log(`Engine --with-llm model (fixed): ${ENGINE_FIXED_MODEL}`);
   console.log('');
+
+  const check = await selfCheckProxy();
+  console.log(
+    `token-proxy self-check: tallied ${check.usage.promptTokens}+${check.usage.completionTokens} tokens from a stub upstream, then stopped ✓`,
+  );
+  console.log('');
+
   for (const { model, spec } of cells) {
+    const env = engineEnv(check.url);
+    const argv = claudeArgv(model, spec, '<out-dir>');
     console.log(`▸ agent=${model}  spec=${spec.id}  baseline=${spec.baselineScore ?? 'TBD'}`);
     console.log(`    input: ${spec.url}`);
     console.log(
-      `    plan: start token-proxy → set engine env (LLM_PROVIDER=OPENAI, OPENAI_API_URL=<proxy>, LLM_LIGHT_MODEL=${ENGINE_FIXED_MODEL})`,
+      `    engine env: ${Object.entries(env)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ')}`,
     );
-    console.log(
-      `    drive: claude -p "<jentic-api-improve ${spec.id}>" --model ${model} --output-format json`,
-    );
+    console.log(`    drive: claude ${argv.join(' ')}`);
     console.log('    (dry-run — no claude / model / score call made)');
   }
   console.log('');
@@ -258,11 +346,12 @@ function runRenderOnly() {
 if (renderOnly) {
   runRenderOnly();
 } else if (dryRun) {
-  runDryRun();
+  await runDryRun();
 } else {
-  // The real measurement run is wired in Group 5.
+  // The real measurement run is a manual step and is not yet implemented; the
+  // deterministic --dry-run and --render-only modes above are the merge gates.
   console.error(
-    '❌  real measurement run is not yet wired; use --dry-run for the deterministic matrix preview',
+    '❌  real measurement run is not yet implemented; use --dry-run for the deterministic matrix preview',
   );
   process.exit(1);
 }
