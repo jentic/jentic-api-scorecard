@@ -1,0 +1,12 @@
+{
+  "_comment": "Live benchmark results data. Cells are UNMEASURED (null) until a real run is performed — see scripts/bench-improve.js prerequisites. Regenerate docs/improve-cost-benchmark.md via `node scripts/bench-improve.js --render-only --data scripts/bench-improve.data.json` after measuring. No numbers here are fabricated.",
+  "cliVersion": "1.9.3",
+  "runDate": null,
+  "engineFixedModel": "claude-haiku-4-5-20251001",
+  "cells": [
+    { "model": "haiku", "spec": { "id": "petstore", "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json", "baselineScore": null }, "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null }, "engine": { "inputTokens": null, "outputTokens": null, "unknown": false }, "iterationsRun": null, "scoreBefore": null, "scoreAfter": null, "error": null },
+    { "model": "sonnet", "spec": { "id": "petstore", "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json", "baselineScore": null }, "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null }, "engine": { "inputTokens": null, "outputTokens": null, "unknown": false }, "iterationsRun": null, "scoreBefore": null, "scoreAfter": null, "error": null },
+    { "model": "opus", "spec": { "id": "petstore", "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json", "baselineScore": null }, "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null }, "engine": { "inputTokens": null, "outputTokens": null, "unknown": false }, "iterationsRun": null, "scoreBefore": null, "scoreAfter": null, "error": null },
+    { "model": "fable", "spec": { "id": "petstore", "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json", "baselineScore": null }, "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null }, "engine": { "inputTokens": null, "outputTokens": null, "unknown": false }, "iterationsRun": null, "scoreBefore": null, "scoreAfter": null, "error": null }
+  ]
+}
