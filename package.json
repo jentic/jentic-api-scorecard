@@ -27,7 +27,9 @@
     "prepare": "husky",
     "docs:extract": "node scripts/extract-docs.js",
     "docs:extract:dry-run": "node scripts/extract-docs.js --dry-run",
-    "docs:extract:preview": "node scripts/extract-docs.js --output-dir /tmp/jentic-scorecard-docs"
+    "docs:extract:preview": "node scripts/extract-docs.js --output-dir /tmp/jentic-scorecard-docs",
+    "bench:improve": "node scripts/bench-improve.js",
+    "bench:improve:dry-run": "node scripts/bench-improve.js --dry-run"
   },
   "overrides": {
     "@conventional-changelog/git-client": {

@@ -324,7 +324,7 @@ Scoring tells a user *what* is wrong with their API's AI-readiness; this skill c
 - Update `docs/architecture.md` §4 (layout tree + distribution notes: two plugins, the `agents/` directory, tarball packaging) and `.claude/CLAUDE.md` (both skills, two plugin entries, the `agents/` directory) in lockstep.
 - The new skill must pass the automated SkillSpector `SAFE` gate (`skill-security.yml` globs `skills/*`, so it is scanned with no workflow edit).
 
-## Phase 22 — Benchmark jentic-api-improve Token Usage and Cost
+## Phase 22 — Benchmark jentic-api-improve Token Usage and Cost ✅
 
 **Goal:** Produce a reproducible benchmark that measures the jentic-api-improve skill's token usage and cost across LLM models and input scenarios, and publish the results as a doc.
 **Depends on:** none (self-contained — measures the already-shipped Phase 21 improve skill)
