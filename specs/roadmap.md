@@ -324,6 +324,23 @@ Scoring tells a user *what* is wrong with their API's AI-readiness; this skill c
 - Update `docs/architecture.md` §4 (layout tree + distribution notes: two plugins, the `agents/` directory, tarball packaging) and `.claude/CLAUDE.md` (both skills, two plugin entries, the `agents/` directory) in lockstep.
 - The new skill must pass the automated SkillSpector `SAFE` gate (`skill-security.yml` globs `skills/*`, so it is scanned with no workflow edit).
 
+## Phase 22 — Benchmark jentic-api-improve Token Usage and Cost
+
+**Goal:** Produce a reproducible benchmark that measures the jentic-api-improve skill's token usage and cost across LLM models and input scenarios, and publish the results as a doc.
+**Depends on:** none (self-contained — measures the already-shipped Phase 21 improve skill)
+**Priority:** Medium–High
+
+Phase 21 shipped the `jentic-api-improve` skill; running it with `--with-llm` incurs LLM cost on two surfaces — the scoring engine's semantic analysis and the coding agent's own reasoning across the skill's standard 2-iteration loop. This phase measures both across a model × input-spec matrix so users can choose a model and anticipate cost before adopting the skill.
+
+- Add a benchmark harness script under `scripts/` (Node ESM, matching `extract-docs.js`) that drives the `jentic-api-improve` skill end-to-end through its standard 2-iteration loop over a matrix of models × input specs.
+- Model axis: run the skill's coding agent under each of Claude haiku, sonnet, opus, and fable, holding the engine `--with-llm` provider fixed so the agent-model comparison isn't confounded.
+- Input axis: a small pinned set of OpenAPI specs pulled from `jentic-public-apis` (which already carry a JAIRF score), chosen to span size/complexity and starting quality (low / mid / high baseline score); record each spec's source URL and baseline score.
+- Agent-reasoning signal: capture the coding agent's own token usage and cost per matrix cell from Claude Code headless mode (`claude -p … --output-format json`), reading the session `usage` and `total_cost_usd` fields — first-party accounting, no estimation.
+- Engine `--with-llm` signal: count the scoring engine's LLM spend across the baseline plus in-loop re-scores by pointing the engine at a token-counting OpenAI-compatible endpoint (the skill's documented local-provider path); confirm during spec whether the scorecard output already surfaces usage that could be read directly instead.
+- Emit machine-readable per-cell results (input/output tokens split by surface, cost, iterations run, score before/after) to a data file that the doc is generated from.
+- Write `docs/improve-cost-benchmark.md`: a results table across models × specs with token and cost totals broken down by surface (engine vs agent), plus model-selection guidance and takeaways.
+- Pin the CLI/image version and stamp the run date in the doc; treat the benchmark as a manual, non-CI-gated measurement since it consumes real scorecard quota and real LLM spend, and LLM outputs are stochastic.
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
