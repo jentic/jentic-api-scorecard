@@ -27,22 +27,26 @@
  *       Render docs/improve-cost-benchmark.md from an existing results data file.
  *       Pure function of the data file; no measurement.
  *
- *   node scripts/bench-improve.js [--output <file>]
- *       Perform the real measurement run (manual; needs Docker, JENTIC_API_KEY,
- *       an authenticated `claude` CLI, and PROXY_UPSTREAM_URL/KEY). Writes the
- *       results data file, then renders the doc. Not yet implemented — see the
- *       dispatch block at the bottom of this file.
+ *   node scripts/bench-improve.js [--output <file>] [--run-date <YYYY-MM-DD>]
+ *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
+ *       per cell via `claude -p`, record the agent surface from claude's JSON and
+ *       the engine surface from the token proxy, write the results data file
+ *       (default scripts/bench-improve.data.json), then render the doc.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
  *   - JENTIC_API_KEY exported (the improve loop's in-loop re-scores run on a local
  *     working copy, which always costs one scorecard quota unit and needs a key).
- *   - `claude` CLI installed and authenticated.
- *   - PROXY_UPSTREAM_URL / PROXY_UPSTREAM_KEY for the token-counting proxy upstream.
+ *   - `claude` CLI installed and authenticated (drives the skill headlessly).
+ *   - Optional PROXY_UPSTREAM_URL / PROXY_UPSTREAM_KEY (an OpenAI-compatible
+ *     endpoint) to measure the engine `--with-llm` surface. Without them the run
+ *     skips `--with-llm` and records the engine surface as not-measured.
  *   Budget at least three scorecard quota units per matrix cell.
  */
 
+import { spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -128,10 +132,12 @@ function engineEnv(proxyUrl) {
  * This is the exact command a real run would spawn (kept as an array so it is
  * never shell-interpolated).
  */
-function claudeArgv(model, spec, outDir) {
+function claudeArgv(model, spec, outDir, withLlm) {
+  const flag = withLlm ? 'with `--with-llm`' : 'without `--with-llm`';
   return [
     '-p',
-    `Use the jentic-api-improve skill to improve ${spec.url} into ${outDir}`,
+    `Use the jentic-api-improve skill to improve the OpenAPI document at ${spec.url}, ` +
+      `writing outputs into ${outDir}. Score ${flag}. Run the standard loop and then stop.`,
     '--model',
     model,
     '--output-format',
@@ -139,6 +145,26 @@ function claudeArgv(model, spec, outDir) {
     '--permission-mode',
     'bypassPermissions',
   ];
+}
+
+/**
+ * Extract the agent surface's token usage + cost from a `claude -p
+ * --output-format json` result object. Input tokens include cache-creation and
+ * cache-read (the agent really consumed them). Returns nulls when the shape is
+ * absent so a parse gap is never read as zero cost.
+ */
+function parseAgentUsage(result) {
+  const u = result && typeof result === 'object' ? result.usage : null;
+  if (!u || typeof u !== 'object') {
+    return { inputTokens: null, outputTokens: null, costUsd: null };
+  }
+  const input =
+    (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+  return {
+    inputTokens: typeof u.input_tokens === 'number' ? input : null,
+    outputTokens: typeof u.output_tokens === 'number' ? u.output_tokens : null,
+    costUsd: typeof result.total_cost_usd === 'number' ? result.total_cost_usd : null,
+  };
 }
 
 /**
@@ -202,7 +228,7 @@ async function runDryRun() {
 
   for (const { model, spec } of cells) {
     const env = engineEnv(check.url);
-    const argv = claudeArgv(model, spec, '<out-dir>');
+    const argv = claudeArgv(model, spec, '<out-dir>', true);
     console.log(`▸ agent=${model}  spec=${spec.id}  baseline=${spec.baselineScore ?? 'TBD'}`);
     console.log(`    input: ${spec.url}`);
     console.log(
@@ -314,6 +340,18 @@ function renderDoc(data) {
   return out.join('\n') + '\n';
 }
 
+/** Render `data` to the benchmark doc, honoring an optional --output-dir base. */
+function renderToFile(data) {
+  const content = renderDoc(data);
+  const outputDir = argValue('--output-dir', null);
+  const outPath = outputDir
+    ? path.resolve(ROOT, outputDir, DOC_RELPATH)
+    : path.join(ROOT, DOC_RELPATH);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, content, 'utf8');
+  console.log(`✅  rendered ${DOC_RELPATH} (${content.split('\n').length} lines) → ${outPath}`);
+}
+
 function runRenderOnly() {
   const dataPath = argValue('--data', null);
   if (!dataPath) {
@@ -332,14 +370,125 @@ function runRenderOnly() {
     console.error(`❌  Data file is not valid JSON: ${err.message}`);
     process.exit(1);
   }
-  const content = renderDoc(data);
-  const outputDir = argValue('--output-dir', null);
-  const outPath = outputDir
-    ? path.resolve(ROOT, outputDir, DOC_RELPATH)
-    : path.join(ROOT, DOC_RELPATH);
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, content, 'utf8');
-  console.log(`✅  rendered ${DOC_RELPATH} (${content.split('\n').length} lines) → ${outPath}`);
+  renderToFile(data);
+}
+
+/** Spawn `claude` with the given argv + env; resolve the parsed JSON result. */
+function runClaude(argv, extraEnv) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('claude', argv, {
+      env: { ...process.env, ...extraEnv },
+      stdio: ['ignore', 'pipe', 'inherit'],
+    });
+    let stdout = '';
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`claude exited with code ${code}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (err) {
+        reject(new Error(`could not parse claude --output-format json output: ${err.message}`));
+      }
+    });
+  });
+}
+
+/**
+ * Perform the real measurement run. For each cell: (optionally) start the token
+ * proxy and route the engine `--with-llm` at it, drive the skill headlessly via
+ * `claude -p`, then record the agent surface (from claude's JSON) and the engine
+ * surface (from the proxy tally, when measured). Writes a results data file and
+ * renders the doc.
+ *
+ * Engine measurement is opt-in on PROXY_UPSTREAM_URL: with it, --with-llm is
+ * routed through the proxy and engine tokens are counted; without it, the skill
+ * runs WITHOUT --with-llm and engine tokens are recorded as not-measured
+ * (`unknown: true`) — never fabricated. The agent surface is always measured.
+ */
+async function runReal() {
+  if (!process.env['JENTIC_API_KEY']) {
+    console.error(
+      '❌  JENTIC_API_KEY must be set (the improve loop re-scores a local working copy).',
+    );
+    process.exit(1);
+  }
+  const upstreamUrl = process.env['PROXY_UPSTREAM_URL'];
+  const upstreamKey = process.env['PROXY_UPSTREAM_KEY'];
+  const measureEngine = Boolean(upstreamUrl);
+  if (!measureEngine) {
+    console.log(
+      'ℹ  PROXY_UPSTREAM_URL not set — running without --with-llm; the engine surface will be ' +
+        'recorded as not-measured. Set PROXY_UPSTREAM_URL/KEY to an OpenAI-compatible endpoint to measure it.',
+    );
+  }
+
+  const cells = buildMatrix();
+  const results = [];
+  const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-improve-'));
+
+  for (const { model, spec } of cells) {
+    console.log(`▸ measuring agent=${model} spec=${spec.id} …`);
+    const outDir = path.join(workRoot, `${model}-${spec.id}`);
+    fs.mkdirSync(outDir, { recursive: true });
+
+    let proxy = null;
+    let extraEnv = {};
+    if (measureEngine) {
+      proxy = await startProxy({ port: 0, upstreamUrl, upstreamKey });
+      extraEnv = engineEnv(proxy.url);
+    }
+
+    const cell = {
+      model,
+      spec: { id: spec.id, url: spec.url, baselineScore: spec.baselineScore },
+      agent: { inputTokens: null, outputTokens: null, costUsd: null },
+      engine: { inputTokens: null, outputTokens: null, unknown: true },
+      iterationsRun: null,
+      scoreBefore: null,
+      scoreAfter: null,
+      error: null,
+    };
+
+    try {
+      const argv = claudeArgv(model, spec, outDir, measureEngine);
+      const result = await runClaude(argv, extraEnv);
+      cell.agent = parseAgentUsage(result);
+      if (measureEngine && proxy) {
+        const u = proxy.usage();
+        cell.engine = {
+          inputTokens: u.unknown ? null : u.promptTokens,
+          outputTokens: u.unknown ? null : u.completionTokens,
+          unknown: u.unknown || u.requests === 0,
+        };
+      }
+    } catch (err) {
+      cell.error = err.message;
+      console.error(`  ✗ ${model}/${spec.id}: ${err.message}`);
+    } finally {
+      if (proxy) await proxy.stop();
+    }
+    results.push(cell);
+  }
+
+  const data = {
+    cliVersion: JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/cli/package.json'), 'utf8'))
+      .version,
+    runDate: argValue('--run-date', new Date().toISOString().slice(0, 10)),
+    engineFixedModel: measureEngine ? ENGINE_FIXED_MODEL : null,
+    cells: results,
+  };
+
+  const dataOut = argValue('--output', path.join('scripts', 'bench-improve.data.json'));
+  const dataPath = path.resolve(ROOT, dataOut);
+  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+  console.log(`✅  wrote results → ${dataPath}`);
+  renderToFile(data);
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
@@ -348,10 +497,5 @@ if (renderOnly) {
 } else if (dryRun) {
   await runDryRun();
 } else {
-  // The real measurement run is a manual step and is not yet implemented; the
-  // deterministic --dry-run and --render-only modes above are the merge gates.
-  console.error(
-    '❌  real measurement run is not yet implemented; use --dry-run for the deterministic matrix preview',
-  );
-  process.exit(1);
+  await runReal();
 }
