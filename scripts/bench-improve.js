@@ -8,9 +8,9 @@
  *   - agent:  the coding agent's own reasoning, driving the standard 2-iteration
  *             loop, captured from Claude Code headless `claude -p --output-format json`
  *             (session `usage` + `total_cost_usd`).
- *   - engine: the scoring engine's `--with-llm` analysis, captured by pointing the
- *             engine at scripts/token-proxy.mjs (the scorecard JSON does not expose
- *             token usage). The engine provider is held FIXED across the model axis.
+ *   - engine: the scoring engine's `--with-llm` analysis, read from the
+ *             `token-usage.json` the skill writes into its output dir (aggregated
+ *             from the `tokenUsage` field each `--with-llm` scorecard now carries).
  *
  * See specs/2026-07-05-benchmark-improve-cost/ for the full design.
  *
@@ -29,18 +29,19 @@
  *
  *   node scripts/bench-improve.js [--output <file>] [--run-date <YYYY-MM-DD>]
  *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
- *       per cell via `claude -p`, record the agent surface from claude's JSON and
- *       the engine surface from the token proxy, write the results data file
- *       (default scripts/bench-improve.data.json), then render the doc.
+ *       per cell via `claude -p` (which scores `--with-llm`), record the agent
+ *       surface from claude's JSON and the engine surface from the skill's
+ *       token-usage.json, write the results data file (default
+ *       scripts/bench-improve.data.json), then render the doc.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
  *   - JENTIC_API_KEY exported (the improve loop's in-loop re-scores run on a local
  *     working copy, which always costs one scorecard quota unit and needs a key).
  *   - `claude` CLI installed and authenticated (drives the skill headlessly).
- *   - Optional PROXY_UPSTREAM_URL / PROXY_UPSTREAM_KEY (an OpenAI-compatible
- *     endpoint) to measure the engine `--with-llm` surface. Without them the run
- *     skips `--with-llm` and records the engine surface as not-measured.
+ *   - `--with-llm` LLM provider credentials in the environment (cloud provider keys
+ *     or a local OpenAI-compatible endpoint) — the engine surface is only populated
+ *     when the skill can run `--with-llm`; the CLI forwards detected creds.
  *   Budget at least three scorecard quota units per matrix cell.
  */
 
@@ -49,8 +50,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-import { startProxy } from './token-proxy.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -75,14 +74,13 @@ function argValue(flag, fallback) {
 const DOC_RELPATH = path.join('docs', 'improve-cost-benchmark.md');
 
 // ── Config ────────────────────────────────────────────────────────────────
-// The coding-agent model axis. `fable` is a Claude Code agent-model alias; the
-// engine `--with-llm` provider is a separate, fixed configuration (see below).
+// The coding-agent model axis. `fable` is a Claude Code agent-model alias; it
+// varies the agent surface only. The engine `--with-llm` model is chosen by the
+// engine (Bedrock-fixed) and reported in each run's token-usage.json.
 const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
 
-// The engine `--with-llm` provider, held fixed across every cell so the
-// agent-model comparison isn't confounded. Pointed at the token-counting proxy
-// at run time; the model id here is the fixed engine light model.
-const ENGINE_FIXED_MODEL = 'claude-haiku-4-5-20251001';
+// The output artifact the skill writes with the engine's aggregated token usage.
+const TOKEN_USAGE_FILE = 'token-usage.json';
 
 // The input-spec axis: OAK specs (raw githubusercontent.com URLs under the gate
 // allowlist) with a recorded baseline JAIRF score. Scoring these by URL is
@@ -113,31 +111,15 @@ function buildMatrix() {
 }
 
 /**
- * Assemble the engine `--with-llm` env for one cell, pointed at the given proxy
- * URL. The provider is held fixed (OpenAI-compatible → proxy); only the proxy
- * URL varies per run. This is the exact env a real run exports before scoring.
- */
-function engineEnv(proxyUrl) {
-  return {
-    LLM_PROVIDER: 'OPENAI',
-    LIGHT_LLM_PROVIDER: 'OPENAI',
-    OPENAI_API_URL: proxyUrl,
-    OPENAI_API_KEY: 'proxy-forwards-real-key',
-    LLM_LIGHT_MODEL: ENGINE_FIXED_MODEL,
-  };
-}
-
-/**
  * Assemble the `claude -p` argv that drives the skill headlessly for one cell.
- * This is the exact command a real run would spawn (kept as an array so it is
- * never shell-interpolated).
+ * The skill always scores `--with-llm` (the engine surface comes from the
+ * token-usage.json it emits). Kept as an array so it is never shell-interpolated.
  */
-function claudeArgv(model, spec, outDir, withLlm) {
-  const flag = withLlm ? 'with `--with-llm`' : 'without `--with-llm`';
+function claudeArgv(model, spec, outDir) {
   return [
     '-p',
     `Use the jentic-api-improve skill to improve the OpenAPI document at ${spec.url}, ` +
-      `writing outputs into ${outDir}. Score ${flag}. Run the standard loop and then stop.`,
+      `writing outputs into ${outDir}. Score with \`--with-llm\`. Run the standard loop and then stop.`,
     '--model',
     model,
     '--output-format',
@@ -145,6 +127,40 @@ function claudeArgv(model, spec, outDir, withLlm) {
     '--permission-mode',
     'bypassPermissions',
   ];
+}
+
+/**
+ * Read the engine token-usage surface for one cell from the `token-usage.json`
+ * the skill wrote into its output dir. Returns nulls when the file is absent or
+ * unparseable, or when the run recorded `withLlm: false` — a gap is never read
+ * as zero cost.
+ */
+function readEngineUsage(outDir) {
+  const file = path.join(outDir, TOKEN_USAGE_FILE);
+  const empty = {
+    inputTokens: null,
+    outputTokens: null,
+    totalTokens: null,
+    llmCalls: null,
+    model: null,
+    provider: null,
+  };
+  if (!fs.existsSync(file)) return empty;
+  let usage;
+  try {
+    usage = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return empty;
+  }
+  if (!usage || usage.withLlm === false) return empty;
+  return {
+    inputTokens: usage.inputTokens ?? null,
+    outputTokens: usage.outputTokens ?? null,
+    totalTokens: usage.totalTokens ?? null,
+    llmCalls: usage.llmCalls ?? null,
+    model: usage.model ?? null,
+    provider: usage.provider ?? null,
+  };
 }
 
 /**
@@ -168,75 +184,23 @@ function parseAgentUsage(result) {
 }
 
 /**
- * Self-check the token proxy against a canned stub upstream (no real network):
- * start it, send one request whose stub response carries a known usage block,
- * assert the running tally matches, then shut down. This exercises the exact
- * proxy the real engine surface relies on, without spending anything.
+ * Exercise the matrix and per-cell plumbing without spending anything: for each
+ * cell assemble (and print) the real `claude -p` argv and the token-usage.json
+ * path the engine surface will be read from. No `claude` / model / score call.
  */
-async function selfCheckProxy() {
-  const KNOWN = { prompt: 123, completion: 45 };
-  const proxy = await startProxy({
-    port: 0,
-    upstreamHandler: async () => ({
-      status: 200,
-      body: {
-        choices: [{ message: { content: 'ok' } }],
-        usage: { prompt_tokens: KNOWN.prompt, completion_tokens: KNOWN.completion },
-      },
-    }),
-  });
-  try {
-    await fetch(proxy.url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'stub', messages: [], stream: true }),
-    }).then((r) => r.json());
-    const usage = proxy.usage();
-    const ok =
-      usage.promptTokens === KNOWN.prompt &&
-      usage.completionTokens === KNOWN.completion &&
-      usage.requests === 1 &&
-      usage.unknown === false;
-    if (!ok) {
-      console.error(`❌  proxy self-check tally mismatch: ${JSON.stringify(usage)}`);
-      process.exit(1);
-    }
-    return { url: proxy.url, usage };
-  } finally {
-    await proxy.stop();
-  }
-}
-
-/**
- * Exercise the matrix and all per-cell plumbing without spending anything:
- * run the proxy self-check, then for each cell assemble (and print) the real
- * engine env and `claude -p` argv. No `claude` / model / `score` call is made.
- */
-async function runDryRun() {
+function runDryRun() {
   const cells = buildMatrix();
   console.log(
     `Benchmark matrix — ${AGENT_MODELS.length} models × ${INPUT_SPECS.length} specs = ${cells.length} cells`,
   );
-  console.log(`Engine --with-llm model (fixed): ${ENGINE_FIXED_MODEL}`);
-  console.log('');
-
-  const check = await selfCheckProxy();
-  console.log(
-    `token-proxy self-check: tallied ${check.usage.promptTokens}+${check.usage.completionTokens} tokens from a stub upstream, then stopped ✓`,
-  );
   console.log('');
 
   for (const { model, spec } of cells) {
-    const env = engineEnv(check.url);
-    const argv = claudeArgv(model, spec, '<out-dir>', true);
+    const argv = claudeArgv(model, spec, '<out-dir>');
     console.log(`▸ agent=${model}  spec=${spec.id}  baseline=${spec.baselineScore ?? 'TBD'}`);
     console.log(`    input: ${spec.url}`);
-    console.log(
-      `    engine env: ${Object.entries(env)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(' ')}`,
-    );
     console.log(`    drive: claude ${argv.join(' ')}`);
+    console.log(`    engine tokens: read from <out-dir>/${TOKEN_USAGE_FILE} after the run`);
     console.log('    (dry-run — no claude / model / score call made)');
   }
   console.log('');
@@ -276,17 +240,19 @@ function renderDoc(data) {
     );
     out.push('');
   }
+  const engineModel = cells.map((c) => c.engine?.model).find(Boolean) ?? null;
   out.push(
     `Target: \`@jentic/api-scorecard-cli\` **${data.cliVersion ?? 'unknown'}**` +
       `${anyMeasured ? `, measured on **${data.runDate ?? 'unknown'}**` : ''}. ` +
-      `The engine \`--with-llm\` model is held fixed at \`${data.engineFixedModel ?? 'unknown'}\` across every cell, ` +
-      'so differences reflect the coding-agent model, not the engine.',
+      `The engine \`--with-llm\` model is chosen by the engine${engineModel ? ` (\`${engineModel}\`)` : ''} and is ` +
+      'the same across every cell, so differences reflect the coding-agent model, not the engine.',
   );
   out.push('');
   out.push(
     'Each run drives the skill through its standard 2-iteration loop. Cost splits across two ' +
-      'surfaces: the coding **agent**’s own reasoning and the scoring **engine**’s ' +
-      '`--with-llm` analysis. See [`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.',
+      'surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring ' +
+      '**engine**’s `--with-llm` analysis (from the run’s `token-usage.json`). See ' +
+      '[`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.',
   );
   out.push('');
 
@@ -306,11 +272,9 @@ function renderDoc(data) {
       );
       continue;
     }
-    const engineIn = engine.unknown ? 'unknown' : num(engine.inputTokens);
-    const engineOut = engine.unknown ? 'unknown' : num(engine.outputTokens);
     out.push(
       `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(spec.baselineScore)} | ${num(c.scoreAfter)} | ${num(c.iterationsRun)} | ` +
-        `${num(agent.inputTokens)} | ${num(agent.outputTokens)} | ${usd(agent.costUsd)} | ${engineIn} | ${engineOut} |`,
+        `${num(agent.inputTokens)} | ${num(agent.outputTokens)} | ${usd(agent.costUsd)} | ${num(engine.inputTokens)} | ${num(engine.outputTokens)} |`,
     );
   }
   out.push('');
@@ -373,11 +337,11 @@ function runRenderOnly() {
   renderToFile(data);
 }
 
-/** Spawn `claude` with the given argv + env; resolve the parsed JSON result. */
-function runClaude(argv, extraEnv) {
+/** Spawn `claude` with the given argv; resolve the parsed JSON result. */
+function runClaude(argv) {
   return new Promise((resolve, reject) => {
     const child = spawn('claude', argv, {
-      env: { ...process.env, ...extraEnv },
+      env: process.env,
       stdio: ['ignore', 'pipe', 'inherit'],
     });
     let stdout = '';
@@ -400,16 +364,11 @@ function runClaude(argv, extraEnv) {
 }
 
 /**
- * Perform the real measurement run. For each cell: (optionally) start the token
- * proxy and route the engine `--with-llm` at it, drive the skill headlessly via
- * `claude -p`, then record the agent surface (from claude's JSON) and the engine
- * surface (from the proxy tally, when measured). Writes a results data file and
- * renders the doc.
- *
- * Engine measurement is opt-in on PROXY_UPSTREAM_URL: with it, --with-llm is
- * routed through the proxy and engine tokens are counted; without it, the skill
- * runs WITHOUT --with-llm and engine tokens are recorded as not-measured
- * (`unknown: true`) — never fabricated. The agent surface is always measured.
+ * Perform the real measurement run. For each cell: drive the skill headlessly
+ * via `claude -p` (which scores `--with-llm`), then record the agent surface
+ * (from claude's JSON) and the engine surface (from the token-usage.json the
+ * skill wrote into the cell's output dir). Writes a results data file and
+ * renders the doc. Both surfaces are recorded as null on a gap — never fabricated.
  */
 async function runReal() {
   if (!process.env['JENTIC_API_KEY']) {
@@ -417,15 +376,6 @@ async function runReal() {
       '❌  JENTIC_API_KEY must be set (the improve loop re-scores a local working copy).',
     );
     process.exit(1);
-  }
-  const upstreamUrl = process.env['PROXY_UPSTREAM_URL'];
-  const upstreamKey = process.env['PROXY_UPSTREAM_KEY'];
-  const measureEngine = Boolean(upstreamUrl);
-  if (!measureEngine) {
-    console.log(
-      'ℹ  PROXY_UPSTREAM_URL not set — running without --with-llm; the engine surface will be ' +
-        'recorded as not-measured. Set PROXY_UPSTREAM_URL/KEY to an OpenAI-compatible endpoint to measure it.',
-    );
   }
 
   const cells = buildMatrix();
@@ -437,18 +387,18 @@ async function runReal() {
     const outDir = path.join(workRoot, `${model}-${spec.id}`);
     fs.mkdirSync(outDir, { recursive: true });
 
-    let proxy = null;
-    let extraEnv = {};
-    if (measureEngine) {
-      proxy = await startProxy({ port: 0, upstreamUrl, upstreamKey });
-      extraEnv = engineEnv(proxy.url);
-    }
-
     const cell = {
       model,
       spec: { id: spec.id, url: spec.url, baselineScore: spec.baselineScore },
       agent: { inputTokens: null, outputTokens: null, costUsd: null },
-      engine: { inputTokens: null, outputTokens: null, unknown: true },
+      engine: {
+        inputTokens: null,
+        outputTokens: null,
+        totalTokens: null,
+        llmCalls: null,
+        model: null,
+        provider: null,
+      },
       iterationsRun: null,
       scoreBefore: null,
       scoreAfter: null,
@@ -456,22 +406,13 @@ async function runReal() {
     };
 
     try {
-      const argv = claudeArgv(model, spec, outDir, measureEngine);
-      const result = await runClaude(argv, extraEnv);
+      const argv = claudeArgv(model, spec, outDir);
+      const result = await runClaude(argv);
       cell.agent = parseAgentUsage(result);
-      if (measureEngine && proxy) {
-        const u = proxy.usage();
-        cell.engine = {
-          inputTokens: u.unknown ? null : u.promptTokens,
-          outputTokens: u.unknown ? null : u.completionTokens,
-          unknown: u.unknown || u.requests === 0,
-        };
-      }
+      cell.engine = readEngineUsage(outDir);
     } catch (err) {
       cell.error = err.message;
       console.error(`  ✗ ${model}/${spec.id}: ${err.message}`);
-    } finally {
-      if (proxy) await proxy.stop();
     }
     results.push(cell);
   }
@@ -480,7 +421,6 @@ async function runReal() {
     cliVersion: JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/cli/package.json'), 'utf8'))
       .version,
     runDate: argValue('--run-date', new Date().toISOString().slice(0, 10)),
-    engineFixedModel: measureEngine ? ENGINE_FIXED_MODEL : null,
     cells: results,
   };
 
@@ -495,7 +435,7 @@ async function runReal() {
 if (renderOnly) {
   runRenderOnly();
 } else if (dryRun) {
-  await runDryRun();
+  runDryRun();
 } else {
   await runReal();
 }
