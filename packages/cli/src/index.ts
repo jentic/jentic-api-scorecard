@@ -26,6 +26,13 @@ export async function main(argv: string[] = process.argv): Promise<void> {
       false,
     )
     .addOption(
+      // Hidden, benchmark-only: adds the engine's tokenUsage object to the result
+      // (requires --with-llm). Off by default so ordinary output is unchanged.
+      new Option('--report-token-usage', 'Emit engine LLM token usage (benchmark-only)')
+        .hideHelp()
+        .default(false),
+    )
+    .addOption(
       new Option('-d, --detail <level>', 'Payload depth')
         .choices([...DETAIL_LEVELS])
         .default(DEFAULT_DETAIL),
@@ -43,6 +50,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         opts: {
           withLlm?: boolean;
           bundle?: boolean;
+          reportTokenUsage?: boolean;
           detail: DetailLevel;
           format: Format;
           output?: string;
@@ -72,6 +80,7 @@ export async function main(argv: string[] = process.argv): Promise<void> {
         const exitCode = await runScore(input, {
           withLlm: opts.withLlm,
           bundle: opts.bundle,
+          reportTokenUsage: opts.reportTokenUsage,
           detail: opts.detail,
           format: opts.format,
           output: opts.output,

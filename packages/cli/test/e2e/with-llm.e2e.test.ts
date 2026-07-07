@@ -91,6 +91,25 @@ describe('--with-llm e2e against mock LLM server', function () {
     expect(result.stdout).to.include('semantic-analysis-summary');
   });
 
+  it('omits tokenUsage from default --with-llm json output (opt-in only)', async function () {
+    const result = await runCliAsync(
+      ['score', OAK_PETSTORE_URL, '--with-llm', '--format', 'json', '--detail', 'diagnostics'],
+      {
+        ...envWithoutKey(),
+        LLM_PROVIDER: 'OPENAI',
+        LIGHT_LLM_PROVIDER: 'OPENAI',
+        OPENAI_API_KEY: 'mock-key',
+        OPENAI_API_URL: `http://127.0.0.1:${port}/v1/chat/completions`,
+        LLM_MODEL: 'mock-model',
+        LLM_LIGHT_MODEL: 'mock-model',
+      },
+    );
+
+    expect(result.exitCode, `stderr: ${result.stderr}`).to.equal(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(parsed).to.not.have.property('tokenUsage');
+  });
+
   it('fail-fast exits 1 when no provider is configured', function () {
     const env = envWithoutKey();
     delete env['OPENAI_API_KEY'];
