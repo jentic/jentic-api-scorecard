@@ -20,11 +20,13 @@ _LLM_ANALYSIS_ERROR_CODE = "llm-analysis-error"
 _SEMANTIC_ANALYSIS_SUMMARY_CODE = "semantic-analysis-summary"
 
 
-def run_score(url: str | None, with_llm: bool) -> ExitCode:
+def run_score(url: str | None, with_llm: bool, report_token_usage: bool = False) -> ExitCode:
     """Score the input (URL or stdin) and write the scorecard JSON to stdout.
 
     The gate runs in __main__ before this is called; by here the input is
-    already authorized.
+    already authorized. ``report_token_usage`` is an opt-in (benchmark-only): when
+    set, the engine adds a ``tokenUsage`` object to the scorecard; it is off by
+    default so ordinary ``--with-llm`` output is unchanged.
     """
     stdin_tempfile: Path | None = None
     if url is not None:
@@ -36,17 +38,17 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
         spec_url = stdin_tempfile.as_uri()
 
     try:
-        return _score(spec_url, with_llm)
+        return _score(spec_url, with_llm, report_token_usage)
     finally:
         if stdin_tempfile is not None:
             stdin_tempfile.unlink(missing_ok=True)
 
 
-def _score(spec_url: str, with_llm: bool) -> ExitCode:
+def _score(spec_url: str, with_llm: bool, report_token_usage: bool) -> ExitCode:
     process_config = OASProcessConfiguration(
         enable_llm_analysis=with_llm,
         include_diagnostics_in_score=True,
-        report_token_usage=with_llm,
+        report_token_usage=report_token_usage,
     )
     with tempfile.TemporaryDirectory(prefix="jentic-score-") as output_dir:
         oas_request = OASJsonRequest(
