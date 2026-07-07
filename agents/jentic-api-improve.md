@@ -52,7 +52,7 @@ For each iteration N:
 6. **Summary**: `jq '.summary' ./.jentic-improve-work/score-iter-N.json` (separate Bash call).
 7. If score improved >= 2 points, continue. Otherwise stop.
 
-When the loop is done, place all three outputs flat in `<OUT_DIR>` (the literal Output directory from the brief), each step a SEPARATE Bash/Write call:
+When the loop is done, place all four outputs flat in `<OUT_DIR>` (the literal Output directory from the brief), each step a SEPARATE Bash/Write call:
 
 A. If `<OUT_DIR>` is an explicit directory that may not exist yet: `mkdir -p "<OUT_DIR>"` (one flat directory — never a `meta/qa/...` path). Skip when `<OUT_DIR>` is the original's own directory.
 B. Place the spec as JSON: `cp -- ./.jentic-improve-work/spec.<EXT> "<OUT_DIR>/<output-spec-filename>"` when the working copy is JSON, or `npx -y yaml --json --single < ./.jentic-improve-work/spec.<EXT> > "<OUT_DIR>/<output-spec-filename>"` when it is YAML (`<output-spec-filename>` is the brief value: `openapi.json` or `openapi-improved.json`).
@@ -60,6 +60,7 @@ C. **Write** `./.jentic-improve-work/overlay.json` via Write tool (always JSON).
 D. `cp -- ./.jentic-improve-work/overlay.json "<OUT_DIR>/overlay.json"` (separate Bash call).
 E. **Write** `./.jentic-improve-work/changelog.md` via Write tool.
 F. `cp -- ./.jentic-improve-work/changelog.md "<OUT_DIR>/changelog.md"` (separate Bash call).
+F2. Aggregate engine token usage with a single `jq` call over the run's `--with-llm` scorecard files (baseline `./.jentic-improve-work/scorecard.json` + each `score-iter-N.json`), summing each file's top-level `tokenUsage` into a run total plus per-score breakdown, redirected to `./.jentic-improve-work/token-usage.json`; then `cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"` (separate Bash call). If the run used no `--with-llm`, write `{"withLlm": false, "totalTokens": null, "scores": []}` — never fabricate. See "Output Files" for the shape.
 G. **Verify the overlay** (separate Bash call), on top of the `check-jsonschema` schema check: `jentic-apitools verify-improvement --original "<original-spec-path>" --improved "<OUT_DIR>/<output-spec-filename>" --overlay "<OUT_DIR>/overlay.json" -q`. Reuse the read-only original spec path from the brief as `--original` and the placed JSON spec as `--improved`. Exit `0` verified — proceed to report; `2` mismatch — read the `diff` JSON, regenerate `./.jentic-improve-work/overlay.json` to match the edits actually applied, re-place it (C–D), and re-run G, for **at most 2 regenerate-and-re-verify attempts**; if it still mismatches, stop and report the remaining `diff` rather than looping (the improved spec is correct and already placed — only the overlay could not reproduce it). Never report success with an overlay that fails verification. `1` operational error (e.g. missing `npx`, unreadable input) — report and stop.
 
 Steps C-F use the work-dir-then-cp pattern because Write tool calls against destination paths trigger IDE confirmation dialogs (e.g. PyCharm) that prompt even under `acceptEdits` mode. Writing into `./.jentic-improve-work/` first and `cp`ing via Bash keeps the final block silent.
@@ -125,10 +126,11 @@ MAY ONLY ADD: summary, description, example/examples fields, tags, new non-requi
 
 After the improvement loop has terminated, place the working spec at its final destination by copying — never edit the destination file in place during iteration.
 
-All three outputs go flat into `<OUT_DIR>` (the literal Output directory from the brief) — no nested subdirectories:
+All four outputs go flat into `<OUT_DIR>` (the literal Output directory from the brief) — no nested subdirectories:
 - `<OUT_DIR>/<output-spec-filename>` — improved spec, always JSON (`<output-spec-filename>` is the brief value: `openapi.json`, or `openapi-improved.json` when `<OUT_DIR>` is the original's own directory). Produced by `cp -- "<working-spec-path>" "<OUT_DIR>/<output-spec-filename>"` when the working spec is JSON, or `npx -y yaml --json --single < "<working-spec-path>" > "<OUT_DIR>/<output-spec-filename>"` when it is YAML. Iterative edits stay in the original format; YAML→JSON conversion happens only at this final step.
 - `<OUT_DIR>/overlay.json` — overlay, always JSON. Write to `./.jentic-improve-work/overlay.json` first, then `cp` to destination.
 - `<OUT_DIR>/changelog.md` — score comparison and change summary. Write to `./.jentic-improve-work/changelog.md` first, then `cp` to destination.
+- `<OUT_DIR>/token-usage.json` — engine LLM token usage for the run, aggregated with a single `jq` call over the `--with-llm` scorecard files' top-level `tokenUsage` (baseline `./.jentic-improve-work/scorecard.json` + each `score-iter-N.json`) into `./.jentic-improve-work/token-usage.json`, then `cp` to destination. Shape `{withLlm, inputTokens, outputTokens, totalTokens, llmCalls, model, provider, scores[]}`; write `{"withLlm": false, "totalTokens": null, "scores": []}` when the run used no `--with-llm`. Never fabricate numbers.
 
 If `<OUT_DIR>` is an explicit directory that may not exist yet, create it first with `mkdir -p "<OUT_DIR>"` (one flat directory — never a `meta/qa/...` path); skip the `mkdir` when `<OUT_DIR>` is the original's own directory.
 
