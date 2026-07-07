@@ -9,8 +9,9 @@
  *             loop, captured from Claude Code headless `claude -p --output-format json`
  *             (session `usage` + `total_cost_usd`).
  *   - engine: the scoring engine's `--with-llm` analysis, read from the
- *             `token-usage.json` the skill writes into its output dir (aggregated
- *             from the `tokenUsage` field each `--with-llm` scorecard now carries).
+ *             `token-usage.json` the skill writes when the run explicitly requests
+ *             engine token usage (the harness's claude -p prompt asks for it, so
+ *             the skill scores with `--report-token-usage` and emits the file).
  *
  * See specs/2026-07-05-benchmark-improve-cost/ for the full design.
  *
@@ -112,14 +113,17 @@ function buildMatrix() {
 
 /**
  * Assemble the `claude -p` argv that drives the skill headlessly for one cell.
- * The skill always scores `--with-llm` (the engine surface comes from the
- * token-usage.json it emits). Kept as an array so it is never shell-interpolated.
+ * The prompt scores `--with-llm` and explicitly requests engine token usage, so
+ * the skill opts in (adds `--report-token-usage` to every score and writes
+ * token-usage.json — the engine surface this benchmark reads). Kept as an array
+ * so it is never shell-interpolated.
  */
 function claudeArgv(model, spec, outDir) {
   return [
     '-p',
     `Use the jentic-api-improve skill to improve the OpenAPI document at ${spec.url}, ` +
-      `writing outputs into ${outDir}. Score with \`--with-llm\`. Run the standard loop and then stop.`,
+      `writing outputs into ${outDir}. Score with \`--with-llm\` and report the scoring ` +
+      `engine's token usage (emit token-usage.json). Run the standard loop and then stop.`,
     '--model',
     model,
     '--output-format',
