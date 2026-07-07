@@ -154,6 +154,8 @@ The single baseline call produces both the per-dimension scores and the semantic
 
 Always use `--format json` (machine-readable), `--detail diagnostics` (full evidence bundle), `-o` (write to a file), and `-q` (suppress the spinner). There is no separate `analyze` command — `score --with-llm --detail diagnostics` is the equivalent. See [jentic-api-scorecard.md](references/jentic-api-scorecard.md) for the full reference, JSON shape, and exit codes.
 
+Append `--report-token-usage` to this baseline call **and** every in-loop re-score **only when engine token usage was explicitly requested** (see "Token usage"); a normal run omits it.
+
 The `--with-llm` flag is particularly valuable for the improve workflow — it produces `POOR_OPERATION_SEMANTICS` diagnostics with ready-to-use description and summary suggestions. It does not consume extra scorecard quota, but it adds latency and requires LLM provider credentials.
 
 Privacy note: `--with-llm` sends spec context (operation summaries, descriptions, and schema names — not the full spec) to the configured LLM provider, and it loads that provider's credentials into the run. For a proprietary or sensitive API, confirm this outbound transmission is acceptable, or use a local OpenAI-compatible provider (e.g. Ollama) so nothing leaves your network. Without `--with-llm` no provider is contacted and no LLM credentials are read.
@@ -382,23 +384,25 @@ jq '[.diagnostics[] | select(.code == "POOR_OPERATION_SEMANTICS") | {operation_i
 
 ## Output
 
-The run produces four artifacts, all placed flat in a single output directory — no nested subdirectories. The final improved spec is **produced by copying `./.jentic-improve-work/spec.<EXT>` (the working copy) to the destination once iteration is complete** — never by editing `$0` in place. `$0` is read-only for the entire run.
+The run produces three artifacts by default, all placed flat in a single output directory — no nested subdirectories (a fourth, `token-usage.json`, is produced only when engine token usage is explicitly requested — see "Token usage"). The final improved spec is **produced by copying `./.jentic-improve-work/spec.<EXT>` (the working copy) to the destination once iteration is complete** — never by editing `$0` in place. `$0` is read-only for the entire run.
 
 Resolve the output directory and the spec filename ONCE, before final placement:
 
 - **Output directory (`OUT_DIR`)**: the second argument `$1` if it was provided, otherwise `dirname($0)` (the input file's own directory; the current working directory if `$0` is a URL).
 - **Output spec filename (`<output-spec-filename>`)**: `openapi-improved.json` when `OUT_DIR` is the same directory as `$0` (so the original is never overwritten), otherwise `openapi.json`.
 
-The four flat outputs are:
+The flat outputs are:
 
 - `<OUT_DIR>/<output-spec-filename>` (`openapi.json` or `openapi-improved.json`) — improved spec, **always JSON**. Produced by `cp -- ./.jentic-improve-work/spec.<EXT> "<OUT_DIR>/<output-spec-filename>"` when the working copy is JSON, or `npx -y yaml --json --single < ./.jentic-improve-work/spec.<EXT> > "<OUT_DIR>/<output-spec-filename>"` when it is YAML. Iterative edits stay in the original format; the YAML→JSON conversion happens only at this final placement step.
 - `<OUT_DIR>/overlay.json` — OpenAPI Overlay 1.1.0, **always JSON**. Produced by **Write tool to `./.jentic-improve-work/overlay.json`** (work-dir authoring), then **`cp -- ./.jentic-improve-work/overlay.json "<OUT_DIR>/overlay.json"`** (Bash).
 - `<OUT_DIR>/changelog.md` — markdown summary with score before/after comparison. Produced by **Write tool to `./.jentic-improve-work/changelog.md`** (work-dir authoring), then **`cp -- ./.jentic-improve-work/changelog.md "<OUT_DIR>/changelog.md"`** (Bash).
-- `<OUT_DIR>/token-usage.json` — the LLM token usage the **scoring engine** consumed across this run, aggregated from the `tokenUsage` object each `--with-llm` scorecard now carries (see "Token usage" below). Produced by a `jq` aggregation over the run's scorecard files, redirected into `./.jentic-improve-work/token-usage.json`, then **`cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"`** (Bash).
+- `<OUT_DIR>/token-usage.json` — **only when engine token usage is explicitly requested** (see "Token usage"). The LLM token usage the **scoring engine** consumed across this run. Produced by a `jq` aggregation over the run's scorecard files, redirected into `./.jentic-improve-work/token-usage.json`, then **`cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"`** (Bash).
 
 ### Token usage
 
-Each `--with-llm` score writes a top-level `tokenUsage` object into its scorecard JSON — `{inputTokens, outputTokens, totalTokens, llmCalls, model, provider}` — reporting the engine's own LLM spend for that score call. A run makes several such calls (the baseline `./.jentic-improve-work/scorecard.json` plus each in-loop `./.jentic-improve-work/score-iter-N.json`), so sum them into one `token-usage.json` recording the run total plus the per-score breakdown. Do this as a single `jq` call over the scorecard files (covered by `Bash(jq *)`), redirected to `./.jentic-improve-work/token-usage.json`; then `cp` it to `<OUT_DIR>` in the placement block. This is engine-side usage only — it does not include the coding agent's own tokens. If a run was made **without** `--with-llm`, the scorecards carry no `tokenUsage`; write `{"withLlm": false, "totalTokens": null, "scores": []}` rather than fabricating numbers. Shape:
+This is an **opt-in** step, off by default. Emit `token-usage.json` (and score with `--report-token-usage`, below) **only when the invoker explicitly asks** for the scoring engine's token usage — e.g. a benchmarking harness whose task prompt says to report engine token usage. A normal "improve my API" run does **not** produce this file and does **not** add `--report-token-usage`; it emits only the three default artifacts.
+
+When it is requested: add `--report-token-usage` to the baseline `score` call and every in-loop re-score (so the engine adds a top-level `tokenUsage` object — `{inputTokens, outputTokens, totalTokens, llmCalls, model, provider}` — to each scorecard). Then aggregate those with a single `jq` call over the run's scorecard files (the baseline `./.jentic-improve-work/scorecard.json` plus each in-loop `./.jentic-improve-work/score-iter-N.json`; covered by `Bash(jq *)`), summing them into one `./.jentic-improve-work/token-usage.json` — the run total plus a per-score breakdown — then `cp` it to `<OUT_DIR>` in the placement block. This is engine-side usage only; it does not include the coding agent's own tokens. `--report-token-usage` is meaningful only alongside `--with-llm`; if the run is not `--with-llm`, write `{"withLlm": false, "totalTokens": null, "scores": []}` rather than fabricating numbers. Shape:
 
 ```json
 {
@@ -461,7 +465,7 @@ Date: <datetime>
 - `openapi.json` (or `openapi-improved.json`) — improved specification
 - `overlay.json` — overlay
 - `changelog.md` — this file
-- `token-usage.json` — engine LLM token usage for this run (`--with-llm` only)
+- `token-usage.json` — engine LLM token usage for this run (only when explicitly requested)
 ```
 
 ## Subagent Brief Template
@@ -488,7 +492,8 @@ Weak dimensions: <list of dimensions below 60 with scores, e.g. "ARAX: 54, SEC: 
 Semantic suggestions file: <path or "not available" if --with-llm was not used>
 Scorecard file: ./.jentic-improve-work/scorecard.json   # carries both summary.dimensions[] and the diagnostics bundle
 Working directory: ./.jentic-improve-work
-Output directory: <literal-absolute-OUT_DIR>               # $1 if provided, else dirname($0); the four outputs go here, flat
+Output directory: <literal-absolute-OUT_DIR>               # $1 if provided, else dirname($0); the outputs go here, flat
+Report engine token usage: <yes | no>                     # when "yes", pass --report-token-usage to every score and emit token-usage.json; default "no"
 Output spec filename: <openapi.json | openapi-improved.json>   # openapi-improved.json when OUT_DIR is the same dir as the original, else openapi.json
 Overlay schema path: <skill-base-dir>/references/overlay-1.1.0-json-schema.yaml
 
@@ -519,7 +524,7 @@ For each iteration N:
 6. **Extract summary**: `jq '.summary' ./.jentic-improve-work/score-iter-N.json` (separate Bash call).
 7. If score improved >= 2 points, continue. Otherwise stop.
 
-When the loop is done, place all four outputs flat in `<OUT_DIR>` (the literal Output directory from the brief) in this order (each step a SEPARATE Bash/Write call — no chaining):
+When the loop is done, place the outputs flat in `<OUT_DIR>` (the literal Output directory from the brief) in this order (each step a SEPARATE Bash/Write call — no chaining). Step F2 runs only when the brief's "Report engine token usage" is "yes":
 
 A. If `<OUT_DIR>` is an explicit directory that may not exist yet: `mkdir -p "<OUT_DIR>"` (a single flat directory — never a `meta/qa/...` path). Skip when `<OUT_DIR>` is the original's own directory (it already exists).
 B. Place the spec as JSON: `cp -- ./.jentic-improve-work/spec.<EXT> "<OUT_DIR>/<output-spec-filename>"` when the working copy is JSON, or `npx -y yaml --json --single < ./.jentic-improve-work/spec.<EXT> > "<OUT_DIR>/<output-spec-filename>"` when it is YAML. `<output-spec-filename>` is the value from the brief (`openapi.json` or `openapi-improved.json`).
@@ -527,7 +532,7 @@ C. **Write** `./.jentic-improve-work/overlay.json` via Write tool (always JSON; 
 D. `cp -- ./.jentic-improve-work/overlay.json "<OUT_DIR>/overlay.json"` (separate Bash call).
 E. **Write** `./.jentic-improve-work/changelog.md` via Write tool.
 F. `cp -- ./.jentic-improve-work/changelog.md "<OUT_DIR>/changelog.md"` (separate Bash call).
-F2. Aggregate engine token usage with a single `jq` call over the run's `--with-llm` scorecard files (the baseline `./.jentic-improve-work/scorecard.json` plus each `./.jentic-improve-work/score-iter-N.json`), summing each file's top-level `tokenUsage` into a run total plus per-score breakdown, redirected to `./.jentic-improve-work/token-usage.json`; then `cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"` (separate Bash call). If the run used no `--with-llm` (no `tokenUsage` present), write `{"withLlm": false, "totalTokens": null, "scores": []}` — never fabricate. See the parent skill's "Token usage" section for the exact shape.
+F2. **Only when engine token usage was requested** (brief "Report engine token usage: yes"; skip this step entirely otherwise): aggregate engine token usage with a single `jq` call over the run's scorecard files (the baseline `./.jentic-improve-work/scorecard.json` plus each `./.jentic-improve-work/score-iter-N.json`, each scored with `--report-token-usage` so it carries a top-level `tokenUsage`), summing into a run total plus per-score breakdown, redirected to `./.jentic-improve-work/token-usage.json`; then `cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"` (separate Bash call). If the run was not `--with-llm`, write `{"withLlm": false, "totalTokens": null, "scores": []}` — never fabricate. See the parent skill's "Token usage" section for the exact shape.
 G. **Verify the overlay** (separate Bash call): `jentic-apitools verify-improvement --original "<original-spec-path>" --improved "<OUT_DIR>/<output-spec-filename>" --overlay "<OUT_DIR>/overlay.json" -q`. Use the read-only original spec path from the brief as `--original` and the placed JSON spec as `--improved`. This is on top of the `check-jsonschema` schema check (step in "Overlay Format"). React to the exit code: `0` verified — proceed to report; `2` mismatch — read the `diff` in the JSON, regenerate `./.jentic-improve-work/overlay.json` so it matches the edits actually applied, re-place it (steps C–D), and re-run G, for **at most 2 regenerate-and-re-verify attempts**; if it still mismatches after that, stop and report the remaining `diff` to the user rather than looping (the improved spec is correct and already placed — only the overlay could not be made to reproduce it). Never report success with an overlay that fails verification. `1` operational error (e.g. missing `npx`, unreadable input) — report the cause and stop.
 
 Steps C-F use the work-dir-then-cp pattern because the Write tool against destination paths triggers IDE confirmation dialogs (e.g. PyCharm) that prompt the user even under `acceptEdits` mode. Writing into `./.jentic-improve-work/` first and `cp`ing via Bash keeps the final block silent.
@@ -615,11 +620,11 @@ MAY ONLY ADD:
 
 After the improvement loop has terminated, place the working spec at its final destination by copying — never edit the destination file in place during iteration.
 
-All four outputs go flat into `<OUT_DIR>` (the literal Output directory from the brief) — no nested subdirectories:
+These outputs go flat into `<OUT_DIR>` (the literal Output directory from the brief) — no nested subdirectories. The first three are always produced; the fourth only when the brief's "Report engine token usage" is "yes":
 - `<OUT_DIR>/<output-spec-filename>` — improved spec, always JSON (`<output-spec-filename>` is the brief value: `openapi.json`, or `openapi-improved.json` when `<OUT_DIR>` is the original's own directory). Produced by `cp -- "<working-spec-path>" "<OUT_DIR>/<output-spec-filename>"` when the working spec is JSON, or `npx -y yaml --json --single < "<working-spec-path>" > "<OUT_DIR>/<output-spec-filename>"` when it is YAML. Iterative edits stay in the original format; YAML→JSON conversion happens only at this final step.
 - `<OUT_DIR>/overlay.json` — overlay, always JSON. Write to `./.jentic-improve-work/overlay.json` first, then `cp` to destination.
 - `<OUT_DIR>/changelog.md` — score comparison and change summary. Write to `./.jentic-improve-work/changelog.md` first, then `cp` to destination.
-- `<OUT_DIR>/token-usage.json` — engine LLM token usage aggregated from the run's `--with-llm` scorecard files' `tokenUsage` (`{withLlm, inputTokens, outputTokens, totalTokens, llmCalls, model, provider, scores[]}`; `withLlm: false` with null totals when the run used no `--with-llm`). Produce via a single `jq` aggregation over `./.jentic-improve-work/scorecard.json` + `score-iter-N.json` into `./.jentic-improve-work/token-usage.json`, then `cp` to destination — never fabricate numbers.
+- `<OUT_DIR>/token-usage.json` — **only when engine token usage was requested** — engine LLM token usage aggregated from the run's scorecard files' `tokenUsage` (`{withLlm, inputTokens, outputTokens, totalTokens, llmCalls, model, provider, scores[]}`; `withLlm: false` with null totals when the run was not `--with-llm`). Requesting it means every `score` call adds `--report-token-usage`; produce via a single `jq` aggregation over `./.jentic-improve-work/scorecard.json` + `score-iter-N.json` into `./.jentic-improve-work/token-usage.json`, then `cp` to destination — never fabricate numbers.
 
 If `<OUT_DIR>` is an explicit directory that may not exist yet, create it first with `mkdir -p "<OUT_DIR>"` (one flat directory — never a `meta/qa/...` path); skip the `mkdir` when `<OUT_DIR>` is the original's own directory.
 
@@ -720,6 +725,7 @@ Once you have the baseline data:
    - Replace semantic suggestions file path (or "not available")
    - Replace `<skill-base-dir>` (the **Overlay schema path** prefix) with the absolute path Claude Code provided at session start in the `Base directory for this skill: <PATH>` system message (e.g. `/home/<user>/.claude/skills/jentic-api-improve` for user-scope installs). The brief field becomes the joined absolute path, e.g. `/home/<user>/.claude/skills/jentic-api-improve/references/overlay-1.1.0-json-schema.yaml`. Do NOT use `find`, `locate`, or any discovery mechanism to derive this path.
    - Resolve and fill in the **Output directory** (`$1` if provided, else the absolute `dirname($0)`) and the **Output spec filename** (`openapi-improved.json` when that directory is the original's own directory, else `openapi.json`)
+   - Set **Report engine token usage** to "yes" only if the invoker explicitly asked for the scoring engine's token usage (e.g. a benchmarking task prompt); otherwise "no". When "yes", the subagent adds `--report-token-usage` to every score and emits `token-usage.json`.
    - Insert only the dimension strategies for weak dimensions (from the Dimension Improvement Strategies section)
    - Include the Constraints and Overlay Format sections (they apply to every run)
 
