@@ -46,6 +46,7 @@ def _score(spec_url: str, with_llm: bool) -> ExitCode:
     process_config = OASProcessConfiguration(
         enable_llm_analysis=with_llm,
         include_diagnostics_in_score=True,
+        report_token_usage=with_llm,
     )
     with tempfile.TemporaryDirectory(prefix="jentic-score-") as output_dir:
         oas_request = OASJsonRequest(
