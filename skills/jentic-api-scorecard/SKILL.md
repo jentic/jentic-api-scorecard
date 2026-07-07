@@ -100,6 +100,7 @@ jentic-api-scorecard score <input> [options]
 | `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown`, `sarif` | Output encoding. |
 | `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. The progress spinner stays on stderr. |
 | `-q, --quiet` | off | — | Suppress the stderr spinner regardless of TTY. |
+| `--no-spinner` | off | — | Plain-text progress lines to stderr instead of animated spinner. |
 | `-h, --help` | — | — | Show usage for `score`. |
 
 **Detail levels** (cumulative depth): `summary` = headline score + grade only;

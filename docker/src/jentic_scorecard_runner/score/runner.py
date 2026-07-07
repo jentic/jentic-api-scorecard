@@ -1,10 +1,13 @@
 """Score an OpenAPI spec in-process and stream the scorecard JSON to stdout."""
 
+import json
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
+import requests
+import yaml
 from jentic.apitools.common.models import (
     OASJsonRequest,
     OASProcessConfiguration,
@@ -18,6 +21,47 @@ from jentic_scorecard_runner.exit_codes import ExitCode
 
 _LLM_ANALYSIS_ERROR_CODE = "llm-analysis-error"
 _SEMANTIC_ANALYSIS_SUMMARY_CODE = "semantic-analysis-summary"
+_VERSION_FETCH_TIMEOUT = 10
+
+
+def detect_openapi_version(spec_url: str) -> str | None:
+    """Return the openapi version string from the spec, or None if undetermined.
+
+    Reads the first 4 KB from a file:// URI or an HTTP(S) URL, then tries
+    JSON and YAML parsing in order before falling back to None.
+    """
+    snippet = _read_spec_snippet(spec_url)
+    if not snippet:
+        return None
+    try:
+        parsed = json.loads(snippet)
+        if isinstance(parsed, dict) and isinstance(parsed.get("openapi"), str):
+            return parsed["openapi"]
+    except (json.JSONDecodeError, ValueError):
+        pass
+    try:
+        parsed = yaml.safe_load(snippet)
+        if isinstance(parsed, dict) and isinstance(parsed.get("openapi"), str):
+            return parsed["openapi"]
+    except Exception:
+        pass
+    return None
+
+
+def _read_spec_snippet(spec_url: str) -> str | None:
+    """Read the first 4 KB of a spec from a file:// URI or HTTP(S) URL."""
+    try:
+        if spec_url.startswith("file://"):
+            return Path(spec_url[7:]).read_bytes()[:4096].decode("utf-8", errors="replace")
+        if spec_url.startswith(("http://", "https://")):
+            with requests.get(
+                spec_url, timeout=_VERSION_FETCH_TIMEOUT, allow_redirects=True, stream=True
+            ) as response:
+                chunk = next(response.iter_content(chunk_size=4096), b"")
+                return chunk.decode("utf-8", errors="replace")
+    except Exception:
+        pass
+    return None
 
 
 def run_score(url: str | None, with_llm: bool) -> ExitCode:
@@ -36,6 +80,15 @@ def run_score(url: str | None, with_llm: bool) -> ExitCode:
         spec_url = stdin_tempfile.as_uri()
 
     try:
+        version = detect_openapi_version(spec_url)
+        if version is not None and version.startswith("3.2"):
+            print(
+                f"error: OpenAPI {version} is not supported.\n"
+                "  The scoring engine does not yet support OpenAPI 3.2 — a 3.2 document\n"
+                "  produces silently inflated results. Convert to OpenAPI 3.0 or 3.1 instead.",
+                file=sys.stderr,
+            )
+            return ExitCode.SPEC_FAILURE
         return _score(spec_url, with_llm)
     finally:
         if stdin_tempfile is not None:

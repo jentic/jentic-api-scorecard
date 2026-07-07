@@ -14,7 +14,7 @@ import { detectLlmEnv } from '../llm-env.ts';
 import { detectLlmFailure, formatLlmFailureError } from '../llm-failure.ts';
 import { writeReport } from '../output.ts';
 import { ScorecardResult } from '../result.ts';
-import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
+import { spin, done, clearSpinner, setQuiet, setNoSpinner } from '../spinner.ts';
 
 export interface ScoreOptions {
   withLlm?: boolean;
@@ -23,6 +23,7 @@ export interface ScoreOptions {
   format?: Format;
   output?: string;
   quiet?: boolean;
+  noSpinner?: boolean;
 }
 
 export type ParseEngineOutputResult =
@@ -91,6 +92,7 @@ function isExistingFile(input: string): boolean {
 
 export async function runScore(input: string, options: ScoreOptions): Promise<number> {
   setQuiet(options.quiet === true);
+  setNoSpinner(options.noSpinner === true);
 
   const containerArgs: string[] = ['score'];
   if (options.withLlm) {
