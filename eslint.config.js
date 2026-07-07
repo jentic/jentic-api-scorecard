@@ -31,7 +31,6 @@ export default tseslint.config(
       // Scoped to these files rather than all of scripts/ so the pre-existing
       // extract-docs.js (never eslinted) is not retroactively pulled in.
       '!scripts/bench-improve.js',
-      '!scripts/token-proxy.mjs',
     ],
   },
 
@@ -264,11 +263,11 @@ export default tseslint.config(
     },
   },
 
-  // Phase 22 benchmark scripts — plain Node ESM, not part of any published
-  // package. Give them Node globals so fetch / Buffer / process / console
+  // Phase 22 benchmark script — plain Node ESM, not part of any published
+  // package. Give it Node globals so fetch / Buffer / process / console
   // resolve; Prettier still applies via the block below.
   {
-    files: ['scripts/bench-improve.js', 'scripts/token-proxy.mjs'],
+    files: ['scripts/bench-improve.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
