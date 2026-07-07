@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@v8.3.1
         with:
           python-version: '3.12'
           enable-cache: true
@@ -127,7 +127,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@v8.3.1
         with:
           python-version: '3.12'
           enable-cache: true
