@@ -2,7 +2,9 @@
 
 # jentic-api-improve — token usage and cost benchmark
 
-Target: `@jentic/api-scorecard-cli` **1.9.3**, measured on **2026-07-05**. The engine `--with-llm` model is chosen by the engine and is the same across every cell, so differences reflect the coding-agent model, not the engine.
+> **Not yet measured.** This benchmark has not been run against live models. The matrix, input specs, and table shape below are in place; the number cells are placeholders (`—`). Run `npm run bench:improve` with the prerequisites in `scripts/bench-improve.js`, then regenerate this doc with `--render-only`. No numbers here are fabricated.
+
+Target: `@jentic/api-scorecard-cli` **1.9.3**. The engine `--with-llm` model is chosen by the engine and is the same across every cell, so differences reflect the coding-agent model, not the engine.
 
 Each run drives the skill through its standard 2-iteration loop. Cost splits across two surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring **engine**’s `--with-llm` analysis (from the run’s `token-usage.json`). See [`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.
 
@@ -10,10 +12,10 @@ Each run drives the skill through its standard 2-iteration loop. Cost splits acr
 
 | Agent model | Spec | Baseline | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `haiku` | petstore | — | — | — | 483,421 | 2,169 | $0.164 | — | — |
-| `sonnet` | petstore | — | — | — | 837,214 | 7,724 | $2.026 | — | — |
-| `opus` | petstore | — | — | — | 890,386 | 20,596 | $4.782 | — | — |
-| `fable` | petstore | — | error | — | — | — | — | — | — |
+| `haiku` | petstore | — | — | — | — | — | — | — | — |
+| `sonnet` | petstore | — | — | — | — | — | — | — | — |
+| `opus` | petstore | — | — | — | — | — | — | — | — |
+| `fable` | petstore | — | — | — | — | — | — | — | — |
 
 ## Input specs
 
@@ -23,5 +25,5 @@ Each run drives the skill through its standard 2-iteration loop. Cost splits acr
 
 ## Model-selection guidance
 
-_Guidance is written from the measured run above. Re-generate this doc after any re-measurement._
+_Guidance will be written from the first measured run. Nothing to recommend until then._
 
