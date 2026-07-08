@@ -306,6 +306,12 @@ What must never be done (would change contracts or generated client code):
 - Adding new response codes (can't tell if unimplemented or just undocumented)
 - RFC 9457 Problem Details on existing error responses (modifies existing response schema shape)
 - Removing, renaming, or restructuring existing paths, parameters, or schemas
+- Adding operation-level `security` where an operation had none (adding a `security` requirement changes the runtime auth contract — a caller that worked unauthenticated now gets 401). This is why "sensitive operations need auth" is NOT an additive fix; see the SEC strategy under "Dimension Improvement Strategies".
+- Adding a sibling key (`description`, `summary`, `example`, …) next to a `$ref`. A node that is a bare `{"$ref": "..."}` must stay bare — a sibling trips the `no-$ref-siblings` lint (error severity) and craters Foundational Compliance. To describe such a node, add the `description` on the *referenced component* instead. **`jentic-openapi-tools validate` does not always flag this** (it can report `valid: true, 0 errors` while the FC score still collapses on re-score), so treat it as a hard authoring rule, not something validation will catch for you.
+
+### Never ship a regression
+
+Every change applied to the spec is strictly additive, so **no dimension score may drop below its baseline** — if one does, a spec edit broke something (most often a `$ref`-sibling or a lint regression) even when the overall score still rose from gains elsewhere. After each re-score, compare **every** `summary.dimensions[].score` against the baseline scorecard. If any dimension regressed, undo the offending spec change on the working copy and do a corrective re-score before shipping. Never place a spec whose overall score or any dimension score is below baseline; ship the highest-scoring iteration whose dimensions are all at or above baseline (falling back to the untouched baseline spec if no change cleared that bar). This mirrors the in-loop guard in the Improvement Loop (step 7) and applies to inline edits too.
 
 ### Inline vs subagent decision
 
@@ -317,6 +323,8 @@ The same Forbidden Shell Idioms apply to inline edits and to the subagent — in
 
 ## Dimension Improvement Strategies
 
+These describe what each dimension's low score *means* and what would ideally raise it — but this skill only ever applies the **additive** subset. Where a strategy below would require a change on the "What must never be done" list under "Improvements are non-breaking" (adding `operationId` where missing, adding new response codes, adding operation-level `security` where none existed), it names the ideal target for context, not an edit to make. Apply only the additive levers; report the non-additive gaps as findings for the API owner to fix by hand.
+
 FC (low score = structural problems):
 - Fix all error and warning diagnostics before attempting other improvements
 - Resolve broken `$ref` references
@@ -324,25 +332,26 @@ FC (low score = structural problems):
 
 DXJ (low score = poor documentation/examples):
 - Add `example` or `examples` to request bodies and responses
-- Ensure every operation has at least `200`, `4XX`, and `500` responses defined
+- Missing `4XX`/`500` responses hurt DXJ, but **adding a new response code is not safe** (can't tell if unimplemented or just undocumented) — report the gap, do not add the code.
 - Add descriptions to parameters and schema properties
 
 ARAX (low score = poor semantic clarity):
 - Add `summary` to every operation (concise, action-oriented: "List unread messages")
 - Add `description` to operations, parameters, and key schema properties
-- Add unique, consistent `operationId` to every operation (camelCase or snake_case throughout)
-- Use specific types (`string` with `format: email`, enums) instead of bare strings
+- Inconsistent or missing `operationId` hurts ARAX, but **adding or renaming an `operationId` is breaking** (SDK generators rename previously auto-named methods) — report the gap, do not edit it.
+- Bare `string` types where a `format`/enum would be clearer improve ARAX only as *new non-required* additions; never change an existing property's type.
 
 AU (low score = hard for agents to use):
 - If many endpoints: consider whether the spec should be split
 - Add pagination metadata (Link headers or cursor fields in responses)
 - Use clear verb-object operationIds (`createPayment`, `listUsers`)
 
-SEC (low score = auth/security issues):
-- Hardcoded credentials anywhere -> SEC capped at 20, must remove
-- Sensitive operations (POST/PUT/DELETE) must have security requirements
-- Use HTTPS for all server URLs
-- Prefer strong auth schemes: OAuth2, OIDC, Bearer JWT over API key in query param
+SEC (low score = auth/security issues). Most SEC fixes are **not** additive and are out of scope — do not make them; surface them as findings for the API owner:
+- Hardcoded credentials anywhere -> SEC capped at 20 (removing them is a fix, not an addition — report it, do not edit).
+- Sensitive operations (POST/PUT/DELETE) lacking a `security` requirement — adding one where none existed changes the runtime auth contract (breaking). **Do NOT add operation-level `security`**; report the gap.
+- Relative or non-HTTPS server URLs — changing an existing `servers[]` entry's URL alters the base path (breaking). Do not rewrite it. The one additive nudge available: *append* an absolute-HTTPS `servers[]` entry without removing or altering the existing index-0 entry (note this often does not clear the validator's relative-server / https-only diagnostics, which key off the existing entry).
+- Weak auth schemes (API key in query vs OAuth2/OIDC/Bearer JWT) — changing a scheme is breaking; report it.
+- The only clearly-additive SEC lever: add a `description` to existing `securitySchemes` entries that lack one.
 
 AID (low score = hard to discover):
 - Add rich `info.description` explaining what the API does and who it's for
@@ -416,7 +425,7 @@ This is an **opt-in** step, off by default. Emit `token-usage.json` and `benchma
 }
 ```
 
-**Run summary** (`benchmark-summary.json`): the run outcome, independent of `--with-llm`. Read `.summary.{score,level,grade}` from the baseline scorecard (`./.jentic-improve-work/scorecard.json`) as the "before" values and from the final in-loop scorecard the skill shipped (the highest-numbered `./.jentic-improve-work/score-iter-N.json`, or the baseline when no iteration ran or improved) as the "after" values, with `iterationsRun` = the count of `score-iter-*.json` files. Do this as a single `jq` call (covered by `Bash(jq *)`) redirected to `./.jentic-improve-work/benchmark-summary.json`, then `cp` it to `<OUT_DIR>` in the placement block. If a value is unavailable, write `null` — never fabricate. Shape:
+**Run summary** (`benchmark-summary.json`): the run outcome, independent of `--with-llm`. Read `.summary.{score,level,grade}` from the baseline scorecard (`./.jentic-improve-work/scorecard.json`) as the "before" values and from the scorecard of the iteration the skill actually **shipped** (the best clean pass — the highest-scoring `./.jentic-improve-work/score-iter-N.json` whose dimensions are all at or above baseline per the no-regression check; the baseline when no iteration cleared that bar) as the "after" values, with `iterationsRun` = the count of `score-iter-*.json` files. Note this is **not** necessarily the highest-numbered iteration: a later iteration that regressed a dimension was not shipped, so its scorecard is not the "after". Do this as a single `jq` call (covered by `Bash(jq *)`) redirected to `./.jentic-improve-work/benchmark-summary.json`, then `cp` it to `<OUT_DIR>` in the placement block. If a value is unavailable, write `null` — never fabricate. Shape:
 
 ```json
 {
@@ -533,11 +542,13 @@ For each iteration N:
 3. **Run** the script: `python3 ./.jentic-improve-work/edit-iter-N.py` (separate Bash call).
 4. **Validate**: `jentic-openapi-tools validate -a -q --format json -o ./.jentic-improve-work/validate-iter-N.json "<working-spec-path>"` (separate Bash call). On validate failure: `cp -- "<original-spec-path>" "<working-spec-path>"` and try a different edit next iteration — do NOT proceed to re-score (a metered scorecard call must never be spent on a spec a failed edit broke). Never `git` or `cd`.
 5. **Re-score**: `npx -y @jentic/api-scorecard-cli@latest score "<working-spec-path>" --with-llm --format json --detail diagnostics -o ./.jentic-improve-work/score-iter-N.json -q` (separate Bash call). Check the exit code before reading the file: on 7 (quota) or 8 (LLM failure) STOP and report; on 4 (Docker) or 2/3 (auth) STOP. Each call costs one quota unit regardless of `--with-llm`.
-6. **Extract summary**: `jq '.summary' ./.jentic-improve-work/score-iter-N.json` (separate Bash call).
-7. If score improved >= 2 points, continue. Otherwise stop.
+6. **Extract summary + dimensions**: `jq '{summary, dimensions: .summary.dimensions}' ./.jentic-improve-work/score-iter-N.json` (separate Bash call). Read both the overall `summary.score` and every `summary.dimensions[].score`.
+7. **No-regression check (before deciding to continue).** Compare every `summary.dimensions[].score` against the baseline scorecard's same dimension. This iteration is **clean** iff every dimension is at or above baseline (an additive edit that lowered any dimension broke something it shouldn't — most often a `$ref`-sibling; see "Never ship a regression" in the parent skill). If the iteration is **not** clean, restore the last-good working copy with `cp -- ./.jentic-improve-work/spec-last-good.<EXT> "<working-spec-path>"` (separate Bash call), do not ship this iteration, and either re-attempt a narrower edit next iteration or stop. If the iteration **is** clean **and** its overall `summary.score` beats the current last-good's score, promote it to the new last-good: `cp -- "<working-spec-path>" ./.jentic-improve-work/spec-last-good.<EXT>` (separate Bash call). (Seed the first last-good snapshot from the untouched baseline working copy before iteration 1, so its "score to beat" is the baseline score.) The last-good snapshot is therefore always the best clean pass; the spec you ship at the end is exactly `spec-last-good.<EXT>` — never the raw final iteration, which may have regressed.
+8. If the shipped score improved >= 2 points over baseline, continue for another iteration. Otherwise stop.
 
 When the loop is done, place the outputs flat in `<OUT_DIR>` (the literal Output directory from the brief) in this order (each step a SEPARATE Bash/Write call — no chaining). Steps F2 and F3 run only when the brief's "Report benchmark metrics" is "yes":
 
+A0. **Restore the shipped spec.** `cp -- ./.jentic-improve-work/spec-last-good.<EXT> ./.jentic-improve-work/spec.<EXT>` (separate Bash call), so the working copy placed below is exactly the best clean pass from the no-regression check — never a final iteration that regressed or scored below an earlier clean pass.
 A. If `<OUT_DIR>` is an explicit directory that may not exist yet: `mkdir -p "<OUT_DIR>"` (a single flat directory — never a `meta/qa/...` path). Skip when `<OUT_DIR>` is the original's own directory (it already exists).
 B. Place the spec as JSON: `cp -- ./.jentic-improve-work/spec.<EXT> "<OUT_DIR>/<output-spec-filename>"` when the working copy is JSON, or `npx -y yaml --json --single < ./.jentic-improve-work/spec.<EXT> > "<OUT_DIR>/<output-spec-filename>"` when it is YAML. `<output-spec-filename>` is the value from the brief (`openapi.json` or `openapi-improved.json`).
 C. **Write** `./.jentic-improve-work/overlay.json` via Write tool (always JSON; do NOT use Write directly on the destination path).
@@ -545,7 +556,7 @@ D. `cp -- ./.jentic-improve-work/overlay.json "<OUT_DIR>/overlay.json"` (separat
 E. **Write** `./.jentic-improve-work/changelog.md` via Write tool.
 F. `cp -- ./.jentic-improve-work/changelog.md "<OUT_DIR>/changelog.md"` (separate Bash call).
 F2. **Only when benchmark metrics were requested** (brief "Report benchmark metrics: yes"; skip this step entirely otherwise): aggregate engine token usage with a single `jq` call over the run's scorecard files (the baseline `./.jentic-improve-work/scorecard.json` plus each `./.jentic-improve-work/score-iter-N.json`, each scored with `--report-token-usage` so it carries a top-level `tokenUsage`), summing into a run total plus per-score breakdown, redirected to `./.jentic-improve-work/token-usage.json`; then `cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"` (separate Bash call). If the run was not `--with-llm`, write `{"withLlm": false, "totalTokens": null, "scores": []}` — never fabricate. See the parent skill's "Benchmark metrics" section for the exact shape.
-F3. **Only when benchmark metrics were requested** (same gate as F2; skip otherwise): with a single `jq` call, read `.summary.{score,level,grade}` from the baseline `./.jentic-improve-work/scorecard.json` (before) and from the final `./.jentic-improve-work/score-iter-N.json` the skill shipped (after; the baseline when no iteration ran/improved), plus `iterationsRun` = the count of `score-iter-*.json` files, redirected to `./.jentic-improve-work/benchmark-summary.json`; then `cp -- ./.jentic-improve-work/benchmark-summary.json "<OUT_DIR>/benchmark-summary.json"` (separate Bash call). Write `null` for any unavailable value — never fabricate. See the parent skill's "Benchmark metrics" section for the exact shape.
+F3. **Only when benchmark metrics were requested** (same gate as F2; skip otherwise): with a single `jq` call, read `.summary.{score,level,grade}` from the baseline `./.jentic-improve-work/scorecard.json` (before) and from the scorecard of the iteration the skill **shipped** (after — the best clean pass per step 7's no-regression check, i.e. the highest-scoring `./.jentic-improve-work/score-iter-N.json` whose dimensions are all ≥ baseline; the baseline when none cleared that bar — **not** simply the highest-numbered iteration), plus `iterationsRun` = the count of `score-iter-*.json` files, redirected to `./.jentic-improve-work/benchmark-summary.json`; then `cp -- ./.jentic-improve-work/benchmark-summary.json "<OUT_DIR>/benchmark-summary.json"` (separate Bash call). Write `null` for any unavailable value — never fabricate. See the parent skill's "Benchmark metrics" section for the exact shape.
 G. **Verify the overlay** (separate Bash call): `jentic-apitools verify-improvement --original "<original-spec-path>" --improved "<OUT_DIR>/<output-spec-filename>" --overlay "<OUT_DIR>/overlay.json" -q`. Use the read-only original spec path from the brief as `--original` and the placed JSON spec as `--improved`. This is on top of the `check-jsonschema` schema check (step in "Overlay Format"). React to the exit code: `0` verified — proceed to report; `2` mismatch — read the `diff` in the JSON, regenerate `./.jentic-improve-work/overlay.json` so it matches the edits actually applied, re-place it (steps C–D), and re-run G, for **at most 2 regenerate-and-re-verify attempts**; if it still mismatches after that, stop and report the remaining `diff` to the user rather than looping (the improved spec is correct and already placed — only the overlay could not be made to reproduce it). Never report success with an overlay that fails verification. `1` operational error (e.g. missing `npx`, unreadable input) — report the cause and stop.
 
 Steps C-F use the work-dir-then-cp pattern because the Write tool against destination paths triggers IDE confirmation dialogs (e.g. PyCharm) that prompt the user even under `acceptEdits` mode. Writing into `./.jentic-improve-work/` first and `cp`ing via Bash keeps the final block silent.
@@ -638,7 +649,7 @@ These outputs go flat into `<OUT_DIR>` (the literal Output directory from the br
 - `<OUT_DIR>/overlay.json` — overlay, always JSON. Write to `./.jentic-improve-work/overlay.json` first, then `cp` to destination.
 - `<OUT_DIR>/changelog.md` — score comparison and change summary. Write to `./.jentic-improve-work/changelog.md` first, then `cp` to destination.
 - `<OUT_DIR>/token-usage.json` — **only when benchmark metrics were requested** — engine LLM token usage aggregated from the run's scorecard files' `tokenUsage` (`{withLlm, inputTokens, outputTokens, totalTokens, llmCalls, model, provider, scores[]}`; `withLlm: false` with null totals when the run was not `--with-llm`). Requesting it means every `score` call adds `--report-token-usage`; produce via a single `jq` aggregation over `./.jentic-improve-work/scorecard.json` + `score-iter-N.json` into `./.jentic-improve-work/token-usage.json`, then `cp` to destination — never fabricate numbers.
-- `<OUT_DIR>/benchmark-summary.json` — **only when benchmark metrics were requested** — run outcome (`{scoreBefore, scoreAfter, iterationsRun, levelBefore, levelAfter, gradeBefore, gradeAfter}`) read via a single `jq` call from the baseline `./.jentic-improve-work/scorecard.json` (before) and the final `score-iter-N.json` (after; baseline when none improved), into `./.jentic-improve-work/benchmark-summary.json`, then `cp` to destination. `null` for any unavailable value — never fabricate.
+- `<OUT_DIR>/benchmark-summary.json` — **only when benchmark metrics were requested** — run outcome (`{scoreBefore, scoreAfter, iterationsRun, levelBefore, levelAfter, gradeBefore, gradeAfter}`) read via a single `jq` call from the baseline `./.jentic-improve-work/scorecard.json` (before) and the scorecard of the iteration the skill shipped (after — the best clean pass whose dimensions are all ≥ baseline, not merely the highest-numbered `score-iter-N.json`; baseline when none cleared that bar), into `./.jentic-improve-work/benchmark-summary.json`, then `cp` to destination. `null` for any unavailable value — never fabricate.
 
 If `<OUT_DIR>` is an explicit directory that may not exist yet, create it first with `mkdir -p "<OUT_DIR>"` (one flat directory — never a `meta/qa/...` path); skip the `mkdir` when `<OUT_DIR>` is the original's own directory.
 
