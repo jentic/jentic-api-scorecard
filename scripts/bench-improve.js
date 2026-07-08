@@ -13,6 +13,16 @@
  *             engine token usage (the harness's claude -p prompt asks for it, so
  *             the skill scores with `--report-token-usage` and emits the file).
  *
+ * The skill's output is STOCHASTIC — the same model against the same spec varies
+ * by a few score points run to run. To report an honest number, each matrix cell
+ * is driven `--samples N` times (default 3); the doc reports the MEDIAN score with
+ * a min–max range, and the MEAN of the token/cost surfaces, over the cell's VALID
+ * samples only. A sample is non-comparable (excluded, never counted as a valid
+ * measurement) when it ran without `--with-llm`, when the shipped spec regressed
+ * vs its baseline, or when the skill emitted a malformed/absent benchmark-summary.
+ * Median for the quality axis (robust to a one-off broken pass), mean for the cost
+ * axis (expected spend); this asymmetry is stated in the rendered doc.
+ *
  * See specs/2026-07-05-benchmark-improve-cost/ for the full design.
  *
  * The real measurement is a MANUAL run — it spends real scorecard quota and real
@@ -20,21 +30,22 @@
  * (`--dry-run`, `--render-only`) spend nothing and are the merge gates.
  *
  * Usage:
- *   node scripts/bench-improve.js --dry-run
- *       Print the planned model × spec matrix and the per-cell plumbing; make no
- *       claude -p / model / score call. Exits 0.
+ *   node scripts/bench-improve.js --dry-run [--samples N]
+ *       Print the planned model × spec matrix (× N samples) and the per-cell
+ *       plumbing; make no claude -p / model / score call. Exits 0.
  *
  *   node scripts/bench-improve.js --render-only --data <file> [--output-dir <dir>]
  *       Render docs/improve-cost-benchmark.md from an existing results data file.
- *       Pure function of the data file; no measurement.
+ *       Pure function of the data file (aggregates recomputed from each cell's
+ *       samples[]); no measurement. `--samples` has no effect here.
  *
- *   node scripts/bench-improve.js [--output <file>] [--run-date <YYYY-MM-DD>]
+ *   node scripts/bench-improve.js [--samples N] [--output <file>] [--run-date <YYYY-MM-DD>]
  *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
- *       per cell via `claude -p` (which scores `--with-llm`), record the agent
- *       surface from claude's JSON and the engine surface + run outcome from the
- *       skill's token-usage.json / benchmark-summary.json, write the results data
- *       file (default
- *       scripts/bench-improve.data.json), then render the doc.
+ *       N times per cell via `claude -p` (which scores `--with-llm`), record each
+ *       sample's agent surface from claude's JSON and its engine surface + run
+ *       outcome from the skill's token-usage.json / benchmark-summary.json, write
+ *       the results data file (default scripts/bench-improve.data.json), then
+ *       render the doc. Cost scales with N × models × specs.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
@@ -69,6 +80,15 @@ function argValue(flag, fallback) {
     process.exit(1);
   }
   return args[idx + 1];
+}
+
+// How many times each matrix cell is driven (the stochasticity control). Only
+// affects the real run and its dry-run reflection — `--render-only` is a pure
+// function of the data file's samples[], whatever length that is.
+const SAMPLES = Number(argValue('--samples', '3'));
+if (!Number.isInteger(SAMPLES) || SAMPLES < 1) {
+  console.error(`❌  --samples must be a positive integer (got ${argValue('--samples', '3')})`);
+  process.exit(1);
 }
 
 // The doc always lands here (relative to repo root); --output-dir redirects the
@@ -134,10 +154,12 @@ function claudeArgv(model, spec, outDir) {
 }
 
 /**
- * Read the engine token-usage surface for one cell from the `token-usage.json`
- * the skill wrote into its output dir. Returns nulls when the file is absent or
- * unparseable, or when the run recorded `withLlm: false` — a gap is never read
- * as zero cost.
+ * Read the engine token-usage surface for one sample from the `token-usage.json`
+ * the skill wrote into its output dir. Token fields are null when the file is
+ * absent/unparseable or the run recorded `withLlm: false` — a gap is never read
+ * as zero cost. `withLlm` is preserved (as `false`/`null`, not collapsed into the
+ * anonymous null gap) so the sample validator can tell "ran without --with-llm"
+ * (an operator error) apart from a genuine token-reporting gap.
  */
 function readEngineUsage(outDir) {
   const file = path.join(outDir, TOKEN_USAGE_FILE);
@@ -148,6 +170,7 @@ function readEngineUsage(outDir) {
     llmCalls: null,
     model: null,
     provider: null,
+    withLlm: null,
   };
   if (!fs.existsSync(file)) return empty;
   let usage;
@@ -156,7 +179,8 @@ function readEngineUsage(outDir) {
   } catch {
     return empty;
   }
-  if (!usage || usage.withLlm === false) return empty;
+  if (!usage) return empty;
+  if (usage.withLlm === false) return { ...empty, withLlm: false };
   return {
     inputTokens: usage.inputTokens ?? null,
     outputTokens: usage.outputTokens ?? null,
@@ -164,6 +188,7 @@ function readEngineUsage(outDir) {
     llmCalls: usage.llmCalls ?? null,
     model: usage.model ?? null,
     provider: usage.provider ?? null,
+    withLlm: usage.withLlm ?? null,
   };
 }
 
@@ -210,6 +235,114 @@ function parseAgentUsage(result) {
   };
 }
 
+// ── Sample validation + aggregation (pure, no deps) ───────────────────────────
+
+/** Median of the numeric values; [] (or no numbers) → null. */
+function median(nums) {
+  const sorted = nums.filter((n) => typeof n === 'number').sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+/** Arithmetic mean of the numeric values; [] (or no numbers) → null. */
+function mean(nums) {
+  const vals = nums.filter((n) => typeof n === 'number');
+  if (vals.length === 0) return null;
+  return vals.reduce((sum, n) => sum + n, 0) / vals.length;
+}
+
+/** {min, max} of the numeric values; [] (or no numbers) → {min: null, max: null}. */
+function minMax(nums) {
+  const vals = nums.filter((n) => typeof n === 'number');
+  if (vals.length === 0) return { min: null, max: null };
+  return { min: Math.min(...vals), max: Math.max(...vals) };
+}
+
+/**
+ * Classify one COMPLETED sample as comparable or not. Returns a human-facing
+ * reason string when the sample must not count as a valid measurement, else null.
+ * A hard `error` (claude crashed) is handled upstream and is not re-checked here.
+ * Order matters — the first failing condition wins so the reason is specific.
+ */
+function validateSample(sample) {
+  const engine = sample.engine ?? {};
+  const before = sample.scoreBefore;
+  const after = sample.scoreAfter;
+  if (typeof before !== 'number' || typeof after !== 'number') {
+    return 'malformed benchmark-summary.json (scoreBefore/scoreAfter missing)';
+  }
+  if (engine.withLlm === false) {
+    return 'ran without --with-llm (engine surface not comparable)';
+  }
+  if (engine.inputTokens == null) {
+    return 'engine token usage missing under --with-llm';
+  }
+  if (after < before) {
+    return `regression: scoreAfter ${after} < scoreBefore ${before}`;
+  }
+  return null;
+}
+
+/**
+ * The reason a sample does not count: its hard `error`, else its `invalid`
+ * verdict (a stored one, or computed via validateSample), else null (valid).
+ */
+function sampleReason(sample) {
+  if (sample.error) return sample.error;
+  return sample.invalid ?? validateSample(sample);
+}
+
+/** The samples of a cell that count as a valid, comparable measurement. */
+function validSamples(cell) {
+  return (cell.samples ?? []).filter((s) => sampleReason(s) == null);
+}
+
+/**
+ * Derive a cell's render-time aggregate from its VALID samples only: median
+ * score (robust to a one-off broken pass) with a min–max range, mean of the
+ * token/cost surfaces (expected spend), and how many of N samples were valid.
+ * All fields are null when no sample is valid — never fabricated as zero.
+ */
+function aggregateCell(cell) {
+  const samples = cell.samples ?? [];
+  const valid = validSamples(cell);
+  const scoreAfters = valid.map((s) => s.scoreAfter);
+  const range = minMax(scoreAfters);
+  return {
+    sampleCount: samples.length,
+    validCount: valid.length,
+    scoreBefore: median(valid.map((s) => s.scoreBefore)),
+    scoreAfterMedian: median(scoreAfters),
+    scoreAfterMin: range.min,
+    scoreAfterMax: range.max,
+    iterationsRun: median(valid.map((s) => s.iterationsRun)),
+    // Token means rounded to whole tokens (a fractional token is meaningless);
+    // cost keeps its cents via usd().
+    agentInput: roundOrNull(mean(valid.map((s) => s.agent?.inputTokens))),
+    agentOutput: roundOrNull(mean(valid.map((s) => s.agent?.outputTokens))),
+    agentCost: mean(valid.map((s) => s.agent?.costUsd)),
+    engineInput: roundOrNull(mean(valid.map((s) => s.engine?.inputTokens))),
+    engineOutput: roundOrNull(mean(valid.map((s) => s.engine?.outputTokens))),
+  };
+}
+
+/** Round a number to the nearest integer; pass null/non-numbers through. */
+function roundOrNull(n) {
+  return typeof n === 'number' ? Math.round(n) : null;
+}
+
+/** Distinct non-comparable reasons across a cell's samples, with counts. */
+function excludedReasons(cell) {
+  const counts = new Map();
+  for (const sample of cell.samples ?? []) {
+    const reason = sampleReason(sample);
+    if (reason == null) continue;
+    counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([reason, count]) => ({ reason, count }));
+}
+
 /**
  * Exercise the matrix and per-cell plumbing without spending anything: for each
  * cell assemble (and print) the real `claude -p` argv and the token-usage.json
@@ -217,23 +350,29 @@ function parseAgentUsage(result) {
  */
 function runDryRun() {
   const cells = buildMatrix();
+  const runs = cells.length * SAMPLES;
   console.log(
-    `Benchmark matrix — ${AGENT_MODELS.length} models × ${INPUT_SPECS.length} specs = ${cells.length} cells`,
+    `Benchmark matrix — ${SAMPLES} samples × ${AGENT_MODELS.length} models × ` +
+      `${INPUT_SPECS.length} specs = ${runs} planned runs (${cells.length} cells)`,
   );
   console.log('');
 
   for (const { model, spec } of cells) {
-    const argv = claudeArgv(model, spec, '<out-dir>');
-    console.log(`▸ agent=${model}  spec=${spec.id}`);
+    const argv = claudeArgv(model, spec, `<out-dir>/${model}-${spec.id}-s<i>`);
+    console.log(`▸ agent=${model}  spec=${spec.id}  (${SAMPLES} samples)`);
     console.log(`    input: ${spec.url}`);
     console.log(`    drive: claude ${argv.join(' ')}`);
     console.log(
-      `    metrics: read from <out-dir>/${TOKEN_USAGE_FILE} + ${SUMMARY_FILE} after the run`,
+      `    metrics: per sample, read from <out-dir>/${model}-${spec.id}-s<i>/` +
+        `${TOKEN_USAGE_FILE} + ${SUMMARY_FILE}; aggregate median score + range over valid samples`,
     );
     console.log('    (dry-run — no claude / model / score call made)');
   }
   console.log('');
-  console.log(`✅  dry-run complete: ${cells.length} cells planned, 0 LLM calls, 0 quota consumed`);
+  console.log(
+    `✅  dry-run complete: ${cells.length} cells × ${SAMPLES} samples = ${runs} planned runs, ` +
+      `0 LLM calls, 0 quota consumed`,
+  );
 }
 
 // ── Doc rendering (pure function of a results data file) ──────────────────────
@@ -241,13 +380,28 @@ function num(n) {
   return typeof n === 'number' ? n.toLocaleString('en-US') : '—';
 }
 
+/** A score rounded to two decimals for the table; non-numbers render `—`. */
+function score(n) {
+  return typeof n === 'number' ? n.toFixed(2) : '—';
+}
+
 function usd(n) {
   return typeof n === 'number' ? `$${n.toFixed(3)}` : '—';
 }
 
-/** A cell counts as measured once its agent input-token count is a real number. */
+/** A min–max range string; `—` when there is no spread to show (≤1 valid point). */
+function range(agg) {
+  if (typeof agg.scoreAfterMin !== 'number' || agg.validCount <= 1) return '—';
+  return `${agg.scoreAfterMin.toFixed(2)}–${agg.scoreAfterMax.toFixed(2)}`;
+}
+
+/**
+ * A cell counts as measured once at least one of its samples is a valid,
+ * comparable measurement. A cell with `samples: []` (never run) or whose every
+ * sample errored / was non-comparable is NOT measured.
+ */
 function isMeasured(cell) {
-  return typeof cell?.agent?.inputTokens === 'number';
+  return validSamples(cell).length > 0;
 }
 
 /** Render the benchmark markdown doc from a parsed results data object. */
@@ -269,7 +423,13 @@ function renderDoc(data) {
     );
     out.push('');
   }
-  const engineModel = cells.map((c) => c.engine?.model).find(Boolean) ?? null;
+  const engineModel =
+    cells.flatMap((c) => (c.samples ?? []).map((s) => s.engine?.model)).find(Boolean) ?? null;
+  // Sample count for the prose is derived from `data` only (never the CLI SAMPLES
+  // global) so --render-only stays a pure function of the data file: prefer the
+  // stamped `data.samples`, else the widest per-cell samples[] actually present.
+  const sampleCount =
+    data.samples ?? cells.reduce((max, c) => Math.max(max, (c.samples ?? []).length), 0);
   out.push(
     `Target: \`@jentic/api-scorecard-cli\` **${data.cliVersion ?? 'unknown'}**` +
       `${anyMeasured ? `, measured on **${data.runDate ?? 'unknown'}**` : ''}. ` +
@@ -278,9 +438,14 @@ function renderDoc(data) {
   );
   out.push('');
   out.push(
-    'Each run drives the skill through its standard 2-iteration loop. Cost splits across two ' +
-      'surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring ' +
-      '**engine**’s `--with-llm` analysis (from the run’s `token-usage.json`). See ' +
+    `Each cell drives the skill through its standard 2-iteration loop ${sampleCount} ` +
+      'times (the skill’s output is stochastic). **Score after** is the median and **Range** the ' +
+      'min–max over the cell’s valid samples; token and cost columns are the mean over the same ' +
+      'samples (median for the quality axis, mean for the cost axis). **Valid** shows how many of ' +
+      'N samples were comparable — non-comparable samples (ran without `--with-llm`, regressed vs ' +
+      'baseline, or emitted a malformed summary) are excluded and listed below the table. Cost ' +
+      'splits across two surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the ' +
+      'scoring **engine**’s `--with-llm` analysis (from each run’s `token-usage.json`). See ' +
       '[`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.',
   );
   out.push('');
@@ -288,25 +453,51 @@ function renderDoc(data) {
   out.push('## Results');
   out.push('');
   out.push(
-    '| Agent model | Spec | Score before | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |',
+    '| Agent model | Spec | Valid | Score before | Score after (median) | Range | Iters | ' +
+      'Agent in | Agent out | Agent $ | Engine in | Engine out |',
   );
-  out.push('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|');
+  out.push('|---|---|:--:|---:|---:|:--:|---:|---:|---:|---:|---:|---:|');
+  const excluded = [];
   for (const c of cells) {
     const spec = c.spec ?? {};
-    const agent = c.agent ?? {};
-    const engine = c.engine ?? {};
-    if (c.error) {
+    const samples = c.samples ?? [];
+    const agg = aggregateCell(c);
+    for (const { reason, count } of excludedReasons(c)) {
+      excluded.push(`- \`${c.model}\` / ${spec.id ?? '—'}: ${reason} (${count})`);
+    }
+    if (samples.length === 0) {
+      // Never run → all-`—` placeholder row (distinct from "ran and all failed").
+      out.push(`| \`${c.model}\` | ${spec.id ?? '—'} | — | — | — | — | — | — | — | — | — | — |`);
+      continue;
+    }
+    if (agg.validCount === 0) {
+      // Ran, but no comparable sample → error row carrying the aggregated reason.
+      const reasons =
+        excludedReasons(c)
+          .map(({ reason, count }) => `${reason} (${count})`)
+          .join('; ') || 'no valid sample';
       out.push(
-        `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(c.scoreBefore)} | error | — | — | — | — | — | — |`,
+        `| \`${c.model}\` | ${spec.id ?? '—'} | 0/${agg.sampleCount} | — | ${reasons} | — | — | — | — | — | — | — |`,
       );
       continue;
     }
     out.push(
-      `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(c.scoreBefore)} | ${num(c.scoreAfter)} | ${num(c.iterationsRun)} | ` +
-        `${num(agent.inputTokens)} | ${num(agent.outputTokens)} | ${usd(agent.costUsd)} | ${num(engine.inputTokens)} | ${num(engine.outputTokens)} |`,
+      `| \`${c.model}\` | ${spec.id ?? '—'} | ${agg.validCount}/${agg.sampleCount} | ` +
+        `${score(agg.scoreBefore)} | ${score(agg.scoreAfterMedian)} | ${range(agg)} | ${num(agg.iterationsRun)} | ` +
+        `${num(agg.agentInput)} | ${num(agg.agentOutput)} | ${usd(agg.agentCost)} | ` +
+        `${num(agg.engineInput)} | ${num(agg.engineOutput)} |`,
     );
   }
   out.push('');
+
+  if (excluded.length > 0) {
+    out.push('### Excluded samples');
+    out.push('');
+    out.push('Samples that did not count toward the aggregates above, and why:');
+    out.push('');
+    out.push(...excluded);
+    out.push('');
+  }
 
   out.push('## Input specs');
   out.push('');
@@ -393,11 +584,14 @@ function runClaude(argv) {
 }
 
 /**
- * Perform the real measurement run. For each cell: drive the skill headlessly
- * via `claude -p` (which scores `--with-llm`), then record the agent surface
- * (from claude's JSON) and the engine surface (from the token-usage.json the
- * skill wrote into the cell's output dir). Writes a results data file and
- * renders the doc. Both surfaces are recorded as null on a gap — never fabricated.
+ * Perform the real measurement run. For each cell, drive the skill headlessly
+ * via `claude -p` (which scores `--with-llm`) `SAMPLES` times into per-sample
+ * output dirs; each sample records the agent surface (from claude's JSON), the
+ * engine surface (from its token-usage.json), the run outcome (from its
+ * benchmark-summary.json), and a validity verdict. A sample that crashes carries
+ * an `error`; a sample that completes but is non-comparable carries an `invalid`
+ * reason. Writes a results data file (cells → samples[]) and renders the doc; the
+ * aggregates are derived from samples[] at render time, never persisted here.
  */
 async function runReal() {
   if (!process.env['JENTIC_API_KEY']) {
@@ -412,48 +606,57 @@ async function runReal() {
   const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-improve-'));
 
   for (const { model, spec } of cells) {
-    console.log(`▸ measuring agent=${model} spec=${spec.id} …`);
-    const outDir = path.join(workRoot, `${model}-${spec.id}`);
-    fs.mkdirSync(outDir, { recursive: true });
+    console.log(`▸ measuring agent=${model} spec=${spec.id} (${SAMPLES} samples) …`);
+    const samples = [];
 
-    const cell = {
-      model,
-      spec: { id: spec.id, url: spec.url },
-      agent: { inputTokens: null, outputTokens: null, costUsd: null },
-      engine: {
-        inputTokens: null,
-        outputTokens: null,
-        totalTokens: null,
-        llmCalls: null,
-        model: null,
-        provider: null,
-      },
-      iterationsRun: null,
-      scoreBefore: null,
-      scoreAfter: null,
-      error: null,
-    };
+    for (let i = 0; i < SAMPLES; i++) {
+      const outDir = path.join(workRoot, `${model}-${spec.id}-s${i}`);
+      fs.mkdirSync(outDir, { recursive: true });
 
-    try {
-      const argv = claudeArgv(model, spec, outDir);
-      const result = await runClaude(argv);
-      cell.agent = parseAgentUsage(result);
-      cell.engine = readEngineUsage(outDir);
-      const summary = readBenchmarkSummary(outDir);
-      cell.scoreBefore = summary.scoreBefore;
-      cell.scoreAfter = summary.scoreAfter;
-      cell.iterationsRun = summary.iterationsRun;
-    } catch (err) {
-      cell.error = err.message;
-      console.error(`  ✗ ${model}/${spec.id}: ${err.message}`);
+      const sample = {
+        agent: { inputTokens: null, outputTokens: null, costUsd: null },
+        engine: {
+          inputTokens: null,
+          outputTokens: null,
+          totalTokens: null,
+          llmCalls: null,
+          model: null,
+          provider: null,
+          withLlm: null,
+        },
+        iterationsRun: null,
+        scoreBefore: null,
+        scoreAfter: null,
+        error: null,
+        invalid: null,
+      };
+
+      try {
+        const argv = claudeArgv(model, spec, outDir);
+        const result = await runClaude(argv);
+        sample.agent = parseAgentUsage(result);
+        sample.engine = readEngineUsage(outDir);
+        const summary = readBenchmarkSummary(outDir);
+        sample.scoreBefore = summary.scoreBefore;
+        sample.scoreAfter = summary.scoreAfter;
+        sample.iterationsRun = summary.iterationsRun;
+        sample.invalid = validateSample(sample);
+        if (sample.invalid) console.error(`  ⚠ ${model}/${spec.id} sample ${i}: ${sample.invalid}`);
+      } catch (err) {
+        sample.error = err.message;
+        console.error(`  ✗ ${model}/${spec.id} sample ${i}: ${err.message}`);
+      }
+      samples.push(sample);
     }
-    results.push(cell);
+
+    results.push({ model, spec: { id: spec.id, url: spec.url }, samples });
   }
 
   const data = {
     cliVersion: JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/cli/package.json'), 'utf8'))
       .version,
     runDate: argValue('--run-date', new Date().toISOString().slice(0, 10)),
+    samples: SAMPLES,
     cells: results,
   };
 

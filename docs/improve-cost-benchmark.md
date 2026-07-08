@@ -6,16 +6,16 @@
 
 Target: `@jentic/api-scorecard-cli` **1.9.3**. The engine `--with-llm` model is chosen by the engine and is the same across every cell, so differences reflect the coding-agent model, not the engine.
 
-Each run drives the skill through its standard 2-iteration loop. Cost splits across two surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring **engine**’s `--with-llm` analysis (from the run’s `token-usage.json`). See [`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.
+Each cell drives the skill through its standard 2-iteration loop 3 times (the skill’s output is stochastic). **Score after** is the median and **Range** the min–max over the cell’s valid samples; token and cost columns are the mean over the same samples (median for the quality axis, mean for the cost axis). **Valid** shows how many of N samples were comparable — non-comparable samples (ran without `--with-llm`, regressed vs baseline, or emitted a malformed summary) are excluded and listed below the table. Cost splits across two surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring **engine**’s `--with-llm` analysis (from each run’s `token-usage.json`). See [`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.
 
 ## Results
 
-| Agent model | Spec | Score before | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `haiku` | petstore | — | — | — | — | — | — | — | — |
-| `sonnet` | petstore | — | — | — | — | — | — | — | — |
-| `opus` | petstore | — | — | — | — | — | — | — | — |
-| `fable` | petstore | — | — | — | — | — | — | — | — |
+| Agent model | Spec | Valid | Score before | Score after (median) | Range | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
+|---|---|:--:|---:|---:|:--:|---:|---:|---:|---:|---:|---:|
+| `haiku` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `opus` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `fable` | petstore | — | — | — | — | — | — | — | — | — | — |
 
 ## Input specs
 
