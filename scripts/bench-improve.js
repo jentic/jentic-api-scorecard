@@ -31,8 +31,9 @@
  *   node scripts/bench-improve.js [--output <file>] [--run-date <YYYY-MM-DD>]
  *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
  *       per cell via `claude -p` (which scores `--with-llm`), record the agent
- *       surface from claude's JSON and the engine surface from the skill's
- *       token-usage.json, write the results data file (default
+ *       surface from claude's JSON and the engine surface + run outcome from the
+ *       skill's token-usage.json / benchmark-summary.json, write the results data
+ *       file (default
  *       scripts/bench-improve.data.json), then render the doc.
  *
  * Prerequisites for a real run:
@@ -80,23 +81,22 @@ const DOC_RELPATH = path.join('docs', 'improve-cost-benchmark.md');
 // engine (Bedrock-fixed) and reported in each run's token-usage.json.
 const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
 
-// The output artifact the skill writes with the engine's aggregated token usage.
+// The opt-in artifacts the skill writes when benchmark metrics are requested:
+// engine token usage, and the run outcome (scores before/after + iterations).
 const TOKEN_USAGE_FILE = 'token-usage.json';
+const SUMMARY_FILE = 'benchmark-summary.json';
 
 // The input-spec axis: OAK specs (raw githubusercontent.com URLs under the gate
-// allowlist) with a recorded baseline JAIRF score. Scoring these by URL is
-// quota-free; the improve loop's in-loop re-scores run on the local working copy
-// and do cost quota. The anchor spec is the repo's known-good petstore; the
-// remaining specs are pinned here spanning low / mid / high baseline score.
-// baselineScore is recorded from a prior `score` of each URL; `null` = to be
-// filled by the person running the real measurement.
+// allowlist). Scoring these by URL is quota-free; the improve loop's in-loop
+// re-scores run on the local working copy and do cost quota. The per-run
+// before/after scores come from benchmark-summary.json, not from here. The
+// anchor spec is the repo's known-good petstore; pin more spanning size/quality.
 const OAK_BASE =
   'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi';
 const INPUT_SPECS = [
   {
     id: 'petstore',
     url: `${OAK_BASE}/swagger-api/petstore/1.0.27/openapi.json`,
-    baselineScore: null,
   },
 ];
 
@@ -122,8 +122,8 @@ function claudeArgv(model, spec, outDir) {
   return [
     '-p',
     `Use the jentic-api-improve skill to improve the OpenAPI document at ${spec.url}, ` +
-      `writing outputs into ${outDir}. Score with \`--with-llm\` and report the scoring ` +
-      `engine's token usage (emit token-usage.json). Run the standard loop and then stop.`,
+      `writing outputs into ${outDir}. Score with \`--with-llm\` and report benchmark ` +
+      `metrics (emit token-usage.json and benchmark-summary.json). Run the standard loop and then stop.`,
     '--model',
     model,
     '--output-format',
@@ -168,6 +168,29 @@ function readEngineUsage(outDir) {
 }
 
 /**
+ * Read the run outcome for one cell from the `benchmark-summary.json` the skill
+ * writes into its output dir. Returns nulls when the file is absent or
+ * unparseable so a gap renders `—`, never fabricated.
+ */
+function readBenchmarkSummary(outDir) {
+  const file = path.join(outDir, SUMMARY_FILE);
+  const empty = { scoreBefore: null, scoreAfter: null, iterationsRun: null };
+  if (!fs.existsSync(file)) return empty;
+  let summary;
+  try {
+    summary = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return empty;
+  }
+  if (!summary) return empty;
+  return {
+    scoreBefore: summary.scoreBefore ?? null,
+    scoreAfter: summary.scoreAfter ?? null,
+    iterationsRun: summary.iterationsRun ?? null,
+  };
+}
+
+/**
  * Extract the agent surface's token usage + cost from a `claude -p
  * --output-format json` result object. Input tokens include cache-creation and
  * cache-read (the agent really consumed them). Returns nulls when the shape is
@@ -201,10 +224,12 @@ function runDryRun() {
 
   for (const { model, spec } of cells) {
     const argv = claudeArgv(model, spec, '<out-dir>');
-    console.log(`▸ agent=${model}  spec=${spec.id}  baseline=${spec.baselineScore ?? 'TBD'}`);
+    console.log(`▸ agent=${model}  spec=${spec.id}`);
     console.log(`    input: ${spec.url}`);
     console.log(`    drive: claude ${argv.join(' ')}`);
-    console.log(`    engine tokens: read from <out-dir>/${TOKEN_USAGE_FILE} after the run`);
+    console.log(
+      `    metrics: read from <out-dir>/${TOKEN_USAGE_FILE} + ${SUMMARY_FILE} after the run`,
+    );
     console.log('    (dry-run — no claude / model / score call made)');
   }
   console.log('');
@@ -263,7 +288,7 @@ function renderDoc(data) {
   out.push('## Results');
   out.push('');
   out.push(
-    '| Agent model | Spec | Baseline | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |',
+    '| Agent model | Spec | Score before | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |',
   );
   out.push('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|');
   for (const c of cells) {
@@ -272,12 +297,12 @@ function renderDoc(data) {
     const engine = c.engine ?? {};
     if (c.error) {
       out.push(
-        `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(spec.baselineScore)} | error | — | — | — | — | — | — |`,
+        `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(c.scoreBefore)} | error | — | — | — | — | — | — |`,
       );
       continue;
     }
     out.push(
-      `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(spec.baselineScore)} | ${num(c.scoreAfter)} | ${num(c.iterationsRun)} | ` +
+      `| \`${c.model}\` | ${spec.id ?? '—'} | ${num(c.scoreBefore)} | ${num(c.scoreAfter)} | ${num(c.iterationsRun)} | ` +
         `${num(agent.inputTokens)} | ${num(agent.outputTokens)} | ${usd(agent.costUsd)} | ${num(engine.inputTokens)} | ${num(engine.outputTokens)} |`,
     );
   }
@@ -285,14 +310,14 @@ function renderDoc(data) {
 
   out.push('## Input specs');
   out.push('');
-  out.push('| Spec | Baseline score | Source |');
-  out.push('|---|---:|---|');
+  out.push('| Spec | Source |');
+  out.push('|---|---|');
   const seen = new Set();
   for (const c of cells) {
     const spec = c.spec ?? {};
     if (!spec.id || seen.has(spec.id)) continue;
     seen.add(spec.id);
-    out.push(`| ${spec.id} | ${num(spec.baselineScore)} | ${spec.url ?? '—'} |`);
+    out.push(`| ${spec.id} | ${spec.url ?? '—'} |`);
   }
   out.push('');
 
@@ -393,7 +418,7 @@ async function runReal() {
 
     const cell = {
       model,
-      spec: { id: spec.id, url: spec.url, baselineScore: spec.baselineScore },
+      spec: { id: spec.id, url: spec.url },
       agent: { inputTokens: null, outputTokens: null, costUsd: null },
       engine: {
         inputTokens: null,
@@ -414,6 +439,10 @@ async function runReal() {
       const result = await runClaude(argv);
       cell.agent = parseAgentUsage(result);
       cell.engine = readEngineUsage(outDir);
+      const summary = readBenchmarkSummary(outDir);
+      cell.scoreBefore = summary.scoreBefore;
+      cell.scoreAfter = summary.scoreAfter;
+      cell.iterationsRun = summary.iterationsRun;
     } catch (err) {
       cell.error = err.message;
       console.error(`  ✗ ${model}/${spec.id}: ${err.message}`);
