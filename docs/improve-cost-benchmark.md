@@ -10,7 +10,7 @@ Each run drives the skill through its standard 2-iteration loop. Cost splits acr
 
 ## Results
 
-| Agent model | Spec | Baseline | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
+| Agent model | Spec | Score before | Score after | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `haiku` | petstore | — | — | — | — | — | — | — | — |
 | `sonnet` | petstore | — | — | — | — | — | — | — | — |
@@ -19,9 +19,9 @@ Each run drives the skill through its standard 2-iteration loop. Cost splits acr
 
 ## Input specs
 
-| Spec | Baseline score | Source |
-|---|---:|---|
-| petstore | — | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json |
+| Spec | Source |
+|---|---|
+| petstore | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json |
 
 ## Model-selection guidance
 
