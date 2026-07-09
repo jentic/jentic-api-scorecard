@@ -35,26 +35,36 @@
  * containers / Bedrock callers / scorecard-quota bursts — it does not change the
  * total work or the deterministic output order. `--concurrency 1` is sequential.
  *
+ * The spec axis defaults to 6 OAK specs spanning size / complexity / initial
+ * score; `--specs` overrides it with your own list (a `.json` file of
+ * `{id,url}`/url entries, or an inline comma-separated list of urls).
+ *
+ * A real run writes BOTH artifacts — the raw results data and the rendered doc —
+ * flat into one output directory: a fresh temp dir by default (so a run never
+ * clobbers the committed placeholder), or `--output-dir <dir>`. To regenerate
+ * the committed doc, point at the repo: `--output-dir docs`.
+ *
  * Usage:
- *   node scripts/bench-improve.js --dry-run [--samples N] [--concurrency N]
+ *   node scripts/bench-improve.js --dry-run [--samples N] [--concurrency N] [--specs …]
  *       Print the planned model × spec matrix (× N samples, N at a time) and the
  *       per-cell plumbing; make no claude -p / model / score call. Exits 0.
  *
  *   node scripts/bench-improve.js --render-only --data <file> [--output-dir <dir>]
- *       Render docs/improve-cost-benchmark.md from an existing results data file.
- *       Pure function of the data file (aggregates recomputed from each cell's
- *       samples[]); no measurement. `--samples`/`--concurrency` have no effect here.
+ *       Render improve-cost-benchmark.md from an existing results data file into
+ *       the output dir (temp by default, or --output-dir). Pure function of the
+ *       data file (aggregates recomputed from each cell's samples[]); no
+ *       measurement. `--samples`/`--concurrency`/`--specs` have no effect here.
  *
- *   node scripts/bench-improve.js [--samples N] [--concurrency N] [--keep-work] \
- *       [--output <file>] [--run-date <YYYY-MM-DD>]
+ *   node scripts/bench-improve.js [--samples N] [--concurrency N] [--specs …] \
+ *       [--output-dir <dir>] [--keep-work] [--run-date <YYYY-MM-DD>]
  *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
  *       N times per cell via `claude -p` (which scores `--with-llm`), up to
  *       `--concurrency` runs at once, record each sample's agent surface from
  *       claude's JSON and its engine surface + run outcome from the skill's
- *       token-usage.json / benchmark-summary.json, write the results data file
- *       (default scripts/bench-improve.data.json), then render the doc. Records
- *       per-sample + total wall-clock. `--keep-work` retains the temp work root
- *       (default: removed after render). Cost scales with N × models × specs.
+ *       token-usage.json / benchmark-summary.json, write bench-improve.data.json
+ *       + improve-cost-benchmark.md into the output dir. Records per-sample +
+ *       total wall-clock. `--keep-work` retains the temp work root (default:
+ *       removed after render). Cost scales with N × models × specs.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
@@ -118,9 +128,13 @@ if (!Number.isInteger(CONCURRENCY) || CONCURRENCY < 1) {
 // remove it once the doc has rendered.
 const keepWork = args.includes('--keep-work');
 
-// The doc always lands here (relative to repo root); --output-dir redirects the
-// base so the render can be diff-checked into a temp dir without touching the repo.
-const DOC_RELPATH = path.join('docs', 'improve-cost-benchmark.md');
+// A real run writes BOTH artifacts, flat, into one output directory: the raw
+// results data and the rendered markdown doc. Default is a fresh temp dir (so a
+// run never clobbers the committed placeholder doc); `--output-dir <dir>`
+// redirects both. To regenerate the committed doc deliberately, point at the
+// repo: `--output-dir docs`.
+const DATA_FILENAME = 'bench-improve.data.json';
+const DOC_FILENAME = 'improve-cost-benchmark.md';
 
 // ── Config ────────────────────────────────────────────────────────────────
 // The coding-agent model axis. `fable` is a Claude Code agent-model alias; it
@@ -136,26 +150,147 @@ const SUMMARY_FILE = 'benchmark-summary.json';
 // The input-spec axis: OAK specs (raw githubusercontent.com URLs under the gate
 // allowlist). Scoring these by URL is quota-free; the improve loop's in-loop
 // re-scores run on the local working copy and do cost quota. The per-run
-// before/after scores come from benchmark-summary.json, not from here. The
-// anchor spec is the repo's known-good petstore; pin more spanning size/quality.
+// before/after scores come from benchmark-summary.json, not from here.
 const OAK_BASE =
   'https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi';
+
+// The DEFAULT spec set (used when --specs is not given): 6 OAK specs chosen to
+// span size / complexity / initial JAIRF score, deliberately kept bounded (max
+// ~47 operations / ~436 schemas) so the run stays tractable. `id` must be
+// filesystem-safe (it names per-sample dirs) and unique. Ops/schema/score noted
+// per entry are point-in-time on live main (the URL the harness fetches); the
+// rendered doc stamps runDate, so any drift stays honest rather than hidden.
 const INPUT_SPECS = [
-  {
-    id: 'petstore',
-    url: `${OAK_BASE}/swagger-api/petstore/1.0.27/openapi.json`,
-  },
+  // small size / small complexity / medium score — the known-good anchor.
+  { id: 'petstore', url: `${OAK_BASE}/swagger-api/petstore/1.0.27/openapi.json` }, // 19 ops, 64 sch, ~65.8
+  // small / small / low.
+  { id: '1forge', url: `${OAK_BASE}/1forge.com/1forge-api/1.0.0/openapi.json` }, // 5 ops, 32 sch, ~49.5
+  // medium / medium / low (very low scorer — the hardest band to fill).
+  { id: 'circleci', url: `${OAK_BASE}/circleci.com/main/v1/openapi.json` }, // 22 ops, 173 sch, ~19.1
+  // medium / medium / medium.
+  { id: 'aftership', url: `${OAK_BASE}/aftership.com/main/v3/openapi.json` }, // 28 ops, 91 sch, ~68.2
+  // larger-but-bounded / low.
+  { id: 'agiled', url: `${OAK_BASE}/agiled.app/main/1.0.0/openapi.json` }, // 47 ops, 180 sch, ~47.5
+  // larger-but-bounded / medium.
+  { id: 'alpaca-trading', url: `${OAK_BASE}/alpaca.markets/trading/2.0.1/openapi.json` }, // 44 ops, 436 sch, ~64.8
 ];
 
 /** Build the full model × spec matrix as an array of planned cells. */
-function buildMatrix() {
+function buildMatrix(specs) {
   const cells = [];
   for (const model of AGENT_MODELS) {
-    for (const spec of INPUT_SPECS) {
+    for (const spec of specs) {
       cells.push({ model, spec });
     }
   }
   return cells;
+}
+
+/**
+ * Derive a filesystem-/dir-name-safe `id` from an OAK-style spec url. Prefers
+ * `<vendor>-<api>` from `.../apis/openapi/<vendor>/<api>/<version>/<file>`; falls
+ * back to a slugified path tail. Never returns an empty string.
+ */
+function deriveSpecId(url) {
+  let pathname;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    pathname = url;
+  }
+  const parts = pathname.split('/').filter(Boolean);
+  const openapiIndex = parts.indexOf('openapi');
+  const base =
+    openapiIndex >= 0 && parts.length >= openapiIndex + 3
+      ? `${parts[openapiIndex + 1]}-${parts[openapiIndex + 2]}`
+      : parts.slice(-2).join('-') || parts[parts.length - 1] || 'spec';
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || 'spec';
+}
+
+/** Ensure ids are unique: on collision append `-2`, `-3`, … (order-stable, so
+ * reordering `--specs` can rename dirs — fine for a manual harness). */
+function dedupeIds(specs) {
+  const seen = new Map();
+  for (const spec of specs) {
+    const count = (seen.get(spec.id) ?? 0) + 1;
+    seen.set(spec.id, count);
+    if (count > 1) spec.id = `${spec.id}-${count}`;
+  }
+  return specs;
+}
+
+/** Normalize one raw entry (a url string, or `{id?, url}`) to `{id, url}`.
+ * Throws on a missing/empty url so the caller can exit with a clear message. */
+function normalizeSpecEntry(entry, context) {
+  const url =
+    typeof entry === 'string'
+      ? entry.trim()
+      : entry && typeof entry === 'object'
+        ? String(entry.url ?? '').trim()
+        : '';
+  if (!url) throw new Error(`${context}: entry has no non-empty url`);
+  const id =
+    entry && typeof entry === 'object' && entry.id ? String(entry.id).trim() : deriveSpecId(url);
+  return { id: id || deriveSpecId(url), url };
+}
+
+/**
+ * Resolve the input-spec axis. `--specs` (a `.json` file path, or an inline
+ * comma-separated list of urls) overrides the default set ENTIRELY; absent →
+ * INPUT_SPECS. A value is read as a file when it has no comma, ends in `.json`,
+ * and is not itself a url (no `://`) — a JSON array of `{id,url}` objects or bare
+ * url strings; anything else (including a single inline `https://…/openapi.json`)
+ * is split on commas as inline urls. The parser does NOT fetch anything (keeps
+ * dry-run/render pure and dependency-free) — a bad url only fails at real-run
+ * time, surfacing as a per-sample error. Exits 1 on any malformed input.
+ */
+function resolveInputSpecs() {
+  const raw = argValue('--specs', null);
+  if (raw == null) return INPUT_SPECS;
+
+  let entries;
+  const looksLikeFile = !raw.includes(',') && raw.endsWith('.json') && !raw.includes('://');
+  if (looksLikeFile) {
+    const filePath = path.resolve(ROOT, raw);
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌  --specs file not found: ${filePath}`);
+      process.exit(1);
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+      console.error(`❌  --specs file is not valid JSON: ${err.message}`);
+      process.exit(1);
+    }
+    if (!Array.isArray(parsed)) {
+      console.error('❌  --specs file must be a JSON array of {id,url} objects or url strings');
+      process.exit(1);
+    }
+    entries = parsed;
+  } else {
+    entries = raw
+      .split(',')
+      .map((token) => token.trim())
+      .filter(Boolean);
+  }
+
+  if (!entries.length) {
+    console.error('❌  --specs resolved to an empty spec list');
+    process.exit(1);
+  }
+  let specs;
+  try {
+    specs = entries.map((entry, index) => normalizeSpecEntry(entry, `--specs[${index}]`));
+  } catch (err) {
+    console.error(`❌  ${err.message}`);
+    process.exit(1);
+  }
+  return dedupeIds(specs);
 }
 
 /**
@@ -375,14 +510,20 @@ function excludedReasons(cell) {
  * cell assemble (and print) the real `claude -p` argv and the token-usage.json
  * path the engine surface will be read from. No `claude` / model / score call.
  */
-function runDryRun() {
-  const cells = buildMatrix();
+function runDryRun(specs) {
+  const cells = buildMatrix(specs);
   const runs = cells.length * SAMPLES;
   const waves = Math.ceil(runs / CONCURRENCY);
+  const specSource = argValue('--specs', null) == null ? 'default' : 'from --specs';
+  const outputDirArg = argValue('--output-dir', null);
   console.log(
     `Benchmark matrix — ${SAMPLES} samples × ${AGENT_MODELS.length} models × ` +
-      `${INPUT_SPECS.length} specs = ${runs} planned runs (${cells.length} cells), ` +
+      `${specs.length} specs = ${runs} planned runs (${cells.length} cells), ` +
       `${CONCURRENCY} at a time (~${waves} wave${waves === 1 ? '' : 's'})`,
+  );
+  console.log(`input specs: ${specs.length} (${specSource})`);
+  console.log(
+    `output: ${outputDirArg ? path.resolve(ROOT, outputDirArg) : `${os.tmpdir()}/bench-improve-out-* (fresh, survives)`}`,
   );
   console.log('');
 
@@ -567,16 +708,28 @@ function renderDoc(data) {
   return out.join('\n') + '\n';
 }
 
-/** Render `data` to the benchmark doc, honoring an optional --output-dir base. */
-function renderToFile(data) {
+/**
+ * Resolve the single directory that holds a real run's artifacts (data + doc):
+ * `--output-dir <dir>` (resolved against ROOT), else a fresh temp dir that
+ * SURVIVES the run (distinct from the per-run `workRoot`, which is cleaned up
+ * unless `--keep-work`). Created if missing.
+ */
+function resolveOutputDir() {
+  const dir = argValue('--output-dir', null);
+  const outputDir = dir
+    ? path.resolve(ROOT, dir)
+    : fs.mkdtempSync(path.join(os.tmpdir(), 'bench-improve-out-'));
+  fs.mkdirSync(outputDir, { recursive: true });
+  return outputDir;
+}
+
+/** Render `data` to `<outputDir>/<DOC_FILENAME>` (flat). */
+function renderToFile(data, outputDir) {
   const content = renderDoc(data);
-  const outputDir = argValue('--output-dir', null);
-  const outPath = outputDir
-    ? path.resolve(ROOT, outputDir, DOC_RELPATH)
-    : path.join(ROOT, DOC_RELPATH);
+  const outPath = path.join(outputDir, DOC_FILENAME);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, content, 'utf8');
-  console.log(`✅  rendered ${DOC_RELPATH} (${content.split('\n').length} lines) → ${outPath}`);
+  console.log(`✅  rendered ${DOC_FILENAME} (${content.split('\n').length} lines) → ${outPath}`);
 }
 
 function runRenderOnly() {
@@ -597,7 +750,7 @@ function runRenderOnly() {
     console.error(`❌  Data file is not valid JSON: ${err.message}`);
     process.exit(1);
   }
-  renderToFile(data);
+  renderToFile(data, resolveOutputDir());
 }
 
 /**
@@ -734,7 +887,7 @@ async function runSample(cell, i, samplesArr, workRoot) {
  * reason. Writes a results data file (cells → samples[]) and renders the doc; the
  * aggregates are derived from samples[] at render time, never persisted here.
  */
-async function runReal() {
+async function runReal(specs) {
   if (!process.env['JENTIC_API_KEY']) {
     console.error(
       '❌  JENTIC_API_KEY must be set (the improve loop re-scores a local working copy).',
@@ -742,8 +895,9 @@ async function runReal() {
     process.exit(1);
   }
 
-  const cells = buildMatrix();
+  const cells = buildMatrix(specs);
   const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-improve-'));
+  const outputDir = resolveOutputDir();
 
   // Pre-allocate the result structure in buildMatrix() order; every sample lands
   // at results[c].samples[i] by index, so the persisted order is deterministic
@@ -780,11 +934,10 @@ async function runReal() {
     cells: results,
   };
 
-  const dataOut = argValue('--output', path.join('scripts', 'bench-improve.data.json'));
-  const dataPath = path.resolve(ROOT, dataOut);
+  const dataPath = path.join(outputDir, DATA_FILENAME);
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
   console.log(`✅  wrote results → ${dataPath}`);
-  renderToFile(data);
+  renderToFile(data, outputDir);
 
   // Wall-clock summary: total vs the sequential-equivalent (sum of per-sample
   // durations), and the speedup the concurrency bought.
@@ -797,19 +950,22 @@ async function runReal() {
       `(sequential-equivalent ${msToClock(sequentialMs)}, ${speedup}× speedup)`,
   );
 
-  // The per-run temp root (outDirs + isolated cwds) is otherwise leaked every run.
+  // The per-run temp root (isolated cwds + per-sample outputs) is otherwise
+  // leaked every run. The final artifacts live in `outputDir` (separate, never
+  // removed here), so cleaning the work root does not touch them.
   if (keepWork) {
     console.log(`ℹ  kept work root ${workRoot} (--keep-work)`);
   } else {
     fs.rmSync(workRoot, { recursive: true, force: true });
   }
+  console.log(`📁 artifacts in ${outputDir}`);
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
 if (renderOnly) {
   runRenderOnly();
 } else if (dryRun) {
-  runDryRun();
+  runDryRun(resolveInputSpecs());
 } else {
-  await runReal();
+  await runReal(resolveInputSpecs());
 }

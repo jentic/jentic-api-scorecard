@@ -13,15 +13,40 @@ Each cell drives the skill through its standard 2-iteration loop 3 times (the sk
 | Agent model | Spec | Valid | Score before | Score after (median) | Range | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
 |---|---|:--:|---:|---:|:--:|---:|---:|---:|---:|---:|---:|
 | `haiku` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `haiku` | 1forge | — | — | — | — | — | — | — | — | — | — |
+| `haiku` | circleci | — | — | — | — | — | — | — | — | — | — |
+| `haiku` | aftership | — | — | — | — | — | — | — | — | — | — |
+| `haiku` | agiled | — | — | — | — | — | — | — | — | — | — |
+| `haiku` | alpaca-trading | — | — | — | — | — | — | — | — | — | — |
 | `sonnet` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | 1forge | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | circleci | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | aftership | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | agiled | — | — | — | — | — | — | — | — | — | — |
+| `sonnet` | alpaca-trading | — | — | — | — | — | — | — | — | — | — |
 | `opus` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `opus` | 1forge | — | — | — | — | — | — | — | — | — | — |
+| `opus` | circleci | — | — | — | — | — | — | — | — | — | — |
+| `opus` | aftership | — | — | — | — | — | — | — | — | — | — |
+| `opus` | agiled | — | — | — | — | — | — | — | — | — | — |
+| `opus` | alpaca-trading | — | — | — | — | — | — | — | — | — | — |
 | `fable` | petstore | — | — | — | — | — | — | — | — | — | — |
+| `fable` | 1forge | — | — | — | — | — | — | — | — | — | — |
+| `fable` | circleci | — | — | — | — | — | — | — | — | — | — |
+| `fable` | aftership | — | — | — | — | — | — | — | — | — | — |
+| `fable` | agiled | — | — | — | — | — | — | — | — | — | — |
+| `fable` | alpaca-trading | — | — | — | — | — | — | — | — | — | — |
 
 ## Input specs
 
 | Spec | Source |
 |---|---|
 | petstore | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json |
+| 1forge | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/1forge.com/1forge-api/1.0.0/openapi.json |
+| circleci | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/circleci.com/main/v1/openapi.json |
+| aftership | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/aftership.com/main/v3/openapi.json |
+| agiled | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/agiled.app/main/1.0.0/openapi.json |
+| alpaca-trading | https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/alpaca.markets/trading/2.0.1/openapi.json |
 
 ## Model-selection guidance
 

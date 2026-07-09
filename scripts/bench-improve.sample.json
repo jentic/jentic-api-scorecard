@@ -1,81 +1,9 @@
 {
-  "_comment": "ILLUSTRATIVE sample data for scripts/bench-improve.js --render-only. Numbers are fabricated placeholders for the deterministic doc-render check and NOT a real measurement. Each cell carries a samples[] array so the render exercises the multi-sample aggregation (median score + min-max range + valid-of-N), the excluded-samples list (a 'ran without --with-llm' exclusion and a 'regression' exclusion), and the zero-valid error-row path. A real run overwrites this shape via --output; the committed docs/improve-cost-benchmark.md is generated from the real data, not this sample.",
+  "_comment": "ILLUSTRATIVE sample data for scripts/bench-improve.js --render-only. Numbers are fabricated placeholders for the deterministic doc-render check and NOT a real measurement. Cells span the 6 default specs and exercise every render path: a full 3/3-valid cell, a 2/3 partial cell with a 'ran without --with-llm' exclusion, a 2/3 partial cell with a 'regression' exclusion, a 0/3 all-error cell, and cells with a single valid sample (range suppressed). A real run overwrites this shape into the output dir; the committed improve-cost-benchmark.md is the not-yet-measured placeholder, generated separately.",
   "cliVersion": "1.9.3",
   "runDate": "2026-07-08",
   "samples": 3,
   "cells": [
-    {
-      "model": "haiku",
-      "spec": {
-        "id": "petstore",
-        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json"
-      },
-      "samples": [
-        {
-          "agent": { "inputTokens": 41200, "outputTokens": 8600, "costUsd": 0.021 },
-          "engine": { "inputTokens": 15300, "outputTokens": 7900, "totalTokens": 23200, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
-          "iterationsRun": 2,
-          "scoreBefore": 64.88,
-          "scoreAfter": 77.5,
-          "error": null,
-          "invalid": null
-        },
-        {
-          "agent": { "inputTokens": 42100, "outputTokens": 8400, "costUsd": 0.022 },
-          "engine": { "inputTokens": 15100, "outputTokens": 7850, "totalTokens": 22950, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
-          "iterationsRun": 2,
-          "scoreBefore": 64.88,
-          "scoreAfter": 78.0,
-          "error": null,
-          "invalid": null
-        },
-        {
-          "agent": { "inputTokens": 40500, "outputTokens": 8700, "costUsd": 0.02 },
-          "engine": { "inputTokens": 15250, "outputTokens": 7920, "totalTokens": 23170, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
-          "iterationsRun": 2,
-          "scoreBefore": 64.88,
-          "scoreAfter": 78.9,
-          "error": null,
-          "invalid": null
-        }
-      ]
-    },
-    {
-      "model": "sonnet",
-      "spec": {
-        "id": "petstore",
-        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json"
-      },
-      "samples": [
-        {
-          "agent": { "inputTokens": 39800, "outputTokens": 9100, "costUsd": 0.168 },
-          "engine": { "inputTokens": 15100, "outputTokens": 7850, "totalTokens": 22950, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
-          "iterationsRun": 2,
-          "scoreBefore": 64.88,
-          "scoreAfter": 83.5,
-          "error": null,
-          "invalid": null
-        },
-        {
-          "agent": { "inputTokens": 40200, "outputTokens": 9250, "costUsd": 0.171 },
-          "engine": { "inputTokens": 15200, "outputTokens": 7880, "totalTokens": 23080, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
-          "iterationsRun": 2,
-          "scoreBefore": 64.88,
-          "scoreAfter": 84.5,
-          "error": null,
-          "invalid": null
-        },
-        {
-          "agent": { "inputTokens": 38900, "outputTokens": 8950, "costUsd": 0.16 },
-          "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": false },
-          "iterationsRun": 2,
-          "scoreBefore": 66.1,
-          "scoreAfter": 70.2,
-          "error": null,
-          "invalid": "ran without --with-llm (engine surface not comparable)"
-        }
-      ]
-    },
     {
       "model": "opus",
       "spec": {
@@ -88,7 +16,7 @@
           "engine": { "inputTokens": 15200, "outputTokens": 7880, "totalTokens": 23080, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
           "iterationsRun": 2,
           "scoreBefore": 64.88,
-          "scoreAfter": 85.0,
+          "scoreAfter": 71.1,
           "error": null,
           "invalid": null
         },
@@ -97,26 +25,170 @@
           "engine": { "inputTokens": 15250, "outputTokens": 7900, "totalTokens": 23150, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
           "iterationsRun": 2,
           "scoreBefore": 64.88,
-          "scoreAfter": 86.4,
+          "scoreAfter": 74.2,
           "error": null,
           "invalid": null
         },
         {
           "agent": { "inputTokens": 38800, "outputTokens": 9500, "costUsd": 0.75 },
-          "engine": { "inputTokens": 21456, "outputTokens": 13590, "totalTokens": 35046, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "engine": { "inputTokens": 15100, "outputTokens": 7850, "totalTokens": 22950, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
           "iterationsRun": 2,
           "scoreBefore": 64.88,
-          "scoreAfter": 62.3,
+          "scoreAfter": 71.7,
           "error": null,
-          "invalid": "regression: scoreAfter 62.3 < scoreBefore 64.88"
+          "invalid": null
+        }
+      ]
+    },
+    {
+      "model": "sonnet",
+      "spec": {
+        "id": "1forge",
+        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/1forge.com/1forge-api/1.0.0/openapi.json"
+      },
+      "samples": [
+        {
+          "agent": { "inputTokens": 21800, "outputTokens": 6100, "costUsd": 0.089 },
+          "engine": { "inputTokens": 9200, "outputTokens": 5100, "totalTokens": 14300, "llmCalls": 6, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 49.5,
+          "scoreAfter": 63.4,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 22400, "outputTokens": 6250, "costUsd": 0.092 },
+          "engine": { "inputTokens": 9350, "outputTokens": 5200, "totalTokens": 14550, "llmCalls": 6, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 49.5,
+          "scoreAfter": 65.1,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 21500, "outputTokens": 5900, "costUsd": 0.085 },
+          "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": false },
+          "iterationsRun": 2,
+          "scoreBefore": 51.2,
+          "scoreAfter": 58.7,
+          "error": null,
+          "invalid": "ran without --with-llm (engine surface not comparable)"
+        }
+      ]
+    },
+    {
+      "model": "opus",
+      "spec": {
+        "id": "circleci",
+        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/circleci.com/main/v1/openapi.json"
+      },
+      "samples": [
+        {
+          "agent": { "inputTokens": 44100, "outputTokens": 11200, "costUsd": 0.881 },
+          "engine": { "inputTokens": 18400, "outputTokens": 9900, "totalTokens": 28300, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 19.1,
+          "scoreAfter": 34.6,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 45200, "outputTokens": 11450, "costUsd": 0.902 },
+          "engine": { "inputTokens": 18650, "outputTokens": 10050, "totalTokens": 28700, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 19.1,
+          "scoreAfter": 36.2,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 43700, "outputTokens": 11000, "costUsd": 0.87 },
+          "engine": { "inputTokens": 18200, "outputTokens": 9820, "totalTokens": 28020, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 19.1,
+          "scoreAfter": 15.8,
+          "error": null,
+          "invalid": "regression: scoreAfter 15.8 < scoreBefore 19.1"
+        }
+      ]
+    },
+    {
+      "model": "haiku",
+      "spec": {
+        "id": "aftership",
+        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/aftership.com/main/v3/openapi.json"
+      },
+      "samples": [
+        {
+          "agent": { "inputTokens": 40300, "outputTokens": 8700, "costUsd": 0.021 },
+          "engine": { "inputTokens": 14900, "outputTokens": 7700, "totalTokens": 22600, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 68.2,
+          "scoreAfter": 79.4,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 41100, "outputTokens": 8500, "costUsd": 0.022 },
+          "engine": { "inputTokens": 15050, "outputTokens": 7780, "totalTokens": 22830, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 68.2,
+          "scoreAfter": 80.1,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": 39900, "outputTokens": 8600, "costUsd": 0.02 },
+          "engine": { "inputTokens": 14800, "outputTokens": 7650, "totalTokens": 22450, "llmCalls": 9, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 68.2,
+          "scoreAfter": 79.8,
+          "error": null,
+          "invalid": null
+        }
+      ]
+    },
+    {
+      "model": "sonnet",
+      "spec": {
+        "id": "agiled",
+        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/agiled.app/main/1.0.0/openapi.json"
+      },
+      "samples": [
+        {
+          "agent": { "inputTokens": 52300, "outputTokens": 13100, "costUsd": 0.214 },
+          "engine": { "inputTokens": 21600, "outputTokens": 11400, "totalTokens": 33000, "llmCalls": 12, "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0", "provider": "BEDROCK", "withLlm": true },
+          "iterationsRun": 2,
+          "scoreBefore": 47.5,
+          "scoreAfter": 61.9,
+          "error": null,
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null },
+          "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": null },
+          "iterationsRun": null,
+          "scoreBefore": null,
+          "scoreAfter": null,
+          "error": "claude exited with code 1",
+          "invalid": null
+        },
+        {
+          "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null },
+          "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": null },
+          "iterationsRun": null,
+          "scoreBefore": null,
+          "scoreAfter": null,
+          "error": "claude exited with code 1",
+          "invalid": null
         }
       ]
     },
     {
       "model": "fable",
       "spec": {
-        "id": "petstore",
-        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/swagger-api/petstore/1.0.27/openapi.json"
+        "id": "alpaca-trading",
+        "url": "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/alpaca.markets/trading/2.0.1/openapi.json"
       },
       "samples": [
         {
@@ -129,20 +201,20 @@
           "invalid": null
         },
         {
-          "agent": { "inputTokens": 40100, "outputTokens": 8900, "costUsd": 0.095 },
+          "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null },
           "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": false },
           "iterationsRun": 1,
-          "scoreBefore": 65.0,
-          "scoreAfter": 66.2,
+          "scoreBefore": 64.8,
+          "scoreAfter": 66.0,
           "error": null,
           "invalid": "ran without --with-llm (engine surface not comparable)"
         },
         {
-          "agent": { "inputTokens": 39600, "outputTokens": 8800, "costUsd": 0.092 },
+          "agent": { "inputTokens": null, "outputTokens": null, "costUsd": null },
           "engine": { "inputTokens": null, "outputTokens": null, "totalTokens": null, "llmCalls": null, "model": null, "provider": null, "withLlm": false },
           "iterationsRun": 1,
-          "scoreBefore": 65.0,
-          "scoreAfter": 66.0,
+          "scoreBefore": 64.8,
+          "scoreAfter": 65.6,
           "error": null,
           "invalid": "ran without --with-llm (engine surface not comparable)"
         }
