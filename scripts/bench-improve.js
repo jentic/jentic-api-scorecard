@@ -29,23 +29,32 @@
  * LLM budget and its outputs are stochastic. The deterministic modes below
  * (`--dry-run`, `--render-only`) spend nothing and are the merge gates.
  *
+ * Runs are driven concurrently (`--concurrency N`, default 3): each `claude -p`
+ * gets its own isolated cwd, so the skill's cwd-relative `./.jentic-improve-work`
+ * never clashes between concurrent runs. The cap bounds concurrent Docker engine
+ * containers / Bedrock callers / scorecard-quota bursts — it does not change the
+ * total work or the deterministic output order. `--concurrency 1` is sequential.
+ *
  * Usage:
- *   node scripts/bench-improve.js --dry-run [--samples N]
- *       Print the planned model × spec matrix (× N samples) and the per-cell
- *       plumbing; make no claude -p / model / score call. Exits 0.
+ *   node scripts/bench-improve.js --dry-run [--samples N] [--concurrency N]
+ *       Print the planned model × spec matrix (× N samples, N at a time) and the
+ *       per-cell plumbing; make no claude -p / model / score call. Exits 0.
  *
  *   node scripts/bench-improve.js --render-only --data <file> [--output-dir <dir>]
  *       Render docs/improve-cost-benchmark.md from an existing results data file.
  *       Pure function of the data file (aggregates recomputed from each cell's
- *       samples[]); no measurement. `--samples` has no effect here.
+ *       samples[]); no measurement. `--samples`/`--concurrency` have no effect here.
  *
- *   node scripts/bench-improve.js [--samples N] [--output <file>] [--run-date <YYYY-MM-DD>]
+ *   node scripts/bench-improve.js [--samples N] [--concurrency N] [--keep-work] \
+ *       [--output <file>] [--run-date <YYYY-MM-DD>]
  *       Perform the real measurement run (manual, SPENDS MONEY): drive the skill
- *       N times per cell via `claude -p` (which scores `--with-llm`), record each
- *       sample's agent surface from claude's JSON and its engine surface + run
- *       outcome from the skill's token-usage.json / benchmark-summary.json, write
- *       the results data file (default scripts/bench-improve.data.json), then
- *       render the doc. Cost scales with N × models × specs.
+ *       N times per cell via `claude -p` (which scores `--with-llm`), up to
+ *       `--concurrency` runs at once, record each sample's agent surface from
+ *       claude's JSON and its engine surface + run outcome from the skill's
+ *       token-usage.json / benchmark-summary.json, write the results data file
+ *       (default scripts/bench-improve.data.json), then render the doc. Records
+ *       per-sample + total wall-clock. `--keep-work` retains the temp work root
+ *       (default: removed after render). Cost scales with N × models × specs.
  *
  * Prerequisites for a real run:
  *   - Docker daemon running (the scorecard CLI spawns the engine container).
@@ -90,6 +99,24 @@ if (!Number.isInteger(SAMPLES) || SAMPLES < 1) {
   console.error(`❌  --samples must be a positive integer (got ${argValue('--samples', '3')})`);
   process.exit(1);
 }
+
+// How many `claude -p` runs execute at once. Each run gets its own isolated cwd
+// (so the skill's cwd-relative `./.jentic-improve-work` cannot clash), so the cap
+// is really a bound on concurrent Docker engine containers, Bedrock callers, and
+// scorecard-quota bursts — not a correctness knob. `--concurrency 1` reproduces
+// the strictly-sequential behaviour. Only affects the real run + its dry-run
+// reflection; `--render-only` is unaffected.
+const CONCURRENCY = Number(argValue('--concurrency', '3'));
+if (!Number.isInteger(CONCURRENCY) || CONCURRENCY < 1) {
+  console.error(
+    `❌  --concurrency must be a positive integer (got ${argValue('--concurrency', '3')})`,
+  );
+  process.exit(1);
+}
+
+// Keep the per-run temp work root after a real run (for debugging); default is to
+// remove it once the doc has rendered.
+const keepWork = args.includes('--keep-work');
 
 // The doc always lands here (relative to repo root); --output-dir redirects the
 // base so the render can be diff-checked into a temp dir without touching the repo.
@@ -351,9 +378,11 @@ function excludedReasons(cell) {
 function runDryRun() {
   const cells = buildMatrix();
   const runs = cells.length * SAMPLES;
+  const waves = Math.ceil(runs / CONCURRENCY);
   console.log(
     `Benchmark matrix — ${SAMPLES} samples × ${AGENT_MODELS.length} models × ` +
-      `${INPUT_SPECS.length} specs = ${runs} planned runs (${cells.length} cells)`,
+      `${INPUT_SPECS.length} specs = ${runs} planned runs (${cells.length} cells), ` +
+      `${CONCURRENCY} at a time (~${waves} wave${waves === 1 ? '' : 's'})`,
   );
   console.log('');
 
@@ -363,6 +392,9 @@ function runDryRun() {
     console.log(`    input: ${spec.url}`);
     console.log(`    drive: claude ${argv.join(' ')}`);
     console.log(
+      `    cwd: <work-root>/${model}-${spec.id}-s<i>-cwd (isolated ./.jentic-improve-work per run)`,
+    );
+    console.log(
       `    metrics: per sample, read from <out-dir>/${model}-${spec.id}-s<i>/` +
         `${TOKEN_USAGE_FILE} + ${SUMMARY_FILE}; aggregate median score + range over valid samples`,
     );
@@ -371,8 +403,19 @@ function runDryRun() {
   console.log('');
   console.log(
     `✅  dry-run complete: ${cells.length} cells × ${SAMPLES} samples = ${runs} planned runs, ` +
-      `0 LLM calls, 0 quota consumed`,
+      `concurrency=${CONCURRENCY}, 0 LLM calls, 0 quota consumed`,
   );
+}
+
+/** Format a millisecond duration as `Hh MMm SSs` / `MMm SSs` / `SSs`. */
+function msToClock(ms) {
+  const totalSeconds = Math.round(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 // ── Doc rendering (pure function of a results data file) ──────────────────────
@@ -557,10 +600,16 @@ function runRenderOnly() {
   renderToFile(data);
 }
 
-/** Spawn `claude` with the given argv; resolve the parsed JSON result. */
-function runClaude(argv) {
+/**
+ * Spawn `claude` with the given argv in `cwd`; resolve the parsed JSON result.
+ * `cwd` isolates the skill's cwd-relative `./.jentic-improve-work` so concurrent
+ * runs never clash. stdout is captured per-call (closure), so concurrent
+ * invocations do not cross-contaminate the parsed JSON.
+ */
+function runClaude(argv, cwd) {
   return new Promise((resolve, reject) => {
     const child = spawn('claude', argv, {
+      cwd,
       env: process.env,
       stdio: ['ignore', 'pipe', 'inherit'],
     });
@@ -584,6 +633,98 @@ function runClaude(argv) {
 }
 
 /**
+ * Run zero-arg async thunks with at most `limit` in flight, returning their
+ * results in the SAME ORDER as `tasks` (indexed, not completion order). Never
+ * rejects: each thunk is expected to catch its own errors and resolve to a value
+ * (the honesty invariant — a crashed run becomes an error *sample*, not a pool
+ * rejection); a thunk that throws anyway settles its slot defensively so one bad
+ * task cannot abort the batch. Exactly `min(limit, tasks.length)` workers start;
+ * each pulls the next unclaimed index until the queue drains (`next++` is atomic
+ * — single-threaded JS, no await between the read and the increment).
+ */
+async function runPool(tasks, limit) {
+  const results = new Array(tasks.length);
+  let next = 0;
+  const workerCount = Math.max(1, Math.min(limit, tasks.length));
+  async function worker() {
+    for (let i = next++; i < tasks.length; i = next++) {
+      try {
+        results[i] = await tasks[i]();
+      } catch (err) {
+        results[i] = { __poolError: err };
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results;
+}
+
+/**
+ * Drive the skill once for one sample: run `claude -p` (which scores `--with-llm`)
+ * in an ISOLATED cwd so the skill's cwd-relative `./.jentic-improve-work` cannot
+ * clash with a concurrent run, then record the agent surface (from claude's JSON),
+ * the engine surface + run outcome (from the files the skill wrote into `outDir`),
+ * per-sample timing, and a validity verdict. Writes the result into `samplesArr[i]`
+ * by index so the persisted order is deterministic regardless of completion order.
+ * Catches its own error into `sample.error` (never fabricated).
+ */
+async function runSample(cell, i, samplesArr, workRoot) {
+  const { model, spec } = cell;
+  const base = `${model}-${spec.id}-s${i}`;
+  const outDir = path.join(workRoot, base);
+  const cwdDir = path.join(workRoot, `${base}-cwd`);
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(cwdDir, { recursive: true });
+
+  const sample = {
+    agent: { inputTokens: null, outputTokens: null, costUsd: null },
+    engine: {
+      inputTokens: null,
+      outputTokens: null,
+      totalTokens: null,
+      llmCalls: null,
+      model: null,
+      provider: null,
+      withLlm: null,
+    },
+    iterationsRun: null,
+    scoreBefore: null,
+    scoreAfter: null,
+    error: null,
+    invalid: null,
+    startedAt: null,
+    endedAt: null,
+    durationMs: null,
+  };
+
+  const start = Date.now();
+  sample.startedAt = new Date(start).toISOString();
+  try {
+    const argv = claudeArgv(model, spec, outDir);
+    const result = await runClaude(argv, cwdDir);
+    sample.agent = parseAgentUsage(result);
+    sample.engine = readEngineUsage(outDir);
+    const summary = readBenchmarkSummary(outDir);
+    sample.scoreBefore = summary.scoreBefore;
+    sample.scoreAfter = summary.scoreAfter;
+    sample.iterationsRun = summary.iterationsRun;
+    sample.invalid = validateSample(sample);
+    if (sample.invalid) console.error(`  ⚠ ${model}/${spec.id} sample ${i}: ${sample.invalid}`);
+  } catch (err) {
+    sample.error = err.message;
+    console.error(`  ✗ ${model}/${spec.id} sample ${i}: ${err.message}`);
+  }
+  const end = Date.now();
+  sample.endedAt = new Date(end).toISOString();
+  sample.durationMs = end - start;
+  const status = sample.error ? 'error' : sample.invalid ? 'invalid' : 'ok';
+  console.error(
+    `  ✓ ${model}/${spec.id} sample ${i} done in ${msToClock(sample.durationMs)} (${status})`,
+  );
+  samplesArr[i] = sample;
+}
+
+/**
  * Perform the real measurement run. For each cell, drive the skill headlessly
  * via `claude -p` (which scores `--with-llm`) `SAMPLES` times into per-sample
  * output dirs; each sample records the agent surface (from claude's JSON), the
@@ -602,61 +743,40 @@ async function runReal() {
   }
 
   const cells = buildMatrix();
-  const results = [];
   const workRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bench-improve-'));
 
-  for (const { model, spec } of cells) {
-    console.log(`▸ measuring agent=${model} spec=${spec.id} (${SAMPLES} samples) …`);
-    const samples = [];
+  // Pre-allocate the result structure in buildMatrix() order; every sample lands
+  // at results[c].samples[i] by index, so the persisted order is deterministic
+  // regardless of the order the pool completes runs in.
+  const results = cells.map(({ model, spec }) => ({
+    model,
+    spec: { id: spec.id, url: spec.url },
+    samples: new Array(SAMPLES),
+  }));
 
+  // One flat task list; each thunk knows exactly which sample slot to fill.
+  const tasks = [];
+  for (let c = 0; c < cells.length; c++) {
     for (let i = 0; i < SAMPLES; i++) {
-      const outDir = path.join(workRoot, `${model}-${spec.id}-s${i}`);
-      fs.mkdirSync(outDir, { recursive: true });
-
-      const sample = {
-        agent: { inputTokens: null, outputTokens: null, costUsd: null },
-        engine: {
-          inputTokens: null,
-          outputTokens: null,
-          totalTokens: null,
-          llmCalls: null,
-          model: null,
-          provider: null,
-          withLlm: null,
-        },
-        iterationsRun: null,
-        scoreBefore: null,
-        scoreAfter: null,
-        error: null,
-        invalid: null,
-      };
-
-      try {
-        const argv = claudeArgv(model, spec, outDir);
-        const result = await runClaude(argv);
-        sample.agent = parseAgentUsage(result);
-        sample.engine = readEngineUsage(outDir);
-        const summary = readBenchmarkSummary(outDir);
-        sample.scoreBefore = summary.scoreBefore;
-        sample.scoreAfter = summary.scoreAfter;
-        sample.iterationsRun = summary.iterationsRun;
-        sample.invalid = validateSample(sample);
-        if (sample.invalid) console.error(`  ⚠ ${model}/${spec.id} sample ${i}: ${sample.invalid}`);
-      } catch (err) {
-        sample.error = err.message;
-        console.error(`  ✗ ${model}/${spec.id} sample ${i}: ${err.message}`);
-      }
-      samples.push(sample);
+      tasks.push(() => runSample(cells[c], i, results[c].samples, workRoot));
     }
-
-    results.push({ model, spec: { id: spec.id, url: spec.url }, samples });
   }
+
+  console.log(
+    `▸ measuring ${tasks.length} runs (${cells.length} cells × ${SAMPLES} samples) ` +
+      `at concurrency ${CONCURRENCY} …`,
+  );
+  const runStart = Date.now();
+  await runPool(tasks, CONCURRENCY);
+  const totalDurationMs = Date.now() - runStart;
 
   const data = {
     cliVersion: JSON.parse(fs.readFileSync(path.join(ROOT, 'packages/cli/package.json'), 'utf8'))
       .version,
     runDate: argValue('--run-date', new Date().toISOString().slice(0, 10)),
     samples: SAMPLES,
+    concurrency: CONCURRENCY,
+    totalDurationMs,
     cells: results,
   };
 
@@ -665,6 +785,24 @@ async function runReal() {
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
   console.log(`✅  wrote results → ${dataPath}`);
   renderToFile(data);
+
+  // Wall-clock summary: total vs the sequential-equivalent (sum of per-sample
+  // durations), and the speedup the concurrency bought.
+  const sequentialMs = results
+    .flatMap((cell) => cell.samples)
+    .reduce((sum, sample) => sum + (sample?.durationMs ?? 0), 0);
+  const speedup = totalDurationMs > 0 ? (sequentialMs / totalDurationMs).toFixed(2) : '—';
+  console.log(
+    `⏱  total ${msToClock(totalDurationMs)} at concurrency ${CONCURRENCY} ` +
+      `(sequential-equivalent ${msToClock(sequentialMs)}, ${speedup}× speedup)`,
+  );
+
+  // The per-run temp root (outDirs + isolated cwds) is otherwise leaked every run.
+  if (keepWork) {
+    console.log(`ℹ  kept work root ${workRoot} (--keep-work)`);
+  } else {
+    fs.rmSync(workRoot, { recursive: true, force: true });
+  }
 }
 
 // ── Dispatch ────────────────────────────────────────────────────────────────
