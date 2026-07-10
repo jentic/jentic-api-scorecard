@@ -142,8 +142,14 @@ const DOC_FILENAME = 'improve-cost-benchmark.md';
 // engine (Bedrock-fixed) and reported in each run's token-usage.json.
 const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
 
-// The opt-in artifacts the skill writes when benchmark metrics are requested:
-// engine token usage, and the run outcome (scores before/after + iterations).
+// The opt-in artifacts the skill writes when benchmark metrics are requested.
+// The RAW scorecards (baseline + per-iteration) are the AUTHORITATIVE source the
+// harness derives scores + token usage from — a weak agent (e.g. haiku) reliably
+// `cp`s them verbatim but mangles the hand-authored summaries below, so those are
+// only a fallback. `BASELINE_SCORECARD_FILE` is the pre-improvement score;
+// `score-iter-N.json` are the post-edit re-scores.
+const BASELINE_SCORECARD_FILE = 'scorecard.json';
+const SCORE_ITER_RE = /^score-iter-(\d+)\.json$/;
 const TOKEN_USAGE_FILE = 'token-usage.json';
 const SUMMARY_FILE = 'benchmark-summary.json';
 
@@ -315,16 +321,55 @@ function claudeArgv(model, spec, outDir) {
   ];
 }
 
+/** Parse a JSON file, returning null on absence or parse error (never throws). */
+function readJsonOrNull(file) {
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Read the engine token-usage surface for one sample from the `token-usage.json`
- * the skill wrote into its output dir. Token fields are null when the file is
- * absent/unparseable or the run recorded `withLlm: false` — a gap is never read
- * as zero cost. `withLlm` is preserved (as `false`/`null`, not collapsed into the
- * anonymous null gap) so the sample validator can tell "ran without --with-llm"
- * (an operator error) apart from a genuine token-reporting gap.
+ * Read the RAW scorecards the skill copied into `outDir` — the authoritative
+ * source for both surfaces. Returns `{ baseline, iters }` where `baseline` is the
+ * parsed `scorecard.json` (or null) and `iters` is the parsed `score-iter-N.json`
+ * ordered by N (empty when none present). Each is the engine's verbatim scorecard
+ * (carrying `summary.score` / `summary.dimensions` and, under `--report-token-usage`,
+ * a top-level `tokenUsage`), so the harness never depends on the agent correctly
+ * hand-authoring benchmark-summary.json / token-usage.json.
  */
-function readEngineUsage(outDir) {
-  const file = path.join(outDir, TOKEN_USAGE_FILE);
+function readRawScorecards(outDir) {
+  const baseline = readJsonOrNull(path.join(outDir, BASELINE_SCORECARD_FILE));
+  let iterFiles = [];
+  try {
+    iterFiles = fs
+      .readdirSync(outDir)
+      .map((name) => ({ name, match: SCORE_ITER_RE.exec(name) }))
+      .filter((entry) => entry.match)
+      .sort((a, b) => Number(a.match[1]) - Number(b.match[1]));
+  } catch {
+    iterFiles = [];
+  }
+  const iters = iterFiles
+    .map((entry) => readJsonOrNull(path.join(outDir, entry.name)))
+    .filter(Boolean);
+  return { baseline, iters };
+}
+
+/**
+ * Read the engine token-usage surface for one sample. Prefers deriving it from the
+ * raw scorecards the skill copied into `outDir` (each carries a top-level
+ * `tokenUsage` under `--report-token-usage`), summing across the baseline + every
+ * iteration — robust to a weak agent that mangles its hand-authored token-usage.json.
+ * Falls back to that hand-authored file only when no raw scorecard carries a
+ * `tokenUsage`. Token fields are null when neither source has usable data — a gap
+ * is never read as zero cost. `withLlm` is preserved (`false`/`null`, not collapsed
+ * into the anonymous null gap) so the validator can tell "ran without --with-llm"
+ * apart from a genuine token-reporting gap.
+ */
+function readEngineUsage(outDir, raw = readRawScorecards(outDir)) {
   const empty = {
     inputTokens: null,
     outputTokens: null,
@@ -334,13 +379,30 @@ function readEngineUsage(outDir) {
     provider: null,
     withLlm: null,
   };
-  if (!fs.existsSync(file)) return empty;
-  let usage;
-  try {
-    usage = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return empty;
+
+  // Primary: sum the top-level `tokenUsage` across the raw scorecards.
+  const cards = [raw.baseline, ...raw.iters].filter(Boolean);
+  const withUsage = cards.filter((c) => c.tokenUsage && typeof c.tokenUsage === 'object');
+  if (cards.length > 0 && withUsage.length > 0) {
+    const sum = (key) => withUsage.reduce((total, c) => total + (c.tokenUsage[key] ?? 0), 0);
+    const firstMeta = withUsage.find((c) => c.tokenUsage.model || c.tokenUsage.provider);
+    return {
+      inputTokens: sum('inputTokens'),
+      outputTokens: sum('outputTokens'),
+      totalTokens: sum('totalTokens'),
+      llmCalls: sum('llmCalls'),
+      model: firstMeta?.tokenUsage.model ?? null,
+      provider: firstMeta?.tokenUsage.provider ?? null,
+      withLlm: true,
+    };
   }
+  // Raw scorecards exist but none carries tokenUsage → the run did not score
+  // `--with-llm --report-token-usage`. Report the honest no-LLM gap.
+  if (cards.length > 0) return { ...empty, withLlm: false };
+
+  // Fallback: the agent's hand-authored token-usage.json (only when no raw
+  // scorecard was copied at all).
+  const usage = readJsonOrNull(path.join(outDir, TOKEN_USAGE_FILE));
   if (!usage) return empty;
   if (usage.withLlm === false) return { ...empty, withLlm: false };
   return {
@@ -354,21 +416,52 @@ function readEngineUsage(outDir) {
   };
 }
 
-/**
- * Read the run outcome for one cell from the `benchmark-summary.json` the skill
- * writes into its output dir. Returns nulls when the file is absent or
- * unparseable so a gap renders `—`, never fabricated.
- */
-function readBenchmarkSummary(outDir) {
-  const file = path.join(outDir, SUMMARY_FILE);
-  const empty = { scoreBefore: null, scoreAfter: null, iterationsRun: null };
-  if (!fs.existsSync(file)) return empty;
-  let summary;
-  try {
-    summary = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return empty;
+/** Map of dimension kind → score from a scorecard's `summary.dimensions[]`. */
+function dimensionScores(scorecard) {
+  const dims = scorecard?.summary?.dimensions;
+  if (!Array.isArray(dims)) return {};
+  const out = {};
+  for (const d of dims) {
+    if (d && typeof d.kind === 'string' && typeof d.score === 'number') out[d.kind] = d.score;
   }
+  return out;
+}
+
+/**
+ * Read the run outcome for one cell. Prefers deriving it from the raw scorecards
+ * the skill copied into `outDir` — robust to a weak agent that mangles its
+ * hand-authored benchmark-summary.json. `scoreBefore` is the baseline
+ * `scorecard.json` `summary.score`; `scoreAfter` is the score of the iteration
+ * the skill would ship — the highest-scoring `score-iter-N.json` whose every
+ * dimension is at or above baseline (the no-regression rule), falling back to the
+ * baseline when no iteration cleared that bar; `iterationsRun` = count of raw
+ * `score-iter-N.json`. Falls back to the hand-authored file only when no raw
+ * baseline scorecard was copied. Returns nulls (→ `—`, never fabricated) on a gap.
+ */
+function readBenchmarkSummary(outDir, raw = readRawScorecards(outDir)) {
+  const empty = { scoreBefore: null, scoreAfter: null, iterationsRun: null };
+
+  if (raw.baseline && typeof raw.baseline.summary?.score === 'number') {
+    const scoreBefore = raw.baseline.summary.score;
+    const baseDims = dimensionScores(raw.baseline);
+    // The shipped "after" is the best clean pass: highest score among iterations
+    // whose every dimension is >= baseline. Baseline itself if none qualifies.
+    let scoreAfter = scoreBefore;
+    for (const iter of raw.iters) {
+      const s = iter.summary?.score;
+      if (typeof s !== 'number' || s <= scoreAfter) continue;
+      const iterDims = dimensionScores(iter);
+      const clean = Object.entries(baseDims).every(
+        ([kind, base]) => (iterDims[kind] ?? -Infinity) >= base,
+      );
+      if (clean) scoreAfter = s;
+    }
+    return { scoreBefore, scoreAfter, iterationsRun: raw.iters.length };
+  }
+
+  // Fallback: the agent's hand-authored benchmark-summary.json (only when no raw
+  // baseline scorecard was copied at all).
+  const summary = readJsonOrNull(path.join(outDir, SUMMARY_FILE));
   if (!summary) return empty;
   return {
     scoreBefore: summary.scoreBefore ?? null,
@@ -856,8 +949,11 @@ async function runSample(cell, i, samplesArr, workRoot) {
     const argv = claudeArgv(model, spec, outDir);
     const result = await runClaude(argv, cwdDir);
     sample.agent = parseAgentUsage(result);
-    sample.engine = readEngineUsage(outDir);
-    const summary = readBenchmarkSummary(outDir);
+    // Read the raw scorecards once; both surfaces derive from them (fallback to
+    // the agent's hand-authored files inside each reader when raw are absent).
+    const raw = readRawScorecards(outDir);
+    sample.engine = readEngineUsage(outDir, raw);
+    const summary = readBenchmarkSummary(outDir, raw);
     sample.scoreBefore = summary.scoreBefore;
     sample.scoreAfter = summary.scoreAfter;
     sample.iterationsRun = summary.iterationsRun;
