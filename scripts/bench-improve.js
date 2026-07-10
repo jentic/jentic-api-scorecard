@@ -146,10 +146,12 @@ const AGENT_MODELS = ['haiku', 'sonnet', 'opus', 'fable'];
 // The RAW scorecards (baseline + per-iteration) are the AUTHORITATIVE source the
 // harness derives scores + token usage from — a weak agent (e.g. haiku) reliably
 // `cp`s them verbatim but mangles the hand-authored summaries below, so those are
-// only a fallback. `BASELINE_SCORECARD_FILE` is the pre-improvement score;
-// `score-iter-N.json` are the post-edit re-scores.
-const BASELINE_SCORECARD_FILE = 'scorecard.json';
-const SCORE_ITER_RE = /^score-iter-(\d+)\.json$/;
+// only a fallback. A weak agent also does NOT reliably reproduce exact filenames
+// (observed: scorecard-baseline.json, scorecard-iter-1.json, score-iter-final.json),
+// so scorecards are identified by CONTENT (a numeric `summary.score`) and classified
+// baseline-vs-iteration by loose filename tokens rather than one exact name.
+const BASELINE_NAME_RE = /baseline/i;
+const ITER_NAME_RE = /iter(?:ation)?[-_.]?(\d+|final|last)/i;
 const TOKEN_USAGE_FILE = 'token-usage.json';
 const SUMMARY_FILE = 'benchmark-summary.json';
 
@@ -331,31 +333,63 @@ function readJsonOrNull(file) {
   }
 }
 
+/** A parsed JSON object is an engine scorecard if it carries a numeric score. */
+function isScorecard(obj) {
+  return !!obj && typeof obj.summary?.score === 'number';
+}
+
+/** Sort key for an iteration filename: numeric N ascending, `final`/`last` last. */
+function iterOrder(name) {
+  const m = ITER_NAME_RE.exec(name);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  const token = m[1].toLowerCase();
+  return token === 'final' || token === 'last' ? Number.MAX_SAFE_INTEGER - 1 : Number(token);
+}
+
 /**
  * Read the RAW scorecards the skill copied into `outDir` — the authoritative
- * source for both surfaces. Returns `{ baseline, iters }` where `baseline` is the
- * parsed `scorecard.json` (or null) and `iters` is the parsed `score-iter-N.json`
- * ordered by N (empty when none present). Each is the engine's verbatim scorecard
- * (carrying `summary.score` / `summary.dimensions` and, under `--report-token-usage`,
- * a top-level `tokenUsage`), so the harness never depends on the agent correctly
- * hand-authoring benchmark-summary.json / token-usage.json.
+ * source for both surfaces. Returns `{ baseline, iters }`: `baseline` is the
+ * pre-improvement scorecard (or null), `iters` the post-edit re-scores ordered
+ * baseline→final. Each is the engine's verbatim scorecard (carrying `summary.score`
+ * / `summary.dimensions` and, under `--report-token-usage`, a top-level `tokenUsage`),
+ * so the harness never depends on the agent hand-authoring benchmark-summary.json /
+ * token-usage.json. Scorecards are identified by CONTENT (a numeric `summary.score`)
+ * and split baseline-vs-iteration by loose filename tokens — a weak agent copies the
+ * files verbatim but does not reliably reproduce exact names (scorecard-baseline.json,
+ * score-iter-final.json, …). A `*.json` that is not a scorecard (the agent's summaries)
+ * is skipped.
  */
 function readRawScorecards(outDir) {
-  const baseline = readJsonOrNull(path.join(outDir, BASELINE_SCORECARD_FILE));
-  let iterFiles = [];
+  let names = [];
   try {
-    iterFiles = fs
-      .readdirSync(outDir)
-      .map((name) => ({ name, match: SCORE_ITER_RE.exec(name) }))
-      .filter((entry) => entry.match)
-      .sort((a, b) => Number(a.match[1]) - Number(b.match[1]));
+    names = fs.readdirSync(outDir).filter((name) => name.endsWith('.json'));
   } catch {
-    iterFiles = [];
+    return { baseline: null, iters: [] };
   }
-  const iters = iterFiles
-    .map((entry) => readJsonOrNull(path.join(outDir, entry.name)))
-    .filter(Boolean);
-  return { baseline, iters };
+
+  // Parse every JSON, keep only real scorecards, tag each by name role.
+  const cards = names
+    .map((name) => ({ name, data: readJsonOrNull(path.join(outDir, name)) }))
+    .filter((entry) => isScorecard(entry.data));
+
+  const iterCards = cards
+    .filter((c) => ITER_NAME_RE.test(c.name))
+    .sort((a, b) => iterOrder(a.name) - iterOrder(b.name));
+
+  // Baseline: a name saying "baseline", else the plain `scorecard.json`, else any
+  // remaining scorecard that is not an iteration (e.g. `scorecard-0.json`).
+  const iterNameSet = new Set(iterCards.map((c) => c.name));
+  const nonIter = cards.filter((c) => !iterNameSet.has(c.name));
+  const baselineCard =
+    nonIter.find((c) => BASELINE_NAME_RE.test(c.name)) ??
+    nonIter.find((c) => c.name === 'scorecard.json') ??
+    nonIter[0] ??
+    null;
+
+  return {
+    baseline: baselineCard ? baselineCard.data : null,
+    iters: iterCards.map((c) => c.data),
+  };
 }
 
 /**
