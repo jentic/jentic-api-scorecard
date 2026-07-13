@@ -274,6 +274,10 @@ doubles as a plugin marketplace:
 /plugin install api-scorecard@jentic-api-scorecard
 ```
 
+The `install` argument is `<plugin>@<marketplace>`: the marketplace is always
+`jentic-api-scorecard`, and the part before the `@` is the plugin name — `api-scorecard`
+here, or `api-improve` for the [improve skill](#jentic-api-improve).
+
 Once installed, the skill loads automatically when you ask Claude to score an OpenAPI document —
 no explicit invocation needed:
 
@@ -350,6 +354,9 @@ The improve skill is a **separate plugin** in this repository's marketplace:
 /plugin marketplace add jentic/jentic-api-scorecard
 /plugin install api-improve@jentic-api-scorecard
 ```
+
+The marketplace half is the same `jentic-api-scorecard` as the [scoring
+skill](#jentic-api-scorecard) — only the plugin name changes, to `api-improve`.
 
 Installing the plugin also registers the companion `jentic-api-improve` subagent (used
 for multi-iteration improvement loops). Once installed, ask Claude to improve a spec:

@@ -34,7 +34,7 @@
       "title": "API Scorecard \u2013 Agent Skill (Scoring)",
       "intro": "The `jentic-api-scorecard` **agent skill** teaches AI coding agents how to use the scoring CLI correctly \u2014 installing it, scoring files and URLs, producing JSON/HTML reports, wiring it into CI, and interpreting exit codes. Install it through whichever path fits your agent.\n\n---",
       "sections": [
-        { "heading": "jentic-api-scorecard", "level": 3, "headingShift": -1 }
+        { "heading": "jentic-api-scorecard", "level": 3, "headingShift": -1, "contentReplacements": [{ "from": "(#jentic-api-improve)", "to": "(./api-improve-skill.md#jentic-api-improve)" }] }
       ],
       "relatedLinks": [
         { "text": "CLI Reference", "href": "./api-scorecard.md" },
