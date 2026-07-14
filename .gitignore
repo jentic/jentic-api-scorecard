@@ -20,3 +20,4 @@ docs/bench-improve.data.json
 /.claude/worktrees/*
 /.claude/scheduled_tasks*
 !/.claude/worktrees/.gitkeep
+.idea
