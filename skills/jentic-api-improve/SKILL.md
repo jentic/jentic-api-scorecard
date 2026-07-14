@@ -6,24 +6,40 @@ metadata:
   author: Jentic
   version: "1.1"
   references-loading: lazy
-compatibility: "Requires shell execution, python, Node.js (>= 20.19), a running Docker daemon, and the `@jentic/api-scorecard-cli` (run via `npx @jentic/api-scorecard-cli@latest`; needs a `JENTIC_API_KEY` env var from https://app.jentic.com/scorecard?tab=api-keys), plus `jentic-openapi-tools` (`pipx install jentic-openapi-tools`), `jentic-apitools` (`pipx install jentic-apitools-cli`), `check-jsonschema` (`pipx install check-jsonschema`), and `jq`."
-argument-hint: "[path-or-url-of-openapi-document] [output-directory]"
-allowed-tools: Bash(python3 *) Bash(jq *) Bash(jentic-openapi-tools *) Bash(jentic-apitools *) Bash(check-jsonschema *) Bash(npx *) Bash(mkdir *) Bash(cp *) 
+compatibility: "Requires shell execution, python, Node.js (>= 20.19), a running Docker daemon, and the `@jentic/api-scorecard-cli` (run via `npx @jentic/api-scorecard-cli@latest`; needs a `JENTIC_API_KEY` env var from https://app.jentic.com/scorecard?tab=api-keys), plus `jentic-openapi-tools` (`pipx install jentic-openapi-tools`), `jentic-apitools` (`pipx install jentic-apitools-cli`), `check-jsonschema` (`pipx install check-jsonschema`), `jq`, and `oasdiff` (breaking-change detection; a Go binary — install via `go install github.com/oasdiff/oasdiff@latest`, `brew install oasdiff`, or the `tufin/oasdiff` Docker image)."
+argument-hint: "[path-or-url-of-openapi-document] [output-directory] [mode=non-breaking|summary-description|full]"
+allowed-tools: Bash(python3 *) Bash(jq *) Bash(jentic-openapi-tools *) Bash(jentic-apitools *) Bash(check-jsonschema *) Bash(npx *) Bash(mkdir *) Bash(cp *) Bash(oasdiff *) 
 ---
 
 # OpenAPI Improve
 
 ## Overview
 
-Improve the OpenAPI document at the provided path or URL ($0) for AI-readiness. The target document is the first argument passed to this skill. An optional second argument ($1) specifies the output directory; when omitted, the outputs land in the input file's own directory (see "Output").
+Improve the OpenAPI document at the provided path or URL ($0) for AI-readiness. The target document is the first argument passed to this skill. An optional second argument ($1) specifies the output directory; when omitted, the outputs land in the input file's own directory (see "Output"). An optional `mode` selects how far the skill may alter the spec — `non-breaking` (default), `summary-description`, or `full` (see "Change-Scope Modes"); when omitted, `mode` is `non-breaking` and the skill behaves exactly as it did before modes existed.
 
-This skill runs a baseline score that includes diagnostics, identifies weak dimensions and actionable diagnostics, then applies targeted improvements — either inline for simple fixes or via a subagent for multi-iteration loops. Improvements are non-breaking (they only add to the spec, never change or remove existing paths, parameters, or response shapes) and produce both an improved spec and an OpenAPI Overlay (the reusable delta).
+This skill runs a baseline score that includes diagnostics, identifies weak dimensions and actionable diagnostics, then applies targeted improvements — either inline for simple fixes or via a subagent for multi-iteration loops. In the default `non-breaking` mode improvements are non-breaking (they only add to the spec, never change or remove existing paths, parameters, or response shapes); `summary-description` is narrower still, and `full` opts into breaking changes bounded by the no-dimension-regression guard. Every run produces both an improved spec and an OpenAPI Overlay (the reusable delta), and every run runs an `oasdiff` breaking-change check against the original.
 
 If the `jentic-api-scorecard` skill is installed, you can use it for a more thorough initial and/or final analysis before starting improvements or within iterations.
 
 Reference files in `references/` are large and should be loaded lazily — only read a reference file when its content is specifically needed (e.g. to understand scoring formulas or overlay structure). Do not preload all references at once.
 
 For Claude Code users: copy `agents/jentic-api-improve.md` (from the repo root) to your project's `.claude/agents/` or `~/.claude/agents/` to enable the declarative subagent definition. This is optional — the skill works without it by spawning subagents via inline brief.
+
+## Change-Scope Modes
+
+The skill runs in one of three modes, selected by a `mode` argument (e.g. `mode=full`) or an equivalent instruction in the invocation. When no mode is given, the mode is `non-breaking` — identical to the skill's behavior before modes existed. The mode bounds which edits the skill may apply and how the `oasdiff` breaking-change check reacts; it threads through to the subagent via the brief's "Change-scope mode" field.
+
+| Mode | Edit surface | Iterations | oasdiff on a detected break |
+|---|---|---|---|
+| `summary-description` | Only `summary` / `description` values sourced from `--with-llm` `POOR_OPERATION_SEMANTICS` suggestions | max 2, then ask | **fail** |
+| `non-breaking` (default) | The full strictly-additive set (summaries, descriptions, examples, tags, new non-required properties) | max 2, then ask | **fail** |
+| `full` | The additive set **plus** breaking changes, bounded by the no-dimension-regression guard | more by default (max 4, then ask) | report only |
+
+- **`summary-description`** applies *only* the `description_suggestion` / `summary_suggestion` fields carried by `POOR_OPERATION_SEMANTICS` diagnostics — nothing else, not even other additive levers. Those diagnostics exist only with `--with-llm`, so this mode **hard-requires an available LLM**: if the score CLI cannot run `--with-llm` (exit code 8), the run stops and reports (see "Scoring exit codes and quota") — it does **not** fall back to a no-LLM pass, and the up-front `--with-llm`-drop option offered in "Pre-flight check" is **not** available in this mode.
+- **`non-breaking`** is the current behavior: the strictly-additive edit set under "Improvements are non-breaking", the max-2-iteration loop, and the no-dimension-regression guard. A detected break fails the run.
+- **`full`** does more iterations by default (up to 4 before asking the user) and pursues a broader set of signals, and it **may make breaking changes** — but the no-dimension-regression guard still applies in every mode (see "Never ship a regression"), so a breaking edit is only shipped when **no** JAIRF dimension drops below baseline. A breaking edit that lowers a dimension is rejected exactly as an additive regression is. `oasdiff` still runs and reports every breaking change in the changelog, but a break does not fail the run in this mode. `full` is strictly opt-in — it never weakens the `non-breaking` default or the `summary-description` guarantees.
+
+The no-dimension-regression guard ("no dimension may drop below baseline; ship the best clean iteration") is what makes `full` "score-safe" and is enforced identically across all three modes.
 
 ## Running Autonomously
 
@@ -50,7 +66,7 @@ Under `acceptEdits` mode the snippet's `Bash(...)` wildcards work, but the works
       "Skill(jentic-api-improve)",
       "Bash(python3 *)", "Bash(jq *)",
       "Bash(jentic-openapi-tools *)", "Bash(jentic-apitools *)", "Bash(check-jsonschema *)",
-      "Bash(npx *)", "Bash(mkdir *)", "Bash(cp *)",
+      "Bash(npx *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(oasdiff *)",
       "Read(./.jentic-improve-work/**)",
       "Edit(./.jentic-improve-work/**)",
       "Write(./.jentic-improve-work/**)"
@@ -59,7 +75,7 @@ Under `acceptEdits` mode the snippet's `Bash(...)` wildcards work, but the works
 }
 ```
 
-The `Skill(jentic-api-improve)` entry pre-approves the per-project skill-invocation consent prompt. The `Read/Edit/Write(./.jentic-improve-work/**)` entries pre-approve the workspace-scope guard that fires on first access to any new subdirectory of cwd (including hidden directories like `./.jentic-improve-work/`). The `Bash(...)` entries mirror the skill's `allowed-tools` field.
+The `Skill(jentic-api-improve)` entry pre-approves the per-project skill-invocation consent prompt. The `Read/Edit/Write(./.jentic-improve-work/**)` entries pre-approve the workspace-scope guard that fires on first access to any new subdirectory of cwd (including hidden directories like `./.jentic-improve-work/`). The `Bash(...)` entries mirror the skill's `allowed-tools` field (including `Bash(oasdiff *)` for the breaking-change check).
 
 If you prefer a single entry for the working directory instead of three, you can use the equivalent `additionalDirectories` form:
 
@@ -71,7 +87,7 @@ If you prefer a single entry for the working directory instead of three, you can
       "Skill(jentic-api-improve)",
       "Bash(python3 *)", "Bash(jq *)",
       "Bash(jentic-openapi-tools *)", "Bash(jentic-apitools *)", "Bash(check-jsonschema *)",
-      "Bash(npx *)", "Bash(mkdir *)", "Bash(cp *)"
+      "Bash(npx *)", "Bash(mkdir *)", "Bash(cp *)", "Bash(oasdiff *)"
     ]
   }
 }
@@ -207,6 +223,21 @@ Requires Node.js (no separate install). The `-y` flag skips the first-run instal
 
 * Convert: `npx -y yaml --json --single < input.yaml > output.json`
 
+### `oasdiff` (breaking-change detection)
+
+`oasdiff` is a Go binary (github.com/oasdiff/oasdiff), not a pip/npm package. Install it once via `go install github.com/oasdiff/oasdiff@latest`, `brew install oasdiff`, or run it through the `tufin/oasdiff` Docker image. The skill's `allowed-tools` covers `Bash(oasdiff *)`.
+
+Use it in **every** mode to detect whether the improved spec breaks the original's contract, comparing the read-only original (`$0`, the "base") against the placed improved spec (the "revision"). Run it as a single Bash call after final placement, writing machine-readable output to a file (no pipes, no compound shell — see "Forbidden Shell Idioms"):
+
+* Detect breaking changes: `oasdiff breaking "$0" "<OUT_DIR>/<output-spec-filename>" --format json -o ./.jentic-improve-work/breaking.json`
+
+`oasdiff breaking` exits `0` when no breaking change is found and non-zero when one is; the JSON output lists each breaking change. React per the mode's rule:
+
+- `non-breaking` and `summary-description`: a detected break **fails the run** — report the breaking changes from `breaking.json` and stop; the additive discipline should mean this never fires, so a break here signals an edit that violated the contract.
+- `full`: a detected break is **reported, not fatal** — record the breaking changes in the changelog so the API owner sees exactly what changed, then proceed.
+
+Report the `oasdiff` verdict in the changelog in all three modes (see "Changelog format"). See [oasdiff.md](references/oasdiff.md) for the full reference and exit-code table.
+
 ## Baseline Assessment
 
 Before making any improvements, confirm prerequisites and establish the baseline.
@@ -215,7 +246,7 @@ Before making any improvements, confirm prerequisites and establish the baseline
 
 The scorecard CLI needs three things before it can score the local working copy: a running Docker daemon, Node.js (>= 20.19) for `npx`, and a `JENTIC_API_KEY` in the environment (local-file inputs always require a key). If any is missing the CLI fails fast with a distinct exit code (2/3 for the key, 4 for Docker — see "Scoring exit codes and quota" below). Do not put `JENTIC_API_KEY` on the command line; it must be exported in the shell that launched the session.
 
-To also get `POOR_OPERATION_SEMANTICS` suggestions you must run with `--with-llm`, which needs LLM provider credentials and routing (see the `jentic-api-scorecard` CLI section above). If those are absent the CLI exits 8 under `--with-llm`. If the user cannot provide LLM credentials, tell them: "LLM credentials for the configured provider are not set, so `--with-llm` cannot run and `POOR_OPERATION_SEMANTICS` suggestions will not be available, resulting in lower-quality improvements. Set the provider credentials and routing variables and retry for better results." — then, only with the user's agreement, decide **up front** (before establishing the baseline) to run the entire session without `--with-llm`, so the baseline and every re-score are mutually comparable. This is the only sanctioned way to drop `--with-llm`; once a `--with-llm` run is under way, an exit-8 mid-run is a STOP-and-report (see "Scoring exit codes and quota"), not an automatic fallback.
+To also get `POOR_OPERATION_SEMANTICS` suggestions you must run with `--with-llm`, which needs LLM provider credentials and routing (see the `jentic-api-scorecard` CLI section above). If those are absent the CLI exits 8 under `--with-llm`. In `summary-description` mode `--with-llm` is mandatory — the mode applies nothing but LLM-sourced summary/description suggestions — so an exit 8 is fatal: stop and report, and do **not** offer to drop `--with-llm` (there would be nothing to apply). In `non-breaking` and `full` modes, if the user cannot provide LLM credentials, tell them: "LLM credentials for the configured provider are not set, so `--with-llm` cannot run and `POOR_OPERATION_SEMANTICS` suggestions will not be available, resulting in lower-quality improvements. Set the provider credentials and routing variables and retry for better results." — then, only with the user's agreement, decide **up front** (before establishing the baseline) to run the entire session without `--with-llm`, so the baseline and every re-score are mutually comparable. This is the only sanctioned way to drop `--with-llm`; once a `--with-llm` run is under way, an exit-8 mid-run is a STOP-and-report (see "Scoring exit codes and quota"), not an automatic fallback.
 
 ### Running the Baseline
 
@@ -289,11 +320,13 @@ After every `score` call, check the exit code before reading the JSON and react 
 | 5 | Spec fetch/parse failure | The spec itself is broken — report as a finding and STOP; do not try to improve an unparseable spec. |
 | 6 | Engine invocation failure | Transient — retry once, then STOP. |
 | 7 | Quota exhausted | STOP; report work done and not done. Do NOT retry — tell the user to wait for the monthly reset or upgrade. |
-| 8 | LLM analysis failed under `--with-llm` | STOP and report; ask the user to fix LLM provider credentials/routing, then retry. Do NOT silently retry the same run without `--with-llm` (the resulting score would not be comparable to the LLM baseline). Dropping `--with-llm` is only acceptable as the up-front, user-approved decision described in "Pre-flight check" — i.e. chosen *before* establishing the baseline, so the whole run stays internally comparable — never as an automatic mid-run reaction to an exit-8. |
+| 8 | LLM analysis failed under `--with-llm` | STOP and report; ask the user to fix LLM provider credentials/routing, then retry. Do NOT silently retry the same run without `--with-llm` (the resulting score would not be comparable to the LLM baseline). Dropping `--with-llm` is only acceptable as the up-front, user-approved decision described in "Pre-flight check" — i.e. chosen *before* establishing the baseline, so the whole run stays internally comparable — never as an automatic mid-run reaction to an exit-8. In `summary-description` mode dropping `--with-llm` is **not** an option at all (the mode has nothing to apply without LLM suggestions): exit 8 is always a hard STOP. |
 
 ## Improvements are non-breaking
 
-All improvements are non-breaking: they only add to the spec and never change, rename, remove, or restructure anything a client depends on. The operative constraints (what may be added, what must never change) are spelled out under "Constraints" in the Subagent Brief Template below and apply to inline edits too.
+This section is the law for the `non-breaking` (default) and `summary-description` modes; `full` mode relaxes the "what must never be done" list below (see "Change-Scope Modes"). In `summary-description` mode the edit surface is narrower still — only the `summary`/`description` values from `POOR_OPERATION_SEMANTICS` suggestions, none of the other additive levers. In `full` mode breaking edits are permitted, but only when the no-dimension-regression guard ("Never ship a regression" below) still holds — so even there, an edit is reverted if it drops any dimension.
+
+In `non-breaking`/`summary-description` modes all improvements are non-breaking: they only add to the spec and never change, rename, remove, or restructure anything a client depends on. The operative constraints (what may be added, what must never change) are spelled out under "Constraints" in the Subagent Brief Template below and apply to inline edits too.
 
 What is safe to add:
 - `summary` and `description` fields on operations, parameters, schemas, properties
@@ -311,7 +344,7 @@ What must never be done (would change contracts or generated client code):
 
 ### Never ship a regression
 
-Every change applied to the spec is strictly additive, so **no dimension score may drop below its baseline** — if one does, a spec edit broke something (most often a `$ref`-sibling or a lint regression) even when the overall score still rose from gains elsewhere. After each re-score, compare **every** `summary.dimensions[].score` against the baseline scorecard. If any dimension regressed, undo the offending spec change on the working copy and do a corrective re-score before shipping. Never place a spec whose overall score or any dimension score is below baseline; ship the highest-scoring iteration whose dimensions are all at or above baseline (falling back to the untouched baseline spec if no change cleared that bar). This mirrors the in-loop guard in the Improvement Loop (step 7) and applies to inline edits too.
+This guard applies in **all three modes**, including `full`. **No dimension score may drop below its baseline** — in `non-breaking`/`summary-description` a drop means an additive edit broke something (most often a `$ref`-sibling or a lint regression) even when the overall score still rose from gains elsewhere; in `full` it means a breaking edit cost more than it gained. Either way the edit is not shipped. After each re-score, compare **every** `summary.dimensions[].score` against the baseline scorecard. If any dimension regressed, undo the offending spec change on the working copy and do a corrective re-score before shipping. Never place a spec whose overall score or any dimension score is below baseline; ship the highest-scoring iteration whose dimensions are all at or above baseline (falling back to the untouched baseline spec if no change cleared that bar). This mirrors the in-loop guard in the Improvement Loop (step 7) and applies to inline edits too. The guard is what keeps `full` mode "score-safe": breaking changes are allowed only when they cost no dimension.
 
 ### Inline vs subagent decision
 
@@ -446,6 +479,14 @@ jentic-apitools verify-improvement --original "$0" --improved "<OUT_DIR>/<output
 
 Use the original input (`$0`) as `--original` and the placed JSON spec as `--improved`. React to the exit code: `0` — verified, proceed; `2` — mismatch (the `diff` field shows what differs): the overlay is wrong or lossy, so regenerate it to match the edits that were actually applied, re-place it, and re-verify — at most **2 regenerate-and-re-verify attempts**, after which stop and report the remaining `diff` to the user (the improved spec is correct and already placed; only the overlay could not be made to reproduce it). Never ship an overlay that passed only the schema check but failed this verification without telling the user. `1` — operational error (e.g. missing `npx`, unreadable input): report the cause and stop. This runs before the end-of-run cleanup, and uses only `$0` and the placed `OUT_DIR` files (it is unaffected by the work-dir cleanup).
 
+**Run the `oasdiff` breaking-change check after placement**, in every mode. As a separate Bash call:
+
+```bash
+oasdiff breaking "$0" "<OUT_DIR>/<output-spec-filename>" --format json -o ./.jentic-improve-work/breaking.json
+```
+
+Base is the read-only original (`$0`), revision is the placed improved spec. Exit `0` = no breaking change; non-zero = at least one breaking change (listed in `breaking.json`). React per mode: in `non-breaking` and `summary-description` a break **fails the run** — read `breaking.json`, report the breaking changes, and stop (the additive discipline means a break here signals an edit that violated the contract). In `full` a break is **reported, not fatal** — record the breaking changes in the changelog and proceed. Include the verdict (and any breaking-change list) in the changelog in all three modes. This runs before the end-of-run cleanup and reads only `$0` and the placed spec.
+
 **Why work-dir-then-cp for these final files**: IDE integrations (notably PyCharm) intercept Write tool calls to "new" files in user-visible paths and show a confirmation dialog that prompts even under `acceptEdits` mode. Bash file operations (`cp`, `mkdir`, `npx`, `python3` script.py) do NOT trigger this dialog. Writing the overlay and changelog into `./.jentic-improve-work/` first (a hidden directory the IDE doesn't watch), then `cp`ing the final file to its destination via Bash, keeps the final-placement block silent. Never use the Write tool directly on a destination path outside `./.jentic-improve-work/`.
 
 ### Changelog format
@@ -481,6 +522,10 @@ Date: <datetime>
 
 <bulleted list of changes by category>
 
+## Breaking Changes
+
+<the `oasdiff breaking` verdict for this run: "None detected" when oasdiff exited 0, or a bulleted list of the breaking changes from breaking.json when it did not. In non-breaking / summary-description modes this is always "None detected" (a detected break fails the run before the changelog is written); in full mode it enumerates any breaking edits the run intentionally made.>
+
 ## Output Files
 
 - `openapi.json` (or `openapi-improved.json`) — improved specification
@@ -510,6 +555,7 @@ Working spec path: <literal-absolute-path-to-working-copy>   # writable working 
 Original spec path: <literal-original-$0>                    # READ-ONLY: the "before" side of the overlay diff and the `--original` for verify-improvement. Absolute path for a local file $0; the http(s) URL verbatim when $0 is a URL (verify-improvement accepts a URL here)
 Run timestamp: <literal-YYYYMMDDTHHMMSS>                     # computed once by the parent via python3 -c; used only in the changelog body, not in any path
 Baseline: score <N>, level <L>, grade <G>
+Change-scope mode: <summary-description | non-breaking | full>   # summary-description = apply ONLY POOR_OPERATION_SEMANTICS summary/description suggestions (requires --with-llm); non-breaking = full additive set (default); full = additive set PLUS breaking changes, still bounded by the no-dimension-regression guard. Caps iterations: 2 for summary-description/non-breaking, 4 for full. oasdiff break => fail in non-breaking/summary-description, report-only in full.
 Weak dimensions: <list of dimensions below 60 with scores, e.g. "ARAX: 54, SEC: 42">
 Semantic suggestions file: <path or "not available" if --with-llm was not used>
 Scorecard file: ./.jentic-improve-work/scorecard.json   # carries both summary.dimensions[] and the diagnostics bundle
@@ -528,17 +574,20 @@ Validate: `jentic-openapi-tools validate -a -q --format json -o ./.jentic-improv
 Validate overlay (schema): `check-jsonschema --schemafile <overlay-schema-path> <overlay-file>`
 Verify overlay (transform): `jentic-apitools verify-improvement --original "<original-spec-path>" --improved "<improved-spec-path>" --overlay "<overlay-file>" -q`
 YAML to JSON: `npx -y yaml --json --single < input.yaml > output.json`
+Breaking-change check: `oasdiff breaking "<original-spec-path>" "<improved-spec-path>" --format json -o ./.jentic-improve-work/breaking.json` (exit 0 = no break; non-zero = break, listed in breaking.json)
 
 `<working-spec-path>` is the writable working copy provided in the brief — substitute the literal path. The original spec path MUST NOT appear as a target of any edit, validate, or re-score command. Each `score` call costs one scorecard quota unit (regardless of `--with-llm`); validating first avoids spending one on a broken edit. After every `score` call check the exit code before reading the JSON — on 7 (quota) or 8 (LLM failure) STOP and report; on 4 (Docker) STOP; on 2/3 (auth) STOP and ask for `JENTIC_API_KEY`.
 
 ## Improvement Loop
 
-Run a maximum of 2 iterations, then report back and ask the user whether to continue — regardless of score delta. Stop early only if the top band is reached (`summary.score >= 90`, i.e. `summary.level` is `agent-optimized`).
+Run a maximum of 2 iterations (4 in `full` mode), then report back and ask the user whether to continue — regardless of score delta. Stop early only if the top band is reached (`summary.score >= 90`, i.e. `summary.level` is `agent-optimized`). The iteration cap comes from the brief's "Change-scope mode" field: `summary-description` and `non-breaking` cap at 2; `full` caps at 4.
 
 Issue every step below as a SEPARATE Bash/Write tool call. NEVER chain them with `&&`, `;`, or `|` — compound commands trigger a prompt even when each piece is allowlisted.
 
+The iteration cap depends on the brief's "Change-scope mode": 2 for `summary-description` and `non-breaking`, 4 for `full`. In `summary-description` mode, apply **only** the `summary`/`description` suggestions from the semantic suggestions file — no other edits (no examples, tags, or new properties); if that file is "not available" the run should not have reached the loop (the mode requires `--with-llm`). In `full` mode you may additionally make breaking changes, but step 7's no-regression check still gates what ships.
+
 For each iteration N:
-1. If a semantic suggestions file is available and this is the first iteration, read it and apply applicable suggestions first.
+1. If a semantic suggestions file is available and this is the first iteration, read it and apply applicable suggestions first. In `summary-description` mode these summary/description suggestions are the *only* edits permitted.
 2. **Write** `./.jentic-improve-work/edit-iter-N.py` with the edit script contents (Write tool, not heredocs). Do NOT read the full spec into context — work from the brief's structure descriptions. The script reads AND writes the working-spec-path; it must never open the original.
 3. **Run** the script: `python3 ./.jentic-improve-work/edit-iter-N.py` (separate Bash call).
 4. **Validate**: `jentic-openapi-tools validate -a -q --format json -o ./.jentic-improve-work/validate-iter-N.json "<working-spec-path>"` (separate Bash call). On validate failure: `cp -- "<original-spec-path>" "<working-spec-path>"` and try a different edit next iteration — do NOT proceed to re-score (a metered scorecard call must never be spent on a spec a failed edit broke). Never `git` or `cd`.
@@ -560,6 +609,7 @@ F1. **Only when benchmark metrics were requested** (brief "Report benchmark metr
 F2. **Only when benchmark metrics were requested** (brief "Report benchmark metrics: yes"; skip this step entirely otherwise): aggregate engine token usage with a single `jq` call over the run's scorecard files (the baseline `./.jentic-improve-work/scorecard.json` plus each `./.jentic-improve-work/score-iter-N.json`, each scored with `--report-token-usage` so it carries a top-level `tokenUsage`), summing into a run total plus per-score breakdown, redirected to `./.jentic-improve-work/token-usage.json`; then `cp -- ./.jentic-improve-work/token-usage.json "<OUT_DIR>/token-usage.json"` (separate Bash call). If the run was not `--with-llm`, write `{"withLlm": false, "totalTokens": null, "scores": []}` — never fabricate. See the parent skill's "Benchmark metrics" section for the exact shape.
 F3. **Only when benchmark metrics were requested** (same gate as F2; skip otherwise): with a single `jq` call, read `.summary.{score,level,grade}` from the baseline `./.jentic-improve-work/scorecard.json` (before) and from the scorecard of the iteration the skill **shipped** (after — the best clean pass per step 7's no-regression check, i.e. the highest-scoring `./.jentic-improve-work/score-iter-N.json` whose dimensions are all ≥ baseline; the baseline when none cleared that bar — **not** simply the highest-numbered iteration), plus `iterationsRun` = the count of `score-iter-*.json` files, redirected to `./.jentic-improve-work/benchmark-summary.json`; then `cp -- ./.jentic-improve-work/benchmark-summary.json "<OUT_DIR>/benchmark-summary.json"` (separate Bash call). Write `null` for any unavailable value — never fabricate. See the parent skill's "Benchmark metrics" section for the exact shape.
 G. **Verify the overlay** (separate Bash call): `jentic-apitools verify-improvement --original "<original-spec-path>" --improved "<OUT_DIR>/<output-spec-filename>" --overlay "<OUT_DIR>/overlay.json" -q`. Use the read-only original spec path from the brief as `--original` and the placed JSON spec as `--improved`. This is on top of the `check-jsonschema` schema check (step in "Overlay Format"). React to the exit code: `0` verified — proceed to report; `2` mismatch — read the `diff` in the JSON, regenerate `./.jentic-improve-work/overlay.json` so it matches the edits actually applied, re-place it (steps C–D), and re-run G, for **at most 2 regenerate-and-re-verify attempts**; if it still mismatches after that, stop and report the remaining `diff` to the user rather than looping (the improved spec is correct and already placed — only the overlay could not be made to reproduce it). Never report success with an overlay that fails verification. `1` operational error (e.g. missing `npx`, unreadable input) — report the cause and stop.
+H. **Breaking-change check** (separate Bash call, in every mode): `oasdiff breaking "<original-spec-path>" "<OUT_DIR>/<output-spec-filename>" --format json -o ./.jentic-improve-work/breaking.json`. Exit `0` = no breaking change; non-zero = at least one (listed in `breaking.json`). If the brief's "Change-scope mode" is `non-breaking` or `summary-description`, a break **fails the run** — read `breaking.json`, report the breaking changes, and stop. If it is `full`, a break is **reported, not fatal** — record the breaking changes in the changelog's "Breaking Changes" section and proceed. Include the verdict in the changelog in all three modes.
 
 Steps C-F use the work-dir-then-cp pattern because the Write tool against destination paths triggers IDE confirmation dialogs (e.g. PyCharm) that prompt the user even under `acceptEdits` mode. Writing into `./.jentic-improve-work/` first and `cp`ing via Bash keeps the final block silent.
 
@@ -625,9 +675,11 @@ with open('<working-spec-path>', 'w') as f:
 
 ## Constraints
 
-All edits MUST be non-breaking.
+The constraints depend on the brief's "Change-scope mode".
 
-MUST NOT:
+In `summary-description` and `non-breaking` modes, all edits MUST be non-breaking.
+
+MUST NOT (in `summary-description` and `non-breaking` modes):
 - Change any existing path, HTTP method, or operationId
 - Remove or rename any existing parameter
 - Change any existing response status code or schema shape
@@ -636,11 +688,15 @@ MUST NOT:
 - Add new response codes (can't tell if unimplemented or just undocumented)
 - Add RFC 9457 to existing error responses (modifies existing schema shape)
 
-MAY ONLY ADD:
+MAY ADD:
 - summary, description fields
 - example / examples fields
 - tags (operations + top-level tags array)
 - New non-required schema properties
+
+In `summary-description` mode, narrow "MAY ADD" to **only** `summary` and `description` values from the semantic suggestions — nothing else.
+
+In `full` mode the MUST-NOT list above does **not** bind: breaking changes (renaming/restructuring, adding `operationId`, new response codes, operation-level `security`, RFC 9457, changing schemes/servers) are permitted. The single hard limit that still holds in `full` is step 7's no-dimension-regression check — ship an edit only if **no** JAIRF dimension drops below baseline. Record every breaking change in the changelog's "Breaking Changes" section (the `oasdiff` check reports them but does not fail the run in `full`).
 
 ## Output Files
 
@@ -748,6 +804,7 @@ Once you have the baseline data:
    - Replace `<absolute-path-to-$0>` (the **Original spec path**) with the absolute path to `$0` when `$0` is a local file, or the `http(s)` URL verbatim when `$0` is a URL (`verify-improvement` accepts a URL as `--original`). This is read-only — the "before" side of the overlay diff and the `--original` for the step-G verification.
    - Replace `<working-spec-path>` placeholders in the CLI examples with the same working spec path.
    - Replace baseline score, level, grade from the extracted scorecard summary
+   - Set **Change-scope mode** to the mode the user selected (`summary-description` | `non-breaking` | `full`); default `non-breaking` when the user gave none. This sets the subagent's edit surface, iteration cap, and `oasdiff` reaction.
    - Replace weak dimensions with the actual dimension scores below 60
    - Replace semantic suggestions file path (or "not available")
    - Replace `<skill-base-dir>` (the **Overlay schema path** prefix) with the absolute path Claude Code provided at session start in the `Base directory for this skill: <PATH>` system message (e.g. `/home/<user>/.claude/skills/jentic-api-improve` for user-scope installs). The brief field becomes the joined absolute path, e.g. `/home/<user>/.claude/skills/jentic-api-improve/references/overlay-1.1.0-json-schema.yaml`. Do NOT use `find`, `locate`, or any discovery mechanism to derive this path.
@@ -774,6 +831,7 @@ For the full JAIRF scoring specification — exact signal formulas, normalizatio
 
 | Situation | Action |
 |-----------|--------|
+| Choosing how invasive to be | `summary-description` (prose only, needs `--with-llm`), `non-breaking` (default, additive), or `full` (breaking allowed, score-safe) — see "Change-Scope Modes" |
 | Need baseline for a spec | Run one `score --with-llm --detail diagnostics`, extract summary |
 | Score low but unclear why | Check per-dimension breakdown; lowest = highest priority |
 | FC < 40 | Fix structural/lint issues first — gating rule |
