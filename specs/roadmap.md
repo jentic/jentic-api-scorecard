@@ -341,7 +341,7 @@ Phase 21 shipped the `jentic-api-improve` skill; running it with `--with-llm` in
 - Write `docs/improve-cost-benchmark.md`: a results table across models × specs with token and cost totals broken down by surface (engine vs agent), plus model-selection guidance and takeaways.
 - Pin the CLI/image version and stamp the run date in the doc; treat the benchmark as a manual, non-CI-gated measurement since it consumes real scorecard quota and real LLM spend, and LLM outputs are stochastic.
 
-## Phase 23 — jentic-api-improve Change-Scope Modes
+## Phase 23 — jentic-api-improve Change-Scope Modes ✅
 
 **Goal:** Add a change-scope mode switch to the `jentic-api-improve` skill offering `summary-description`, `non-breaking` (default), and `full` modes, with `oasdiff`-based breaking-change detection in every mode.
 **Depends on:** none (self-contained — refines the already-shipped Phase 21 improve skill)

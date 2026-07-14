@@ -760,6 +760,12 @@ function renderDoc(data) {
       '[`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.',
   );
   out.push('');
+  out.push(
+    'This benchmark runs the skill in its default `non-breaking` mode through the standard ' +
+      '2-iteration loop. The skill’s `full` mode runs more iterations by default (up to 4), so it ' +
+      'spends more scorecard quota and more agent/engine tokens per run than the figures below.',
+  );
+  out.push('');
 
   out.push('## Results');
   out.push('');

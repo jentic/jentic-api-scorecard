@@ -136,9 +136,9 @@ jentic-api-scorecard/
 │   ├── jentic-api-scorecard/
 │   │   ├── SKILL.md                          (name/description frontmatter + CLI usage guidance)
 │   │   └── references/llm-analysis.md        (progressive-disclosure: --with-llm provider recipes)
-│   └── jentic-api-improve/                   (raises a spec's JAIRF score; emits improved spec + Overlay)
-│       ├── SKILL.md                          (orchestrates the scorecard CLI + jentic-openapi-tools / jentic-apitools / check-jsonschema)
-│       └── references/                       (JAIRF guide, Overlay 1.1.0 spec + schema, CLI refs — lazily loaded)
+│   └── jentic-api-improve/                   (raises a spec's JAIRF score; emits improved spec + Overlay; summary-description/non-breaking/full modes)
+│       ├── SKILL.md                          (orchestrates the scorecard CLI + jentic-openapi-tools / jentic-apitools / check-jsonschema / oasdiff)
+│       └── references/                       (JAIRF guide, Overlay 1.1.0 spec + schema, CLI refs incl. oasdiff — lazily loaded)
 ├── agents/                                   (Claude Code subagent definitions — shipped in the CLI tarball)
 │   └── jentic-api-improve.md                 (iterative-improvement subagent; spawned by the api-improve skill)
 ├── docker/                                   (image internals; not a deliverable on its own)

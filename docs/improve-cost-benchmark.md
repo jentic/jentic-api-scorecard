@@ -8,6 +8,8 @@ Target: `@jentic/api-scorecard-cli` **1.9.3**. The engine `--with-llm` model is 
 
 Each cell drives the skill through its standard 2-iteration loop 3 times (the skill’s output is stochastic). **Score after** is the median and **Range** the min–max over the cell’s valid samples; token and cost columns are the mean over the same samples (median for the quality axis, mean for the cost axis). **Valid** shows how many of N samples were comparable — non-comparable samples (ran without `--with-llm`, regressed vs baseline, or emitted a malformed summary) are excluded and listed below the table. Cost splits across two surfaces: the coding **agent**’s own reasoning (from `claude -p`) and the scoring **engine**’s `--with-llm` analysis (from each run’s `token-usage.json`). See [`docs/llm-signals.md`](./llm-signals.md) for the engine LLM recipe.
 
+This benchmark runs the skill in its default `non-breaking` mode through the standard 2-iteration loop. The skill’s `full` mode runs more iterations by default (up to 4), so it spends more scorecard quota and more agent/engine tokens per run than the figures below.
+
 ## Results
 
 | Agent model | Spec | Valid | Score before | Score after (median) | Range | Iters | Agent in | Agent out | Agent $ | Engine in | Engine out |
