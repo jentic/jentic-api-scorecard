@@ -341,6 +341,21 @@ Phase 21 shipped the `jentic-api-improve` skill; running it with `--with-llm` in
 - Write `docs/improve-cost-benchmark.md`: a results table across models × specs with token and cost totals broken down by surface (engine vs agent), plus model-selection guidance and takeaways.
 - Pin the CLI/image version and stamp the run date in the doc; treat the benchmark as a manual, non-CI-gated measurement since it consumes real scorecard quota and real LLM spend, and LLM outputs are stochastic.
 
+## Phase 23 — jentic-api-improve Change-Scope Modes
+
+**Goal:** Add a change-scope mode switch to the `jentic-api-improve` skill offering `summary-description`, `non-breaking` (default), and `full` modes, with `oasdiff`-based breaking-change detection in every mode.
+**Depends on:** none (self-contained — refines the already-shipped Phase 21 improve skill)
+**Priority:** Medium–High
+
+- Update the skill and the agent to accept a `mode` argument and/or a related prompt instruction with options `non-breaking` (default), `summary-description`, `full`.
+- In `summary-description` mode only apply the summary/descriptions proposed updates coming from diagnostics within the scorecard invoked with llm. Fails if llm is not available in score CLI.
+- In `non-breaking` have it work as with the current logic (add break-detections as described below).
+- In `full` have it perform by default more iterations and be more aggressive in terms of updates, also allowing breaking changes.
+- Add a break detection validation in all modes, using https://github.com/oasdiff/oasdiff. Report the result in all modes, fail if a break is detected in `non-breaking` or `summary-description` modes.
+- Update/add files in `references/` accordingly if needed.
+- Update README section + `docs/architecture.md` / `.claude/CLAUDE.md` + any documentation.
+- The SkillSpector needs to keep passing.
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.
