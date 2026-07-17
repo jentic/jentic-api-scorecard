@@ -258,6 +258,16 @@ npx -y @jentic/api-scorecard-cli@latest score "$0" --with-llm --format json --de
 
 Check the exit code before reading the output: on a non-zero exit the file may be absent or partial. React per "Scoring exit codes and quota" below — in particular stop on 2/3 (set `JENTIC_API_KEY`), 4 (start Docker), 7 (quota exhausted), and 8 (LLM failure). Only when the exit code is 0 proceed to extract the data.
 
+### Baseline validation (capture the pre-existing error set)
+
+Immediately after the baseline score, validate the untouched working copy once to capture the spec's **baseline error set** — the errors that were already there before any edit. This is free (local) and is the reference the in-loop validate gate compares against, so the skill can improve a spec that starts invalid without being blocked by an error it did not introduce:
+
+```bash
+jentic-openapi-tools validate -a -q --format json -o ./.jentic-improve-work/validate-baseline.json ./.jentic-improve-work/spec.<EXT>
+```
+
+The baseline error set is the collection of severity-1 diagnostics in that file, identified by `(code, data.path)`. Do **not** treat a non-empty baseline as a stop condition — many real specs start with lint/structural errors that are out of a mode's additive scope (e.g. `MISSING_SERVER_URL`, a relative `servers` URL). The skill's job is to not make things *worse*: the in-loop gate (Improvement Loop step 4) rejects an edit only when it introduces a severity-1 error **not** in this baseline set.
+
 ### Extracting baseline data
 
 Run each of the following `jq` commands as its own separate Bash tool call — they are listed together for reference only, NOT to be pasted as one multi-line invocation (compound invocations trigger Claude Code's permission prompts; see "Forbidden Shell Idioms"). The `#` lines are explanatory labels, not part of any command.
@@ -306,7 +316,7 @@ Gating rule: an FC dimension score below 40 forces the overall score into the lo
 
 ### Scoring exit codes and quota
 
-Each `score` call consumes **one** unit of the scorecard's monthly quota (100/month on the free tier) **regardless of `--with-llm`** — the flag adds latency and LLM-provider cost but no extra scorecard quota. A normal run is one baseline plus up to two in-loop re-scores, so budget at least three units per run; warn the user if they ask for many rounds. Validate locally (free) before every re-score so a metered call is never spent on a spec an edit just broke.
+Each `score` call consumes **one** unit of the scorecard's monthly quota (100/month on the free tier) **regardless of `--with-llm`** — the flag adds latency and LLM-provider cost but no extra scorecard quota. A normal run is one baseline plus up to two in-loop re-scores, so budget at least three units per run; warn the user if they ask for many rounds. Validate locally (free) before every re-score so a metered call is never spent on a spec an edit just broke — the gate is "no *new* severity-1 error vs. the baseline error set" (see "Baseline validation"), not absolute validity, so a spec that starts invalid is still improvable.
 
 After every `score` call, check the exit code before reading the JSON and react as follows:
 
@@ -559,6 +569,7 @@ Change-scope mode: <summary-description | non-breaking | full>   # summary-descr
 Weak dimensions: <list of dimensions below 60 with scores, e.g. "ARAX: 54, SEC: 42">
 Semantic suggestions file: <path or "not available" if --with-llm was not used>
 Scorecard file: ./.jentic-improve-work/scorecard.json   # carries both summary.dimensions[] and the diagnostics bundle
+Baseline validation file: ./.jentic-improve-work/validate-baseline.json   # the spec's pre-existing severity-1 error set; step 4's gate rejects only NEW errors vs. this, so a spec that starts invalid is still improvable
 Working directory: ./.jentic-improve-work
 Output directory: <literal-absolute-OUT_DIR>               # $1 if provided, else dirname($0); the outputs go here, flat
 Report benchmark metrics: <yes | no>                      # when "yes", pass --report-token-usage to every score and emit token-usage.json + benchmark-summary.json; default "no"
@@ -590,7 +601,7 @@ For each iteration N:
 1. If a semantic suggestions file is available and this is the first iteration, read it and apply applicable suggestions first. In `summary-description` mode these summary/description suggestions are the *only* edits permitted.
 2. **Write** `./.jentic-improve-work/edit-iter-N.py` with the edit script contents (Write tool, not heredocs). Do NOT read the full spec into context — work from the brief's structure descriptions. The script reads AND writes the working-spec-path; it must never open the original.
 3. **Run** the script: `python3 ./.jentic-improve-work/edit-iter-N.py` (separate Bash call).
-4. **Validate**: `jentic-openapi-tools validate -a -q --format json -o ./.jentic-improve-work/validate-iter-N.json "<working-spec-path>"` (separate Bash call). On validate failure: `cp -- "<original-spec-path>" "<working-spec-path>"` and try a different edit next iteration — do NOT proceed to re-score (a metered scorecard call must never be spent on a spec a failed edit broke). Never `git` or `cd`.
+4. **Validate**: `jentic-openapi-tools validate -a -q --format json -o ./.jentic-improve-work/validate-iter-N.json "<working-spec-path>"` (separate Bash call). Then compare this iteration's severity-1 diagnostics against the **baseline error set** captured in `./.jentic-improve-work/validate-baseline.json` (match on `(code, data.path)`). The gate is **no *new* validation errors vs. baseline**, not absolute validity: an edit passes if it introduces no severity-1 diagnostic that was not already in the baseline set (a spec that starts invalid is still improvable — a pre-existing `MISSING_SERVER_URL` or relative-server error that the mode cannot additively fix must not block every re-score). If the edit introduces a **new** severity-1 error: `cp -- "<original-spec-path>" "<working-spec-path>"` and try a different edit next iteration — do NOT proceed to re-score (a metered scorecard call must never be spent on a spec a failed edit broke). Never `git` or `cd`.
 5. **Re-score**: `npx -y @jentic/api-scorecard-cli@latest score "<working-spec-path>" --with-llm --format json --detail diagnostics -o ./.jentic-improve-work/score-iter-N.json -q` (separate Bash call). Check the exit code before reading the file: on 7 (quota) or 8 (LLM failure) STOP and report; on 4 (Docker) or 2/3 (auth) STOP. Each call costs one quota unit regardless of `--with-llm`.
 6. **Extract summary + dimensions**: `jq '{summary, dimensions: .summary.dimensions}' ./.jentic-improve-work/score-iter-N.json` (separate Bash call). Read both the overall `summary.score` and every `summary.dimensions[].score`.
 7. **No-regression check (before deciding to continue).** Compare every `summary.dimensions[].score` against the baseline scorecard's same dimension. This iteration is **clean** iff every dimension is at or above baseline (an additive edit that lowered any dimension broke something it shouldn't — most often a `$ref`-sibling; see "Never ship a regression" in the parent skill). If the iteration is **not** clean, restore the last-good working copy with `cp -- ./.jentic-improve-work/spec-last-good.<EXT> "<working-spec-path>"` (separate Bash call), do not ship this iteration, and either re-attempt a narrower edit next iteration or stop. If the iteration **is** clean **and** its overall `summary.score` beats the current last-good's score, promote it to the new last-good: `cp -- "<working-spec-path>" ./.jentic-improve-work/spec-last-good.<EXT>` (separate Bash call). (Seed the first last-good snapshot from the untouched baseline working copy before iteration 1, so its "score to beat" is the baseline score.) The last-good snapshot is therefore always the best clean pass; the spec you ship at the end is exactly `spec-last-good.<EXT>` — never the raw final iteration, which may have regressed.
@@ -804,6 +815,7 @@ Once you have the baseline data:
    - Replace `<absolute-path-to-$0>` (the **Original spec path**) with the absolute path to `$0` when `$0` is a local file, or the `http(s)` URL verbatim when `$0` is a URL (`verify-improvement` accepts a URL as `--original`). This is read-only — the "before" side of the overlay diff and the `--original` for the step-G verification.
    - Replace `<working-spec-path>` placeholders in the CLI examples with the same working spec path.
    - Replace baseline score, level, grade from the extracted scorecard summary
+   - The **Baseline validation file** (`./.jentic-improve-work/validate-baseline.json`) is already written by the "Baseline validation" step, so its brief path is fixed — no substitution needed; it carries the pre-existing error set step 4 gates new errors against.
    - Set **Change-scope mode** to the mode the user selected (`summary-description` | `non-breaking` | `full`); default `non-breaking` when the user gave none. This sets the subagent's edit surface, iteration cap, and `oasdiff` reaction.
    - Replace weak dimensions with the actual dimension scores below 60
    - Replace semantic suggestions file path (or "not available")
