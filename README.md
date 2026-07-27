@@ -254,7 +254,7 @@ whichever path fits your agent.
 | Skill | Purpose |
 |---|---|
 | `jentic-api-scorecard` | Teaches coding agents to use the scoring CLI: scoring files and URLs, producing JSON/HTML, wiring into CI, and interpreting exit codes. |
-| `jentic-api-improve` | Closes the loop: applies non-breaking improvements to a spec automatically, producing an improved spec, an OpenAPI Overlay, and a before/after changelog. |
+| `jentic-api-improve` | Closes the loop: applies improvements to a spec automatically (non-breaking by default; `summary-description` and `full` modes available), with an `oasdiff` breaking-change check, producing an improved spec, an OpenAPI Overlay, and a before/after changelog. |
 
 ### jentic-api-scorecard
 
@@ -273,6 +273,10 @@ doubles as a plugin marketplace:
 /plugin marketplace add jentic/jentic-api-scorecard
 /plugin install api-scorecard@jentic-api-scorecard
 ```
+
+The `install` argument is `<plugin>@<marketplace>`: the marketplace is always
+`jentic-api-scorecard`, and the part before the `@` is the plugin name — `api-scorecard`
+here, or `api-improve` for the [improve skill](#jentic-api-improve).
 
 Once installed, the skill loads automatically when you ask Claude to score an OpenAPI document —
 no explicit invocation needed:
@@ -307,10 +311,24 @@ projects that already depend on the CLI and want version-aligned agent guidance.
 Scoring tells you _what_ to fix; the `jentic-api-improve` skill closes the loop and
 _fixes_ it. Point an AI coding agent at an OpenAPI document and it runs a baseline
 score, identifies the weak dimensions and the semantic diagnostics, applies
-**non-breaking** improvements (adding `summary`/`description`/`example`/`tags` — never
-changing existing paths, parameters, or response shapes), and produces three artifacts:
-an improved spec, an [OpenAPI Overlay](https://spec.openapis.org/overlay/v1.1.0.html)
-(the reusable, non-breaking delta), and a changelog with before/after scores.
+improvements (by default **non-breaking** — adding `summary`/`description`/`example`/`tags`,
+never changing existing paths, parameters, or response shapes), and produces three
+artifacts: an improved spec, an [OpenAPI Overlay](https://spec.openapis.org/overlay/v1.1.0.html)
+(the reusable delta), and a changelog with before/after scores.
+
+A `mode` argument bounds how far the skill may go:
+
+- **`summary-description`** — applies only the LLM-sourced `summary`/`description`
+  suggestions from the scorecard's diagnostics (requires `--with-llm`; fails if no LLM
+  is available).
+- **`non-breaking`** (default) — the full strictly-additive set above.
+- **`full`** — more iterations and a broader set of edits, **including breaking
+  changes**, bounded by a guard that never lets any JAIRF dimension drop below baseline.
+
+Every run also runs an [`oasdiff`](https://github.com/oasdiff/oasdiff) breaking-change
+check against the original spec: the result is reported in the changelog in all modes,
+and a detected break **fails the run** in `summary-description` / `non-breaking` (it is
+reported but non-fatal in `full`).
 
 This skill orchestrates the scorecard CLI plus a few extra command-line tools, so it
 needs more than the CLI alone. In addition to the scorecard CLI's
@@ -321,6 +339,7 @@ needs more than the CLI alone. In addition to the scorecard CLI's
 pipx install jentic-openapi-tools     # validation
 pipx install jentic-apitools-cli      # overlay verification (command: jentic-apitools)
 pipx install check-jsonschema         # overlay schema validation
+go install github.com/oasdiff/oasdiff@latest   # breaking-change detection (or: brew install oasdiff)
 # plus python3 and jq, which most systems already have
 ```
 
@@ -335,6 +354,9 @@ The improve skill is a **separate plugin** in this repository's marketplace:
 /plugin marketplace add jentic/jentic-api-scorecard
 /plugin install api-improve@jentic-api-scorecard
 ```
+
+The marketplace half is the same `jentic-api-scorecard` as the [scoring
+skill](#jentic-api-scorecard) — only the plugin name changes, to `api-improve`.
 
 Installing the plugin also registers the companion `jentic-api-improve` subagent (used
 for multi-iteration improvement loops). Once installed, ask Claude to improve a spec:

@@ -19,6 +19,7 @@ import { spin, done, clearSpinner, setQuiet } from '../spinner.ts';
 export interface ScoreOptions {
   withLlm?: boolean;
   bundle?: boolean;
+  reportTokenUsage?: boolean;
   detail?: DetailLevel;
   format?: Format;
   output?: string;
@@ -95,6 +96,10 @@ export async function runScore(input: string, options: ScoreOptions): Promise<nu
   const containerArgs: string[] = ['score'];
   if (options.withLlm) {
     containerArgs.push('--with-llm');
+    // Opt-in, benchmark-only: tokenUsage is meaningful only under --with-llm.
+    if (options.reportTokenUsage) {
+      containerArgs.push('--report-token-usage');
+    }
   }
 
   const apiKey = process.env['JENTIC_API_KEY'];

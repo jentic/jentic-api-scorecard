@@ -28,6 +28,11 @@ def main() -> int:
     score_parser = subparsers.add_parser("score", help="Score an OpenAPI spec")
     score_parser.add_argument("--url", help="URL of the spec (engine fetches directly)")
     score_parser.add_argument("--with-llm", action="store_true", help="Enable LLM analysis")
+    score_parser.add_argument(
+        "--report-token-usage",
+        action="store_true",
+        help="Add engine LLM token usage to the scorecard (benchmark-only; needs --with-llm)",
+    )
 
     args = parser.parse_args()
 
@@ -46,7 +51,11 @@ def main() -> int:
     if gate_result != ExitCode.SUCCESS:
         return gate_result
 
-    return run_score(url=args.url, with_llm=args.with_llm)
+    return run_score(
+        url=args.url,
+        with_llm=args.with_llm,
+        report_token_usage=args.report_token_usage,
+    )
 
 
 if __name__ == "__main__":

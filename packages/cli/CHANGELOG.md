@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.1](https://github.com/jentic/jentic-api-scorecard/compare/v1.10.0...v1.10.1) (2026-07-21)
+
+**Note:** Version bump only for package @jentic/api-scorecard-cli
+
+# [1.10.0](https://github.com/jentic/jentic-api-scorecard/compare/v1.9.3...v1.10.0) (2026-07-11)
+
+### Features
+
+- **cli:** add hidden --report-token-usage flag ([dfad477](https://github.com/jentic/jentic-api-scorecard/commit/dfad477bbc45846fa4da432f0871bfc83bc5fb6a)), closes [#284](https://github.com/jentic/jentic-api-scorecard/issues/284)
+
 ## [1.9.3](https://github.com/jentic/jentic-api-scorecard/compare/v1.9.2...v1.9.3) (2026-07-01)
 
 **Note:** Version bump only for package @jentic/api-scorecard-cli

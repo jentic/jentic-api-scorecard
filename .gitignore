@@ -13,8 +13,11 @@ packages/*/NOTICE
 packages/cli/README.md
 packages/cli/skills/
 packages/cli/agents/
+scripts/bench-improve.data.json
+docs/bench-improve.data.json
 !/.claude
 /.claude/settings.local.json
 /.claude/worktrees/*
 /.claude/scheduled_tasks*
 !/.claude/worktrees/.gitkeep
+.idea

@@ -146,6 +146,9 @@ Actual per-run cost depends on the spec's verbosity and your provider's pricing.
 the [Petstore v3](https://petstore3.swagger.io/api/v3/openapi.json) spec (19 operations, 3 batches) consumed roughly 15k input tokens and 8k output
 tokens per run with Claude Haiku. Local models (Ollama, vLLM) cost nothing per call.
 
+For a fuller picture across models and specs — including the coding agent's own token cost when
+run via the `jentic-api-improve` skill — see the [improve-cost benchmark](./improve-cost-benchmark.md).
+
 ## How it works under the hood
 
 1. The CLI scans your environment for credentials and routing variables.

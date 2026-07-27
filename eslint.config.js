@@ -27,6 +27,10 @@ export default tseslint.config(
       '**/*.cjs',
       // Keep the config file itself lintable
       '!eslint.config.js',
+      // Keep the Phase 22 benchmark scripts lintable (Node ESM; see block below).
+      // Scoped to these files rather than all of scripts/ so the pre-existing
+      // extract-docs.js (never eslinted) is not retroactively pulled in.
+      '!scripts/bench-improve.js',
     ],
   },
 
@@ -255,6 +259,20 @@ export default tseslint.config(
         projectService: false,
         project: './packages/formatter-html/tsconfig.app.json',
         tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+
+  // Phase 22 benchmark script — plain Node ESM, not part of any published
+  // package. Give it Node globals so fetch / Buffer / process / console
+  // resolve; Prettier still applies via the block below.
+  {
+    files: ['scripts/bench-improve.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
       },
     },
   },

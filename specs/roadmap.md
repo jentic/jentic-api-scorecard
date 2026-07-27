@@ -324,7 +324,7 @@ Scoring tells a user *what* is wrong with their API's AI-readiness; this skill c
 - Update `docs/architecture.md` §4 (layout tree + distribution notes: two plugins, the `agents/` directory, tarball packaging) and `.claude/CLAUDE.md` (both skills, two plugin entries, the `agents/` directory) in lockstep.
 - The new skill must pass the automated SkillSpector `SAFE` gate (`skill-security.yml` globs `skills/*`, so it is scanned with no workflow edit).
 
-## Phase 22 — Benchmark jentic-api-improve Token Usage and Cost
+## Phase 22 — Benchmark jentic-api-improve Token Usage and Cost ✅
 
 **Goal:** Produce a reproducible benchmark that measures the jentic-api-improve skill's token usage and cost across LLM models and input scenarios, and publish the results as a doc.
 **Depends on:** none (self-contained — measures the already-shipped Phase 21 improve skill)
@@ -340,6 +340,21 @@ Phase 21 shipped the `jentic-api-improve` skill; running it with `--with-llm` in
 - Emit machine-readable per-cell results (input/output tokens split by surface, cost, iterations run, score before/after) to a data file that the doc is generated from.
 - Write `docs/improve-cost-benchmark.md`: a results table across models × specs with token and cost totals broken down by surface (engine vs agent), plus model-selection guidance and takeaways.
 - Pin the CLI/image version and stamp the run date in the doc; treat the benchmark as a manual, non-CI-gated measurement since it consumes real scorecard quota and real LLM spend, and LLM outputs are stochastic.
+
+## Phase 23 — jentic-api-improve Change-Scope Modes ✅
+
+**Goal:** Add a change-scope mode switch to the `jentic-api-improve` skill offering `summary-description`, `non-breaking` (default), and `full` modes, with `oasdiff`-based breaking-change detection in every mode.
+**Depends on:** none (self-contained — refines the already-shipped Phase 21 improve skill)
+**Priority:** Medium–High
+
+- Update the skill and the agent to accept a `mode` argument and/or a related prompt instruction with options `non-breaking` (default), `summary-description`, `full`.
+- In `summary-description` mode only apply the summary/descriptions proposed updates coming from diagnostics within the scorecard invoked with llm. Fails if llm is not available in score CLI.
+- In `non-breaking` have it work as with the current logic (add break-detections as described below).
+- In `full` have it perform by default more iterations and be more aggressive in terms of updates, also allowing breaking changes.
+- Add a break detection validation in all modes, using https://github.com/oasdiff/oasdiff. Report the result in all modes, fail if a break is detected in `non-breaking` or `summary-description` modes.
+- Update/add files in `references/` accordingly if needed.
+- Update README section + `docs/architecture.md` / `.claude/CLAUDE.md` + any documentation.
+- The SkillSpector needs to keep passing.
 
 ## Later Phases (Not Yet Planned)
 

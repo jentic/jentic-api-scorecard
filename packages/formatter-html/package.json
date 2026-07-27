@@ -1,6 +1,6 @@
 {
   "name": "@jentic/api-scorecard-formatter-html",
-  "version": "1.9.3",
+  "version": "1.10.1",
   "description": "HTML formatter for Jentic API Scorecard results.",
   "keywords": [
     "openapi",
