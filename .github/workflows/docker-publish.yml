@@ -164,7 +164,7 @@ jobs:
 
       - name: Attest SBOM (amd64)
         if: inputs.version != ''
-        uses: actions/attest@v4.2.1
+        uses: actions/attest@v4.2.2
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.platforms.outputs.amd64 }}
@@ -173,7 +173,7 @@ jobs:
 
       - name: Attest SBOM (arm64)
         if: inputs.version != ''
-        uses: actions/attest@v4.2.1
+        uses: actions/attest@v4.2.2
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.platforms.outputs.arm64 }}
