@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Ajv, type ValidateFunction } from 'ajv';
 import { expect } from 'chai';
 
-import { formatSarif, toJsonPointer } from '../../src/formatters/sarif.ts';
+import { formatSarif, stripPathSuffix, toJsonPointer } from '../../src/formatters/sarif.ts';
 import { Diagnostic, ScorecardResult } from '../../src/result.ts';
 
 const fixturePath = fileURLToPath(new URL('../fixtures/scorecard.sample.json', import.meta.url));
@@ -208,6 +208,49 @@ describe('formatSarif', function () {
     expect(minimalDoc.runs).to.deep.equal([]);
     const ajv = new Ajv({ strict: false, logger: false });
     expect(ajv.compile(sarifSchema)(minimalDoc)).to.equal(true);
+  });
+});
+
+describe('stripPathSuffix', function () {
+  it('strips a trailing [path: ...] suffix', function () {
+    expect(stripPathSuffix('Servers must be present. [path: openapi]')).to.equal(
+      'Servers must be present.',
+    );
+  });
+
+  it('strips a multi-segment dotted path suffix', function () {
+    expect(
+      stripPathSuffix(
+        'Header `X-Expires-After` should not start with "X-". [path: paths./user/login.get.responses.200.headers.X-Expires-After]',
+      ),
+    ).to.equal('Header `X-Expires-After` should not start with "X-".');
+  });
+
+  it('leaves a message without the suffix unchanged', function () {
+    expect(stripPathSuffix('No path suffix here.')).to.equal('No path suffix here.');
+  });
+
+  it('leaves a message with a bracket that is not the exact pattern unchanged', function () {
+    expect(stripPathSuffix('See [RFC 6901] for details.')).to.equal('See [RFC 6901] for details.');
+  });
+
+  it('the SARIF formatter applies the strip to message.text', function () {
+    const result = {
+      summary: { score: 0, level: 'unknown', grade: 'F' },
+      diagnostics: [
+        {
+          source: 'engine',
+          severity: 2,
+          message: 'Something wrong. [path: paths./foo.get]',
+          code: 'SOMETHING',
+          data: {},
+        },
+      ],
+    } as unknown as ScorecardResult;
+    const doc = JSON.parse(formatSarif(result)) as {
+      runs: { results: { message: { text: string } }[] }[];
+    };
+    expect(doc.runs[0]?.results[0]?.message.text).to.equal('Something wrong.');
   });
 });
 
