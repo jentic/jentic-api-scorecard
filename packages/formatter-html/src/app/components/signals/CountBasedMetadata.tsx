@@ -13,6 +13,7 @@ interface CountConfig {
   secondaryLabel?: string;
   secondaryIsBad?: boolean;
   showPercentagePrimary?: boolean;
+  note?: string;
 }
 
 const COUNT_SIGNAL_CONFIG: Record<string, CountConfig> = {
@@ -30,6 +31,7 @@ const COUNT_SIGNAL_CONFIG: Record<string, CountConfig> = {
     denominatorField: 'expected_examples',
     label: 'Examples Present',
     denominatorLabel: 'expected',
+    note: 'expected_examples marks every element that can hold an example value; present_examples marks the subset that already has at least one. The gap between the two is where density can be improved.',
   },
   example_validity: {
     numeratorField: 'valid_examples',
@@ -39,6 +41,7 @@ const COUNT_SIGNAL_CONFIG: Record<string, CountConfig> = {
     secondaryField: 'invalid_examples',
     secondaryLabel: 'Invalid',
     secondaryIsBad: true,
+    note: 'The total above counts individual examples; the diagnostics below list unique locations. When a location has more than one example, it is listed once here but counted multiple times in the total.',
   },
   response_coverage: {
     numeratorField: 'response_coverage_sum',
@@ -46,6 +49,7 @@ const COUNT_SIGNAL_CONFIG: Record<string, CountConfig> = {
     label: 'Response Coverage',
     denominatorLabel: 'operations',
     showPercentagePrimary: true,
+    note: 'Each operation scores 0-1: +0.25 for 2XX, 4XX, 5XX, and default responses',
   },
   description_coverage: {
     numeratorField: 'described_elements',
@@ -127,9 +131,11 @@ export default function CountBasedMetadata({
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1.5">
-            Each operation scores 0-1: +0.25 for 2XX, 4XX, 5XX, and default responses
-          </p>
+          {config.note && (
+            <p className="text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1.5">
+              {config.note}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -149,6 +155,11 @@ export default function CountBasedMetadata({
               label={config.secondaryLabel}
               isBad={config.secondaryIsBad}
             />
+          )}
+          {config.note && (
+            <p className="text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1.5">
+              {config.note}
+            </p>
           )}
         </div>
       )}
