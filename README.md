@@ -393,6 +393,7 @@ jentic-api-scorecard <command> [options]
 | Command | Description |
 |---|---|
 | [`score <input>`](#score) | Score an OpenAPI document by URL or local file path. |
+| [`convert`](#convert) | Reformat a saved scorecard JSON file without re-scoring. |
 
 ### `score`
 
@@ -440,6 +441,50 @@ jentic-api-scorecard score <input> [options]
 | 6 | Engine invocation failure. |
 | 7 | Rate limit reached: the key is valid but the user is over quota. Message includes the server-provided `detail` and the `Retry-After` header when present. |
 | 8 | LLM analysis failed under `--with-llm`: the provider call failed, so the LLM-derived signals would be scored as perfect and inflate the result. The CLI suppresses the report and prints the affected signals + provider error on stderr. Re-run without `--with-llm` for a valid non-LLM score. |
+
+### `convert`
+
+Reformat a saved scorecard JSON file without re-scoring. Useful for producing multiple output formats from a single `score` run, or for filtering diagnostics before generating an HTML report or feeding CI checks.
+
+```text
+jentic-api-scorecard convert --from <file> [options]
+```
+
+**Recommended CI recipe** (score once, format many):
+
+```sh
+# Step 1 — score once and save full output
+jentic-api-scorecard score ./openapi.yaml --format json --detail diagnostics -o report.json
+
+# Step 2 — derive HTML and SARIF without a second Docker run
+jentic-api-scorecard convert --from report.json --format html -o scorecard.html
+jentic-api-scorecard convert --from report.json --format sarif -o results.sarif
+
+# Step 2 (alternate) — suppress known false positives when generating HTML
+jentic-api-scorecard convert --from report.json --format html \
+  --ignore-codes oas3-unused-component,UNUSED_SECURITY_SCHEME_DEFINED \
+  -o scorecard.html
+```
+
+> **Note:** For lossless reformatting, save at `--detail diagnostics`. A scorecard saved at a shallower detail level cannot have the missing fields recovered at `convert` time.
+
+#### `convert` options
+
+| Flag | Default | Choices | Description |
+|---|---|---|---|
+| `--from <file>` | — | — | Path to a scorecard JSON file. **Required.** Produce one with `score --format json`. |
+| `-d, --detail <level>` | `dimensions` | `summary`, `dimensions`, `signals`, `diagnostics` | Payload depth applied on top of the saved level. |
+| `-f, --format <fmt>` | `pretty` | `pretty`, `json`, `html`, `markdown`, `sarif` | Output encoding. Same semantics as `score --format`. |
+| `-o, --output <file>` | stdout | — | Write the formatted report to `<file>`. |
+| `--ignore-codes <codes>` | — | — | Comma-separated diagnostic codes to exclude from the output (e.g. `oas3-unused-component,UNUSED_SECURITY_SCHEME_DEFINED`). Does not alter the overall score in the JSON — only suppresses matching diagnostics in the formatted output. |
+| `-h, --help` | — | — | Show usage for `convert`. |
+
+#### `convert` exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Conversion completed. |
+| 1 | Generic error (file not found, not valid JSON, not a scorecard, output write failure). |
 
 ## GitHub Action
 
