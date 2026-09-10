@@ -76,7 +76,7 @@
     "strip-ansi": "^7.2.0"
   },
   "devDependencies": {
-    "@speclynx/apidom-json-pointer": "^4.11.1",
+    "@speclynx/apidom-json-pointer": "^5.0.1",
     "@speclynx/apidom-reference": "^4.16.0",
     "ajv": "^8.20.0"
   },
