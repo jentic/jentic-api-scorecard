@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github.com/jentic/jentic-api-scorecard/compare/v1.11.1...v1.12.0) (2026-09-17)
+
+### Bug Fixes
+
+- **formatter-html:** add CSS var fallbacks and fix review findings ([95845aa](https://github.com/jentic/jentic-api-scorecard/commit/95845aafbc3e627840b894019fb9db3eba271514))
+- **formatter-html:** address pre-push review findings ([74fb5d0](https://github.com/jentic/jentic-api-scorecard/commit/74fb5d0dfaf50fd857e2c41739ec0f13e722673c))
+- **formatter-html:** set body text colour via --sc-text-primary token ([9f6d493](https://github.com/jentic/jentic-api-scorecard/commit/9f6d4934ff4c9e0de88d52033fef2a72914bc448))
+
+### Features
+
+- **formatter-html:** add CSS custom property layer for dark mode ([0d627ad](https://github.com/jentic/jentic-api-scorecard/commit/0d627ad619ff6aedbeac812db76711edbd646cbb))
+- **formatter-html:** add Jentic dark severity palette to diagnostics ([72d78da](https://github.com/jentic/jentic-api-scorecard/commit/72d78da5e6d5660b3a86e8aec2aab24fcc40185c))
+- **formatter-html:** apply CSS var substitution to layout components ([b50e816](https://github.com/jentic/jentic-api-scorecard/commit/b50e8169949c6ee714350830137b23fc018d3bd6))
+- **formatter-html:** dark mode for signal components ([7a3bc55](https://github.com/jentic/jentic-api-scorecard/commit/7a3bc55f25cdbf27038a5d7b739762b9e26374ad))
+- **formatter-html:** inject dark mode script into standalone HTML ([e52af82](https://github.com/jentic/jentic-api-scorecard/commit/e52af825921ec199e066242ebd133a2ad7dd756a))
+
 ## [1.11.1](https://github.com/jentic/jentic-api-scorecard/compare/v1.11.0...v1.11.1) (2026-09-10)
 
 ### Bug Fixes
