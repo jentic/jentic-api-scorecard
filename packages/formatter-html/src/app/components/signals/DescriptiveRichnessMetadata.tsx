@@ -79,22 +79,22 @@ export default function DescriptiveRichnessMetadata({
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-3"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default space-y-3"
       onClick={(e) => e.stopPropagation()}
     >
       <MetricGrid metrics={metrics} />
 
       {sortedOperations.length > 0 ? (
-        <div className="border border-gray-200 rounded-md overflow-hidden">
+        <div className="border border-[var(--sc-border,#e5e7eb)] rounded-md overflow-hidden">
           <button
             type="button"
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-[var(--sc-section,#f3f4f6)] hover:bg-[var(--sc-border,#e5e7eb)] transition-colors cursor-pointer"
             onClick={() => setExpanded(!expanded)}
           >
-            <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            <span className="text-xs text-[var(--sc-text-muted,#9ca3af)] font-medium uppercase tracking-wide">
               Operation Details ({sortedOperations.length})
             </span>
-            <span className="flex items-center gap-1 text-xs text-gray-500">
+            <span className="flex items-center gap-1 text-xs text-[var(--sc-text-muted,#9ca3af)]">
               {expanded ? 'Hide' : 'Show'}
               <Icon
                 name="chevron-down"
@@ -111,9 +111,11 @@ export default function DescriptiveRichnessMetadata({
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-3 rounded-lg bg-emerald-50 px-3 py-2 border border-emerald-200">
-          <Icon name="check-circle" className="h-4 w-4 text-emerald-600" />
-          <span className="text-sm font-medium text-emerald-700">{emptyText}</span>
+        <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
+          <Icon name="check-circle" className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            {emptyText}
+          </span>
         </div>
       )}
 
@@ -129,10 +131,12 @@ function OperationRow({ op }: { op: OperationScored }) {
     getNormalizedScoreColor(op.element_descriptive_score, 2),
   );
   return (
-    <div className="bg-gray-50 rounded-md p-2.5">
+    <div className="bg-[var(--sc-section,#f3f4f6)] rounded-md p-2.5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[10px] text-gray-500 flex-shrink-0">Operation ID:</span>
+          <span className="text-[10px] text-[var(--sc-text-muted,#9ca3af)] flex-shrink-0">
+            Operation ID:
+          </span>
           <span className="font-mono text-xs font-medium truncate">{op.operation_id}</span>
         </div>
         <span className={`font-mono text-xs font-semibold flex-shrink-0 ${scoreColor.text}`}>
@@ -148,7 +152,7 @@ function OperationRow({ op }: { op: OperationScored }) {
           {op.issues_found.map((issue, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 text-[10px] text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded"
+              className="inline-flex items-center gap-1 text-[10px] text-sky-700 bg-sky-100 dark:bg-sky-900/30 dark:text-sky-400 px-1.5 py-0.5 rounded"
             >
               <Icon name="tag" className="h-2.5 w-2.5" />
               {issue.replace(/_/g, ' ')}
@@ -164,7 +168,7 @@ function ScoreBadge({ label, score }: { label: string; score: number }) {
   const color = getColorClassesByType(getNormalizedScoreColor(score, 1));
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-gray-500">{label}:</span>
+      <span className="text-[10px] text-[var(--sc-text-muted,#9ca3af)]">{label}:</span>
       <span className={`font-mono text-[10px] font-semibold ${color.text}`}>
         {score.toFixed(2)}
       </span>

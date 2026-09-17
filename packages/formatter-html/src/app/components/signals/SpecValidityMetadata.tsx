@@ -57,7 +57,7 @@ export default function SpecValidityMetadata({
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-3"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default space-y-3"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between">

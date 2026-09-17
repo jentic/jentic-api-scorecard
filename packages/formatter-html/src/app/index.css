@@ -1,1 +1,40 @@
 @import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --sc-bg: #ffffff;
+  --sc-card: #f9fafb;
+  --sc-section: #f3f4f6;
+  --sc-text-primary: #111827;
+  --sc-text-secondary: #6b7280;
+  --sc-text-muted: #9ca3af;
+  --sc-border: #e5e7eb;
+  --cp-track: #e5e7eb;
+  --score-color-a: hsl(142, 71%, 45%);
+  --score-color-b: hsl(165, 82%, 35%);
+  --score-color-c: hsl(45, 93%, 47%);
+  --score-color-d: hsl(25, 95%, 53%);
+  --score-color-f: hsl(0, 84%, 60%);
+}
+
+.dark {
+  --sc-bg: #0e1a1d;
+  --sc-card: #162629;
+  --sc-section: #193238;
+  --sc-text-primary: #ffffff;
+  --sc-text-secondary: #e4eaeb;
+  --sc-text-muted: #a3cacc;
+  --sc-border: #305256;
+  --cp-track: #305256;
+  --score-color-a: hsl(142, 63%, 60%);
+  --score-color-b: hsl(165, 72%, 52%);
+  --score-color-c: hsl(45, 88%, 62%);
+  --score-color-d: hsl(25, 90%, 65%);
+  --score-color-f: hsl(0, 80%, 68%);
+}
+
+body {
+  background-color: var(--sc-bg, #ffffff);
+  color: var(--sc-text-primary, #111827);
+}

@@ -55,7 +55,7 @@ export default function ToolingReadinessMetadata({
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-3"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default space-y-3"
       onClick={(e) => e.stopPropagation()}
     >
       {interpretation && (
@@ -66,11 +66,11 @@ export default function ToolingReadinessMetadata({
       )}
 
       {ingestion_errors >= 0 && threshold !== undefined && threshold >= 0 && (
-        <div className="bg-gray-50 rounded-md p-3 space-y-3">
+        <div className="bg-[var(--sc-section,#f3f4f6)] rounded-md p-3 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm font-medium">Ingestion Errors</span>
-              <p className="text-[10px] text-gray-500">
+              <p className="text-[10px] text-[var(--sc-text-muted,#9ca3af)]">
                 Fewer errors = better tooling compatibility
               </p>
             </div>
@@ -87,7 +87,7 @@ export default function ToolingReadinessMetadata({
               ))}
             </div>
             <div
-              className="absolute top-0 w-0.5 h-5 bg-gray-900 rounded-full transition-all"
+              className="absolute top-0 w-0.5 h-5 bg-[var(--sc-text-primary,#111827)] rounded-full transition-all"
               style={{ left: `${getToolingReadinessMarkerPosition(ingestion_errors)}%` }}
             />
           </div>
@@ -99,7 +99,7 @@ export default function ToolingReadinessMetadata({
                   {seg.label}
                 </span>
                 <br />
-                <span className="text-gray-500">{seg.range}</span>
+                <span className="text-[var(--sc-text-muted,#9ca3af)]">{seg.range}</span>
               </div>
             ))}
           </div>

@@ -31,6 +31,10 @@ npx @jentic/api-scorecard-cli score your-api.yaml \
   --format json --detail diagnostics -o scorecard.json
 ```
 
+The output includes an auto-dark mode script: it reads the `prefers-color-scheme` media query
+on load and adds a fixed-position sun/moon toggle button (`#dark-mode-toggle`) to the page.
+The user's manual preference is persisted in `localStorage` under `jentic-scorecard-dark`.
+
 ---
 
 ## React components — `./react`
@@ -175,6 +179,57 @@ Coloured grade pill (`A+` through `F`).
 import { GradeBadge } from '@jentic/api-scorecard-formatter-html/react';
 
 <GradeBadge grade={scorecard.summary.grade} />
+```
+
+### Dark mode
+
+All components follow a **`class="dark"` parent strategy**: add `dark` to any ancestor element
+and the components switch to the Jentic dark palette automatically. No prop is needed.
+
+```tsx
+<div className="dark">
+  <SummaryCard apiMetadata={scorecard.apiMetadata} summary={scorecard.summary} />
+</div>
+```
+
+Surface colours are expressed as CSS custom properties. Define these on the parent that carries
+`class="dark"` (or on `:root` / `.dark` in your stylesheet):
+
+| Variable | Light default | Dark (Jentic palette) |
+|---|---|---|
+| `--sc-bg` | `#ffffff` | `#0E1A1D` |
+| `--sc-card` | `#f9fafb` | `#162629` |
+| `--sc-section` | `#f3f4f6` | `#193238` |
+| `--sc-text-primary` | `#111827` | `#FFFFFF` |
+| `--sc-text-secondary` | `#6b7280` | `#E4EAEB` |
+| `--sc-text-muted` | `#9ca3af` | `#A3CACC` |
+| `--sc-border` | `#e5e7eb` | `#305256` |
+| `--cp-track` | `#e5e7eb` | `#305256` |
+| `--score-color-a` | `hsl(142,71%,45%)` | `hsl(142,63%,60%)` |
+| `--score-color-b` | `hsl(165,82%,35%)` | `hsl(165,72%,52%)` |
+| `--score-color-c` | `hsl(45,93%,47%)` | `hsl(45,88%,62%)` |
+| `--score-color-d` | `hsl(25,95%,53%)` | `hsl(25,90%,65%)` |
+| `--score-color-f` | `hsl(0,84%,60%)` | `hsl(0,80%,68%)` |
+
+The `--score-color-*` variables drive score arcs (`CircularProgress`), grade text
+(`SummaryCard`), and signal score/border accents (`SignalCard`). `GradeBadge` uses its own
+Tailwind grade classes. Define the dark variants in `.dark { ... }` to enable dark mode score
+colouring; the light values are baked in as CSS fallbacks so light mode works without any
+variable definitions.
+
+To use the `class="dark"` strategy, configure your Tailwind setup:
+
+**Tailwind v4** — add this to your CSS entry point:
+
+```css
+@custom-variant dark (&:where(.dark, .dark *));
+```
+
+**Tailwind v3** — set `darkMode` in your config:
+
+```js
+// tailwind.config.js
+module.exports = { darkMode: 'class' };
 ```
 
 ### TypeScript types

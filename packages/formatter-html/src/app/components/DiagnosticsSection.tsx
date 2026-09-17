@@ -6,22 +6,26 @@ import type { Diagnostic } from '../types.ts';
 const SEVERITY_CONFIG = {
   1: {
     label: 'Error',
-    color: 'bg-red-100 text-red-800 border-red-200',
+    color:
+      'bg-red-100 text-red-800 border-red-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/40',
     activeColor: 'bg-red-500 text-white',
   },
   2: {
     label: 'Warning',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    color:
+      'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40',
     activeColor: 'bg-yellow-500 text-white',
   },
   3: {
     label: 'Information',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    color:
+      'bg-blue-100 text-blue-800 border-blue-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800/40',
     activeColor: 'bg-blue-500 text-white',
   },
   4: {
     label: 'Hint',
-    color: 'bg-gray-100 text-gray-700 border-gray-200',
+    color:
+      'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-700/40',
     activeColor: 'bg-gray-500 text-white',
   },
 } as const;
@@ -52,9 +56,11 @@ export default function DiagnosticsSection({ diagnostics }: DiagnosticsSectionPr
   if (!diagnostics || diagnostics.length === 0) {
     return (
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Diagnostics</h2>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <p className="text-gray-500">No diagnostics found.</p>
+        <h2 className="text-2xl font-bold text-[var(--sc-text-primary,#111827)] mb-6">
+          Diagnostics
+        </h2>
+        <div className="bg-[var(--sc-bg,#ffffff)] rounded-lg shadow-sm border border-[var(--sc-border,#e5e7eb)] p-6">
+          <p className="text-[var(--sc-text-muted,#9ca3af)]">No diagnostics found.</p>
         </div>
       </div>
     );
@@ -80,10 +86,10 @@ export default function DiagnosticsSection({ diagnostics }: DiagnosticsSectionPr
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Diagnostics</h2>
-        <span className="text-gray-600">{diagnostics.length} total</span>
+        <h2 className="text-2xl font-bold text-[var(--sc-text-primary,#111827)]">Diagnostics</h2>
+        <span className="text-[var(--sc-text-secondary,#6b7280)]">{diagnostics.length} total</span>
       </div>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-[var(--sc-bg,#ffffff)] rounded-lg shadow-sm border border-[var(--sc-border,#e5e7eb)] p-6">
         {/* Filter buttons */}
         <div className="flex flex-wrap gap-2 mb-4">
           <FilterButton
@@ -113,7 +119,9 @@ export default function DiagnosticsSection({ diagnostics }: DiagnosticsSectionPr
         {/* Diagnostics list */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {displayDiagnostics.length === 0 ? (
-            <p className="text-gray-500 py-4">No diagnostics for this severity level.</p>
+            <p className="text-[var(--sc-text-muted,#9ca3af)] py-4">
+              No diagnostics for this severity level.
+            </p>
           ) : (
             displayDiagnostics.map((diag) => {
               // Key by the diagnostic's index in the full, stable array (not the
@@ -151,7 +159,7 @@ function FilterButton({
   count,
   active,
   onClick,
-  color = 'bg-gray-100 text-gray-700',
+  color = 'bg-[var(--sc-section,#f3f4f6)] text-[var(--sc-text-secondary,#6b7280)]',
   activeColor = 'bg-gray-700 text-white',
   disabled = false,
 }: FilterButtonProps) {
@@ -161,7 +169,7 @@ function FilterButton({
       disabled={disabled}
       className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
         disabled
-          ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+          ? 'bg-[var(--sc-section,#f3f4f6)] text-[var(--sc-text-muted,#9ca3af)] cursor-not-allowed'
           : active
             ? `${activeColor} cursor-pointer`
             : `${color} hover:opacity-80 cursor-pointer`
@@ -196,7 +204,7 @@ function DiagnosticItem({ diagnostic, pathsExpanded, onTogglePaths }: Diagnostic
         <span className="font-mono font-semibold text-sm">{code}</span>
         <span className="text-xs opacity-70">{source}</span>
       </div>
-      <p className="mt-1 text-sm text-gray-700">{message}</p>
+      <p className="mt-1 text-sm text-gray-700 dark:text-slate-300">{message}</p>
 
       {singlePath && (
         <p className="mt-2 font-mono text-xs opacity-70 truncate" title={singlePath}>
@@ -220,7 +228,7 @@ function DiagnosticItem({ diagnostic, pathsExpanded, onTogglePaths }: Diagnostic
           {hasMorePaths && (
             <button
               type="button"
-              className="mt-1 text-xs font-medium text-gray-600 hover:text-gray-900 underline cursor-pointer"
+              className="mt-1 text-xs font-medium underline cursor-pointer opacity-80 hover:opacity-100"
               onClick={onTogglePaths}
             >
               {pathsExpanded

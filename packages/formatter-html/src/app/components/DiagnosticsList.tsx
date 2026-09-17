@@ -6,22 +6,26 @@ import type { Diagnostic, Provenance } from '../types.ts';
 const SEVERITY_CONFIG = {
   1: {
     label: 'Error',
-    color: 'bg-red-100 text-red-800 border-red-200',
+    color:
+      'bg-red-100 text-red-800 border-red-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/40',
     activeColor: 'bg-red-500 text-white',
   },
   2: {
     label: 'Warning',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    color:
+      'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40',
     activeColor: 'bg-yellow-500 text-white',
   },
   3: {
     label: 'Information',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    color:
+      'bg-blue-100 text-blue-800 border-blue-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800/40',
     activeColor: 'bg-blue-500 text-white',
   },
   4: {
     label: 'Hint',
-    color: 'bg-gray-100 text-gray-700 border-gray-200',
+    color:
+      'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-700/40',
     activeColor: 'bg-gray-500 text-white',
   },
 } as const;
@@ -85,7 +89,7 @@ export default function DiagnosticsList({ diagnostics, provenance }: Diagnostics
 
   if (filteredByProvenance.length === 0) {
     return (
-      <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-500">
+      <div className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] text-sm text-[var(--sc-text-muted,#9ca3af)]">
         No matching diagnostics for this signal.
       </div>
     );
@@ -93,7 +97,7 @@ export default function DiagnosticsList({ diagnostics, provenance }: Diagnostics
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Filter buttons */}
@@ -125,7 +129,9 @@ export default function DiagnosticsList({ diagnostics, provenance }: Diagnostics
       {/* Diagnostics list */}
       <div className="max-h-60 overflow-y-auto space-y-2">
         {displayDiagnostics.length === 0 ? (
-          <div className="text-sm text-gray-500 py-2">No diagnostics for this severity level.</div>
+          <div className="text-sm text-[var(--sc-text-muted,#9ca3af)] py-2">
+            No diagnostics for this severity level.
+          </div>
         ) : (
           displayDiagnostics.map((diag) => (
             // Key by the diagnostic's index in the stable provenance-filtered array
@@ -154,7 +160,7 @@ function FilterButton({
   count,
   active,
   onClick,
-  color = 'bg-gray-100 text-gray-700',
+  color = 'bg-[var(--sc-section,#f3f4f6)] text-[var(--sc-text-secondary,#6b7280)]',
   activeColor = 'bg-gray-700 text-white',
   disabled = false,
 }: FilterButtonProps) {
@@ -164,7 +170,7 @@ function FilterButton({
       disabled={disabled}
       className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
         disabled
-          ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+          ? 'bg-[var(--sc-section,#f3f4f6)] text-[var(--sc-text-muted,#9ca3af)] cursor-not-allowed'
           : active
             ? `${activeColor} cursor-pointer`
             : `${color} hover:opacity-80 cursor-pointer`
@@ -198,7 +204,7 @@ function DiagnosticItem({ diagnostic }: DiagnosticItemProps) {
         <span className="font-mono font-semibold">{code}</span>
         <span className="text-[10px] opacity-70">{source}</span>
       </div>
-      <p className="mt-1 text-gray-700">{message}</p>
+      <p className="mt-1 text-gray-700 dark:text-slate-300">{message}</p>
 
       {/* Single path display */}
       {singlePath && (
@@ -224,7 +230,7 @@ function DiagnosticItem({ diagnostic }: DiagnosticItemProps) {
           {hasMorePaths && (
             <button
               type="button"
-              className="mt-1 text-[10px] font-medium text-gray-600 hover:text-gray-900 underline cursor-pointer"
+              className="mt-1 text-[10px] font-medium underline cursor-pointer opacity-80 hover:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 setPathsExpanded(!pathsExpanded);

@@ -47,7 +47,7 @@ export default function App() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-gray-500">
+      <div className="flex items-center justify-center min-h-screen text-[var(--sc-text-muted,#9ca3af)]">
         No scorecard data.
       </div>
     );

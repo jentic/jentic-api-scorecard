@@ -33,8 +33,8 @@ export default function Scorecard({ data, detail = DEFAULT_DETAIL }: ScorecardPr
       {allDimensions.length > 0 && detail !== DetailLevel.SUMMARY && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-            <span className="text-gray-600">
+            <h2 className="text-2xl font-bold text-[var(--sc-text-primary,#111827)]">Overview</h2>
+            <span className="text-[var(--sc-text-secondary,#6b7280)]">
               Overall score: {Math.round(data.summary.score)} out of 100
             </span>
           </div>

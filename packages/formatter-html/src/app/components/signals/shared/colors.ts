@@ -1,7 +1,7 @@
 // CDN-safe color helpers for signal metadata panels. Ported from the upstream v2
-// renderer's grade-config, translated to standard Tailwind utilities (no theme
-// tokens, no dark: variants, no fractional opacity) so they work under the
-// Tailwind Play CDN that the standalone HTML output relies on.
+// renderer's grade-config, translated to standard Tailwind utilities. dark: variants
+// are paired with each light-mode class so panels adapt when a .dark ancestor is
+// present (wired via @custom-variant dark in index.css).
 
 export type MetricColor = 'green' | 'yellow' | 'red' | 'orange' | 'muted';
 export type ExtendedColor = MetricColor | 'blue' | 'amber';
@@ -9,16 +9,16 @@ export type ExtendedColor = MetricColor | 'blue' | 'amber';
 export function getMetricColorClasses(color: MetricColor): string {
   switch (color) {
     case 'green':
-      return 'text-emerald-600';
+      return 'text-emerald-600 dark:text-emerald-400';
     case 'yellow':
-      return 'text-amber-600';
+      return 'text-amber-600 dark:text-amber-400';
     case 'red':
-      return 'text-rose-600';
+      return 'text-rose-600 dark:text-rose-400';
     case 'orange':
-      return 'text-orange-600';
+      return 'text-orange-600 dark:text-orange-400';
     case 'muted':
     default:
-      return 'text-gray-900';
+      return 'text-[var(--sc-text-primary,#111827)]';
   }
 }
 
@@ -30,23 +30,23 @@ export function getProgressBarColorClass(percentage: number): string {
 }
 
 export function getPercentageTextColorClass(percentage: number): string {
-  if (percentage >= 80) return 'text-emerald-600';
-  if (percentage >= 60) return 'text-yellow-600';
-  return 'text-red-600';
+  if (percentage >= 80) return 'text-emerald-600 dark:text-emerald-400';
+  if (percentage >= 60) return 'text-yellow-600 dark:text-yellow-400';
+  return 'text-red-600 dark:text-red-400';
 }
 
 export function getPercentageStrokeColorClass(percentage: number): string {
-  if (percentage >= 80) return 'text-emerald-500';
-  if (percentage >= 60) return 'text-yellow-500';
-  return 'text-red-500';
+  if (percentage >= 80) return 'text-emerald-500 dark:text-emerald-400';
+  if (percentage >= 60) return 'text-yellow-500 dark:text-yellow-400';
+  return 'text-red-500 dark:text-red-400';
 }
 
 // 0-1 scale: >=0.8 green, >=0.6 yellow, else red.
 export function getNormalizedScoreTextColorClass(score: number, maxScore = 1): string {
   const n = score / maxScore;
-  if (n >= 0.8) return 'text-green-600';
-  if (n >= 0.6) return 'text-yellow-600';
-  return 'text-red-600';
+  if (n >= 0.8) return 'text-green-600 dark:text-green-400';
+  if (n >= 0.6) return 'text-yellow-600 dark:text-yellow-400';
+  return 'text-red-600 dark:text-red-400';
 }
 
 // 0-1 scale: >=0.8 green, >=0.5 yellow, else red. Returns a MetricColor.
@@ -60,36 +60,48 @@ export function getNormalizedScoreColor(score: number, maxScore = 1): MetricColo
 export function getColorClassesByType(color: MetricColor): { text: string; bg: string } {
   switch (color) {
     case 'green':
-      return { text: 'text-green-600', bg: 'bg-green-500' };
+      return { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-500' };
     case 'yellow':
-      return { text: 'text-yellow-600', bg: 'bg-yellow-500' };
+      return { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-500' };
     case 'red':
-      return { text: 'text-red-600', bg: 'bg-red-500' };
+      return { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-500' };
     case 'orange':
-      return { text: 'text-orange-600', bg: 'bg-orange-500' };
+      return { text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500' };
     case 'muted':
     default:
-      return { text: 'text-gray-500', bg: 'bg-gray-200' };
+      return { text: 'text-[var(--sc-text-muted,#9ca3af)]', bg: 'bg-[var(--sc-section,#f3f4f6)]' };
   }
 }
 
 export function getBadgeColorClasses(color: ExtendedColor): { bg: string; text: string } {
   switch (color) {
     case 'green':
-      return { bg: 'bg-green-100', text: 'text-green-700' };
+      return {
+        bg: 'bg-green-100 dark:bg-green-900/30',
+        text: 'text-green-700 dark:text-green-300',
+      };
     case 'yellow':
-      return { bg: 'bg-yellow-100', text: 'text-yellow-700' };
+      return {
+        bg: 'bg-yellow-100 dark:bg-yellow-900/30',
+        text: 'text-yellow-700 dark:text-yellow-300',
+      };
     case 'red':
-      return { bg: 'bg-red-100', text: 'text-red-700' };
+      return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300' };
     case 'orange':
-      return { bg: 'bg-orange-100', text: 'text-orange-700' };
+      return {
+        bg: 'bg-orange-100 dark:bg-orange-900/30',
+        text: 'text-orange-700 dark:text-orange-300',
+      };
     case 'blue':
-      return { bg: 'bg-blue-100', text: 'text-blue-700' };
+      return { bg: 'bg-blue-100 dark:bg-sky-900/30', text: 'text-blue-700 dark:text-sky-300' };
     case 'amber':
-      return { bg: 'bg-amber-100', text: 'text-amber-700' };
+      return {
+        bg: 'bg-amber-100 dark:bg-amber-900/30',
+        text: 'text-amber-700 dark:text-amber-300',
+      };
     case 'muted':
     default:
-      return { bg: 'bg-gray-50', text: 'text-gray-500' };
+      return { bg: 'bg-[var(--sc-section,#f3f4f6)]', text: 'text-[var(--sc-text-muted,#9ca3af)]' };
   }
 }
 
@@ -114,10 +126,10 @@ export const TOOLING_READINESS_SCALE_COLORS: Record<ToolingReadinessLevel, strin
 
 export function getToolingReadinessScaleLabelColors(level: ToolingReadinessLevel): string {
   return {
-    best: 'text-emerald-600',
-    ok: 'text-amber-600',
-    poor: 'text-orange-600',
-    critical: 'text-rose-600',
+    best: 'text-emerald-600 dark:text-emerald-400',
+    ok: 'text-amber-600 dark:text-amber-400',
+    poor: 'text-orange-600 dark:text-orange-400',
+    critical: 'text-rose-600 dark:text-rose-400',
   }[level];
 }
 
@@ -127,10 +139,26 @@ export function getToolingReadinessColors(level: ToolingReadinessLevel): {
   icon: string;
 } {
   return {
-    best: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'text-emerald-600' },
-    ok: { bg: 'bg-amber-100', text: 'text-amber-700', icon: 'text-amber-600' },
-    poor: { bg: 'bg-orange-100', text: 'text-orange-700', icon: 'text-orange-600' },
-    critical: { bg: 'bg-rose-100', text: 'text-rose-700', icon: 'text-rose-600' },
+    best: {
+      bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+      text: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-600 dark:text-emerald-400',
+    },
+    ok: {
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      text: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-600 dark:text-amber-400',
+    },
+    poor: {
+      bg: 'bg-orange-100 dark:bg-orange-900/30',
+      text: 'text-orange-700 dark:text-orange-400',
+      icon: 'text-orange-600 dark:text-orange-400',
+    },
+    critical: {
+      bg: 'bg-rose-100 dark:bg-rose-900/30',
+      text: 'text-rose-700 dark:text-rose-400',
+      icon: 'text-rose-600 dark:text-rose-400',
+    },
   }[level];
 }
 
@@ -150,8 +178,16 @@ export function getSpecValidityColors(passed: boolean): {
   icon: string;
 } {
   return passed
-    ? { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'text-emerald-600' }
-    : { bg: 'bg-rose-100', text: 'text-rose-700', icon: 'text-rose-600' };
+    ? {
+        bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        text: 'text-emerald-700 dark:text-emerald-400',
+        icon: 'text-emerald-600 dark:text-emerald-400',
+      }
+    : {
+        bg: 'bg-rose-100 dark:bg-rose-900/30',
+        text: 'text-rose-700 dark:text-rose-400',
+        icon: 'text-rose-600 dark:text-rose-400',
+      };
 }
 
 export function getSpecValidityFailureBoxColors(): {
@@ -161,10 +197,10 @@ export function getSpecValidityFailureBoxColors(): {
   text: string;
 } {
   return {
-    border: 'border-rose-200',
-    bg: 'bg-rose-50',
-    icon: 'text-rose-500',
-    text: 'text-rose-600',
+    border: 'border-rose-200 dark:border-rose-800/40',
+    bg: 'bg-rose-50 dark:bg-rose-950/30',
+    icon: 'text-rose-500 dark:text-rose-400',
+    text: 'text-rose-600 dark:text-rose-400',
   };
 }
 
@@ -176,10 +212,26 @@ export function getDiagnosticSeverityColors(severity: DiagnosticSeverityName): {
   icon: string;
 } {
   return {
-    error: { bg: 'bg-rose-100', text: 'text-rose-700', icon: 'text-rose-500' },
-    warning: { bg: 'bg-amber-100', text: 'text-amber-700', icon: 'text-amber-500' },
-    information: { bg: 'bg-sky-100', text: 'text-sky-700', icon: 'text-sky-500' },
-    hint: { bg: 'bg-slate-100', text: 'text-slate-700', icon: 'text-slate-500' },
+    error: {
+      bg: 'bg-rose-100 dark:bg-rose-950/30',
+      text: 'text-rose-700 dark:text-rose-400',
+      icon: 'text-rose-500 dark:text-rose-400',
+    },
+    warning: {
+      bg: 'bg-amber-100 dark:bg-amber-900/30',
+      text: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500 dark:text-amber-400',
+    },
+    information: {
+      bg: 'bg-sky-100 dark:bg-sky-900/30',
+      text: 'text-sky-700 dark:text-sky-400',
+      icon: 'text-sky-500 dark:text-sky-400',
+    },
+    hint: {
+      bg: 'bg-slate-100 dark:bg-slate-900/30',
+      text: 'text-slate-700 dark:text-slate-400',
+      icon: 'text-slate-500 dark:text-slate-400',
+    },
   }[severity];
 }
 

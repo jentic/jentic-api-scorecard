@@ -20,6 +20,28 @@ function readInjected(html: string): unknown {
   return JSON.parse(assignment);
 }
 
+describe('injectDarkMode (via injectScorecard)', function () {
+  it('injects prefers-color-scheme script before </head>', function () {
+    const out = injectScorecard(TEMPLATE, {});
+    expect(out).to.contain('prefers-color-scheme');
+  });
+
+  it('injects dark-mode-toggle button code', function () {
+    const out = injectScorecard(TEMPLATE, {});
+    expect(out).to.contain("'dark-mode-toggle'");
+  });
+
+  it('injects localStorage key', function () {
+    const out = injectScorecard(TEMPLATE, {});
+    expect(out).to.contain('jentic-scorecard-dark');
+  });
+
+  it('is idempotent: </head> is still present after injection', function () {
+    const out = injectScorecard(TEMPLATE, {});
+    expect(out).to.contain('</head>');
+  });
+});
+
 describe('injectScorecard', function () {
   it('assigns the result to window.__SCORECARD__', function () {
     const out = injectScorecard(TEMPLATE, { summary: { score: 66.5 } });
@@ -46,7 +68,7 @@ describe('injectScorecard', function () {
   });
 
   it('preserves unicode line separators through round-trip', function () {
-    const result: ScorecardResult = { note: 'line and para' };
+    const result: ScorecardResult = { note: 'line\u2028and\u2029para' };
     expect(readInjected(injectScorecard(TEMPLATE, result))).to.deep.equal(result);
   });
 
@@ -82,5 +104,14 @@ describe('format (built template)', function () {
     const externalHref = html.match(/<link[^>]+href="(?!data:)[^"]+"/i);
     expect(externalSrc, 'no external <script src>').to.equal(null);
     expect(externalHref, 'no external <link href>').to.equal(null);
+  });
+
+  it('includes dark mode bootstrap script and toggle button', async function () {
+    if (!built) this.skip();
+    const { format } = (await import(DIST)) as { format: (r: ScorecardResult) => string };
+    const html = format({ apiMetadata: { name: 'X' }, summary: { score: 1 }, details: [] });
+    expect(html).to.contain('prefers-color-scheme');
+    expect(html).to.contain("'dark-mode-toggle'");
+    expect(html).to.contain('--sc-bg');
   });
 });

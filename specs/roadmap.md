@@ -383,6 +383,21 @@ added to `packages/formatter-html/src/app/` and re-exported from the `./react` e
 - Add render smoke tests in `packages/formatter-html/test/components.test.tsx` importing from the public `react.ts` entry, covering all six exported components including the `showApiMetadata` toggle.
 - Update `.claude/CLAUDE.md` to document the expanded `./react` public surface.
 
+## Phase 26 — Dark Mode Support for Formatter HTML ✅
+
+**Goal:** Add `dark:` Tailwind variants to all `./react` components and a system-preference-following dark mode with manual toggle to the standalone HTML, without changing the `format()` signature.
+**Depends on:** none (self-contained)
+**Priority:** Medium–High
+
+- Add `@custom-variant dark (&:where(.dark, .dark *));` to `packages/formatter-html/src/app/index.css` (Tailwind v4 uses CSS configuration rather than a `darkMode` config key)
+- Add `dark:` background, text, and border variants to all components in `packages/formatter-html/src/app/` — `SummaryCard`, `DimensionCard`, `SignalCard`, `DiagnosticsSection`, `CircularProgress`, `GradeBadge`, `ApiMetadataCard`, and the `App` wrapper
+- Update the comment in `packages/formatter-html/src/app/colors.ts` to document the dark mode strategy: `./react` consumers activate via `class="dark"` on a parent element; standalone HTML handles it via injected script
+- Inject a vanilla JS dark mode script into the standalone HTML in `src/index.ts` (`injectScorecard()`): reads `prefers-color-scheme: dark` on load, sets `class="dark"` on `<html>`, and renders a sun/moon toggle button
+- Add `components.test.tsx` assertions that dark mode Tailwind classes are present in rendered component output
+- Add `format.test.ts` assertion that the dark mode script and toggle element are present in the standalone HTML output
+- Update `packages/formatter-html/README.md` to document dark mode: `class="dark"` parent strategy for `./react`, auto-dark + toggle for standalone HTML
+- Append ` ✅` to the `## Phase 26 — Dark Mode Support for Formatter HTML` heading in `specs/roadmap.md`
+
 ## Later Phases (Not Yet Planned)
 
 - `--min-score N` as a first-class CLI flag for CI gating — `score --min-score 70` exits non-zero (proposed exit code `9 — score below threshold`; codes `7`/`8` are taken by `RATE_LIMITED`/`LLM_FAILURE`) when `summary.score < N`. This is the *CLI-flag* form; Phase 19's GitHub Action already gates on the score in its wrapper (reading `summary.score` from `--format json`), so the flag is only needed for non-Action integrators. Deferred until such demand surfaces; integrators can already gate manually with `jq` on the JSON output. Recipe to document when this lands: `score --min-score 70 --format json -o report.json && upload report.json`.

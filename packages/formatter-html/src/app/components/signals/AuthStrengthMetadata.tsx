@@ -69,21 +69,21 @@ export default function AuthStrengthMetadata({ metadata, diagnostics }: AuthStre
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-3"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default space-y-3"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
-        <span className="text-gray-500">Security Schemes</span>
+      <div className="flex items-center justify-between text-xs bg-[var(--sc-section,#f3f4f6)] rounded px-2 py-1.5">
+        <span className="text-[var(--sc-text-muted,#9ca3af)]">Security Schemes</span>
         <span className="font-mono font-medium">{displayCount}</span>
       </div>
 
       {schemes && schemes.length > 0 ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wide">
+            <span className="text-[var(--sc-text-muted,#9ca3af)] text-[10px] font-medium uppercase tracking-wide">
               Configured Schemes
             </span>
-            <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wide">
+            <span className="text-[var(--sc-text-muted,#9ca3af)] text-[10px] font-medium uppercase tracking-wide">
               Strength Score
             </span>
           </div>
@@ -110,8 +110,14 @@ export default function AuthStrengthMetadata({ metadata, diagnostics }: AuthStre
                       {(scheme.score * 100).toFixed(0)}%
                     </span>
                   </div>
-                  {details && <div className="text-gray-500 text-[10px] mt-1 ml-6">{details}</div>}
-                  <div className="text-[10px] mt-1 ml-6 italic text-gray-500">{rationale}</div>
+                  {details && (
+                    <div className="text-[var(--sc-text-muted,#9ca3af)] text-[10px] mt-1 ml-6">
+                      {details}
+                    </div>
+                  )}
+                  <div className="text-[10px] mt-1 ml-6 italic text-[var(--sc-text-muted,#9ca3af)]">
+                    {rationale}
+                  </div>
                 </div>
               );
             })}

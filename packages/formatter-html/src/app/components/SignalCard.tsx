@@ -69,7 +69,7 @@ export default function SignalCard({ signal, diagnostics }: SignalCardProps) {
 
   return (
     <div
-      className={`border-l-4 bg-white rounded-r-lg p-4 shadow-sm ${isExpandable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+      className={`border-l-4 bg-[var(--sc-card,#f9fafb)] rounded-r-lg p-4 shadow-sm ${isExpandable ? 'cursor-pointer hover:bg-[var(--sc-section,#f3f4f6)] transition-colors' : ''}`}
       style={{ borderLeftColor: getScoreColor(percentage) }}
       onClick={() => isExpandable && setExpanded(!expanded)}
     >
@@ -79,10 +79,10 @@ export default function SignalCard({ signal, diagnostics }: SignalCardProps) {
         </span>
         <div className="flex-1">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-gray-900">{signal.name}</h4>
+            <h4 className="font-semibold text-[var(--sc-text-primary,#111827)]">{signal.name}</h4>
             {isExpandable && (
               <svg
-                className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                className={`w-5 h-5 text-[var(--sc-text-muted,#9ca3af)] transition-transform ${expanded ? 'rotate-180' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -96,7 +96,7 @@ export default function SignalCard({ signal, diagnostics }: SignalCardProps) {
               </svg>
             )}
           </div>
-          <p className="text-sm text-gray-600">{signal.description}</p>
+          <p className="text-sm text-[var(--sc-text-secondary,#6b7280)]">{signal.description}</p>
 
           {/* Render metadata component if expanded */}
           {expanded && MetadataComponent && signal.metadata && (

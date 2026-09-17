@@ -13,17 +13,21 @@ export default function DimensionCard({ dimension, diagnostics }: DimensionCardP
   const signalCount = dimension.signals?.length || 0;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+    <div className="bg-[var(--sc-bg,#ffffff)] rounded-lg shadow-sm border border-[var(--sc-border,#e5e7eb)] overflow-hidden mb-6">
       {/* Header */}
-      <div className="p-5 border-b border-gray-100">
+      <div className="p-5 border-b border-[var(--sc-border,#e5e7eb)]">
         <div className="flex items-start gap-4">
           <CircularProgress score={dimension.score} size={70} strokeWidth={5} labelSize="text-xl" />
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-gray-900">{dimension.name}</h3>
-            <p className="text-sm text-gray-600 mb-2">{dimension.intention}</p>
+            <h3 className="text-lg font-bold text-[var(--sc-text-primary,#111827)]">
+              {dimension.name}
+            </h3>
+            <p className="text-sm text-[var(--sc-text-secondary,#6b7280)] mb-2">
+              {dimension.intention}
+            </p>
             <div className="flex gap-3">
               <GradeBadge grade={dimension.grade} />
-              <span className="px-2 py-0.5 rounded text-sm bg-gray-100 text-gray-700">
+              <span className="px-2 py-0.5 rounded text-sm bg-[var(--sc-section,#f3f4f6)] text-[var(--sc-text-secondary,#6b7280)]">
                 Signals: {signalCount}
               </span>
             </div>
@@ -33,7 +37,7 @@ export default function DimensionCard({ dimension, diagnostics }: DimensionCardP
 
       {/* Signals */}
       {dimension.signals && dimension.signals.length > 0 && (
-        <div className="p-4 space-y-3 bg-gray-50">
+        <div className="p-4 space-y-3 bg-[var(--sc-section,#f3f4f6)]">
           {dimension.signals.map((signal, index) => (
             <SignalCard key={index} signal={signal} diagnostics={diagnostics} />
           ))}

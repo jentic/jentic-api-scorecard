@@ -69,13 +69,13 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default space-y-4"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default space-y-4"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="space-y-1">
         <SectionHeader>Coverage</SectionHeader>
-        <div className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
-          <span className="text-gray-500">Operations with operationId</span>
+        <div className="flex items-center justify-between text-xs bg-[var(--sc-section,#f3f4f6)] rounded px-2 py-1.5">
+          <span className="text-[var(--sc-text-muted,#9ca3af)]">Operations with operationId</span>
           <span className="font-mono font-medium whitespace-nowrap">
             {ops_with_operation_id}
             <span className="mx-0.5">/</span>
@@ -90,8 +90,8 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
 
       <div className="space-y-1">
         <SectionHeader>Uniqueness</SectionHeader>
-        <div className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
-          <span className="text-gray-500">Unique operationIds</span>
+        <div className="flex items-center justify-between text-xs bg-[var(--sc-section,#f3f4f6)] rounded px-2 py-1.5">
+          <span className="text-[var(--sc-text-muted,#9ca3af)]">Unique operationIds</span>
           <span className="font-mono font-medium whitespace-nowrap">
             {unambiguous_operation_ids}
             <span className="mx-0.5">/</span>
@@ -111,8 +111,8 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
 
       <div className="space-y-1">
         <SectionHeader>Casing Consistency</SectionHeader>
-        <div className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1.5">
-          <span className="text-gray-500">Casing Consistency</span>
+        <div className="flex items-center justify-between text-xs bg-[var(--sc-section,#f3f4f6)] rounded px-2 py-1.5">
+          <span className="text-[var(--sc-text-muted,#9ca3af)]">Casing Consistency</span>
           {totalCasingCount > 0 && (
             <span className="font-mono font-medium whitespace-nowrap">
               {consistentCount}
@@ -127,8 +127,8 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
         <ProgressBar value={casing_consistency} height="sm" />
       </div>
 
-      <div className="border-gray-200 border-t pt-3">
-        <div className="text-gray-500 mb-2 text-[10px] font-medium uppercase tracking-wide">
+      <div className="border-[var(--sc-border,#e5e7eb)] border-t pt-3">
+        <div className="text-[var(--sc-text-muted,#9ca3af)] mb-2 text-[10px] font-medium uppercase tracking-wide">
           Casing Styles
         </div>
         {casingEntries.length > 0 ? (
@@ -137,7 +137,10 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
               const colors =
                 style === dominant_casing
                   ? getBadgeColorClasses('green')
-                  : { bg: 'bg-gray-200', text: 'text-gray-500' };
+                  : {
+                      bg: 'bg-[var(--sc-section,#f3f4f6)]',
+                      text: 'text-[var(--sc-text-muted,#9ca3af)]',
+                    };
               return (
                 <span
                   key={style}
@@ -151,7 +154,7 @@ export default function OpidQualityMetadata({ metadata, diagnostics }: OpidQuali
             })}
           </div>
         ) : (
-          <span className="text-xs text-gray-500 italic">None detected</span>
+          <span className="text-xs text-[var(--sc-text-muted,#9ca3af)] italic">None detected</span>
         )}
       </div>
 

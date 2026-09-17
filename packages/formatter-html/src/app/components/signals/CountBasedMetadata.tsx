@@ -108,7 +108,7 @@ export default function CountBasedMetadata({
 
   return (
     <div
-      className="mt-3 pt-3 border-t border-gray-100 cursor-default"
+      className="mt-3 pt-3 border-t border-[var(--sc-border,#e5e7eb)] cursor-default"
       onClick={(e) => e.stopPropagation()}
     >
       {config.showPercentagePrimary ? (
@@ -118,28 +118,35 @@ export default function CountBasedMetadata({
             <div className="flex-1 space-y-2">
               <div>
                 <p className="text-sm font-medium">{config.label}</p>
-                <p className="text-xs text-gray-500">{denominator} operations analyzed</p>
+                <p className="text-xs text-[var(--sc-text-muted,#9ca3af)]">
+                  {denominator} operations analyzed
+                </p>
               </div>
               <div className="text-xs">
-                <span className="text-gray-500">Coverage points: </span>
+                <span className="text-[var(--sc-text-muted,#9ca3af)]">Coverage points: </span>
                 <span className="font-mono font-medium">{numerator.toFixed(2)}</span>
-                <span className="text-gray-500"> / {denominator.toFixed(2)}</span>
+                <span className="text-[var(--sc-text-muted,#9ca3af)]">
+                  {' '}
+                  / {denominator.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1.5">
+          <p className="text-[10px] text-[var(--sc-text-muted,#9ca3af)] bg-[var(--sc-section,#f3f4f6)] rounded px-2 py-1.5">
             Each operation scores 0-1: +0.25 for 2XX, 4XX, 5XX, and default responses
           </p>
         </div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-xs">{config.label}</span>
+            <span className="text-[var(--sc-text-muted,#9ca3af)] text-xs">{config.label}</span>
             <div className="flex items-center gap-1">
               <span className="font-mono text-xs font-medium">{numerator}</span>
-              <span className="text-gray-500 text-xs">/</span>
+              <span className="text-[var(--sc-text-muted,#9ca3af)] text-xs">/</span>
               <span className="font-mono text-xs font-medium">{denominator}</span>
-              <span className="text-gray-500 text-[10px] ml-0.5">{config.denominatorLabel}</span>
+              <span className="text-[var(--sc-text-muted,#9ca3af)] text-[10px] ml-0.5">
+                {config.denominatorLabel}
+              </span>
             </div>
           </div>
           <ProgressBar value={numerator} max={denominator} />

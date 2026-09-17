@@ -75,3 +75,35 @@ describe('component SSR smoke tests', function () {
     expect(html).to.include('19');
   });
 });
+
+describe('dark mode CSS variable coverage', function () {
+  it('SummaryCard references --sc-bg', function () {
+    const html = renderToStaticMarkup(createElement(SummaryCard, { apiMetadata, summary }));
+    expect(html).to.include('var(--sc-bg');
+  });
+
+  it('DimensionCard references --sc-bg', function () {
+    const html = renderToStaticMarkup(createElement(DimensionCard, { dimension }));
+    expect(html).to.include('var(--sc-bg');
+  });
+
+  it('DiagnosticsSection references --sc-border', function () {
+    const html = renderToStaticMarkup(createElement(DiagnosticsSection, { diagnostics }));
+    expect(html).to.include('var(--sc-border');
+  });
+
+  it('CircularProgress references --cp-track', function () {
+    const html = renderToStaticMarkup(createElement(CircularProgress, { score: 75 }));
+    expect(html).to.include('var(--cp-track');
+  });
+
+  it('GradeBadge includes dark mode grade class', function () {
+    const html = renderToStaticMarkup(createElement(GradeBadge, { grade: 'A+' }));
+    expect(html).to.include('dark:bg-green-900/30');
+  });
+
+  it('ApiMetadataCard references --sc-section', function () {
+    const html = renderToStaticMarkup(createElement(ApiMetadataCard, { apiMetadata }));
+    expect(html).to.include('var(--sc-section');
+  });
+});
