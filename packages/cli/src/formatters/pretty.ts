@@ -32,7 +32,9 @@ const BAR_WIDTH = 20;
 function scoreBar(score: number): string {
   const filled = Math.round((score / 100) * BAR_WIDTH);
   const empty = BAR_WIDTH - filled;
-  return chalk.white('▄'.repeat(filled)) + chalk.blackBright('▄'.repeat(empty));
+  // chalk.inverse swaps fg/bg so the filled blocks are visible on both dark and
+  // light terminal backgrounds; chalk.dim keeps the empty segment subdued.
+  return chalk.inverse('▄'.repeat(filled)) + chalk.dim('▄'.repeat(empty));
 }
 
 // Signal scores are [0, 1] with no engine-emitted grade, so we band by raw
