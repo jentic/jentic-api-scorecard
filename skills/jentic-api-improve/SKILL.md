@@ -6,7 +6,7 @@ metadata:
   author: Jentic
   version: "1.1"
   references-loading: lazy
-compatibility: "Requires shell execution, python, Node.js (>= 20.19), a running Docker daemon, and the `@jentic/api-scorecard-cli` (run via `npx @jentic/api-scorecard-cli@latest`; needs a `JENTIC_API_KEY` env var from https://app.jentic.com/scorecard?tab=api-keys), plus `jentic-openapi-tools` (`pipx install jentic-openapi-tools`), `jentic-apitools` (`pipx install jentic-apitools-cli`), `check-jsonschema` (`pipx install check-jsonschema`), `jq`, and `oasdiff` (breaking-change detection; a Go binary — install via `go install github.com/oasdiff/oasdiff@latest`, `brew install oasdiff`, or the `tufin/oasdiff` Docker image)."
+compatibility: "Needs shell, python3, Node>=20.19, network, running Docker daemon, jq, pipx. pipx pkgs: jentic-openapi-tools, jentic-apitools-cli (cmd jentic-apitools), check-jsonschema. oasdiff, which can be installed via `brew install oasdiff`, `go install github.com/oasdiff/oasdiff@latest`, or docker tufin/oasdiff (needs docker allowlisted). Scoring: `npx @jentic/api-scorecard-cli@latest` with JENTIC_API_KEY (app.jentic.com/scorecard?tab=api-keys) and LLM provider creds (see CLI Tools)."
 argument-hint: "[path-or-url-of-openapi-document] [output-directory] [mode=non-breaking|summary-description|full]"
 allowed-tools: Bash(python3 *) Bash(jq *) Bash(jentic-openapi-tools *) Bash(jentic-apitools *) Bash(check-jsonschema *) Bash(npx *) Bash(mkdir *) Bash(cp *) Bash(oasdiff *) 
 ---
