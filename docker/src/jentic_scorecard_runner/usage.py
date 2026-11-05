@@ -27,7 +27,8 @@ _USER_AGENT = "jentic-api-scorecard-runner"
 
 @dataclass(frozen=True)
 class UsageAllowed:
-    pass
+    remaining: int | None = None
+    limit: int | None = None
 
 
 @dataclass(frozen=True)
@@ -70,7 +71,9 @@ def check_usage(key: str) -> UsageResult:
 
     status = response.status_code
     if 200 <= status < 300:
-        return UsageAllowed()
+        remaining = _parse_int_header(response, "X-RateLimit-Remaining")
+        limit = _parse_int_header(response, "X-RateLimit-Limit")
+        return UsageAllowed(remaining=remaining, limit=limit)
 
     if status == 429:
         detail = _problem_detail(response) or "Server provided no detail."
@@ -82,6 +85,16 @@ def check_usage(key: str) -> UsageResult:
         return UsageInvalidKey(detail=detail)
 
     return UsageUnverifiable(reason=f"HTTP {status}")
+
+
+def _parse_int_header(response: requests.Response, name: str) -> int | None:
+    value = response.headers.get(name)
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def _problem_detail(response: requests.Response) -> str | None:

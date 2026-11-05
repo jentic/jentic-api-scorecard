@@ -28,6 +28,7 @@ from jentic_scorecard_runner.usage import (
 _ALLOWLIST_PATTERN = re.compile(
     r"^https://raw\.githubusercontent\.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/"
 )
+_LOW_REMAINING_THRESHOLD = 10
 
 
 def check_gate(url: str | None) -> ExitCode:
@@ -60,7 +61,14 @@ def check_gate(url: str | None) -> ExitCode:
     result = check_usage(key)
 
     match result:
-        case UsageAllowed():
+        case UsageAllowed() as allowed:
+            if allowed.remaining is not None and allowed.remaining <= _LOW_REMAINING_THRESHOLD:
+                limit_part = f" of {allowed.limit}" if allowed.limit is not None else ""
+                print(
+                    f"warning: {allowed.remaining}{limit_part} scoring(s) remaining for your Jentic API key.\n"
+                    "  Top up at https://app.jentic.com/scorecard?tab=api-keys to avoid interruption.",
+                    file=sys.stderr,
+                )
             return ExitCode.SUCCESS
         case UsageRateLimited(detail=detail, retry_after=retry_after):
             message = f"error: rate limit reached for your Jentic API key.\n  {detail}"
