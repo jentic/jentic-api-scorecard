@@ -27,7 +27,7 @@ non-breaking edits, a reusable
 - [LLM analysis](#llm-analysis)
 - [Anonymous vs keyed access](#anonymous-vs-keyed-access)
 - [Skills](#skills)
-  - [jentic-api-scorecard](#jentic-api-scorecard)
+  - [jentic-api-scorecard](#jentic-api-scorecard-1)
   - [jentic-api-improve](#jentic-api-improve)
 - [CLI reference](#cli-reference)
   - [Commands](#commands)
