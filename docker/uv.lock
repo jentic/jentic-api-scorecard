@@ -389,7 +389,7 @@ wheels = [
 
 [[package]]
 name = "jentic-apitools-common"
-version = "1.0.0a26"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jentic-openapi-validator" },
@@ -397,9 +397,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/22/f215ca8ff0266a42e92eb1851b4c47620c3cc0f661d160c3daf3e050a100/jentic_apitools_common-1.0.0a26.tar.gz", hash = "sha256:b87c143862f2e8c3fb1dbc35dbf0717ff2dbbff958b221402865961eeaf4c5e3", size = 29930, upload-time = "2026-11-10T15:57:53.101Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/8a/3e06d7a0c37cc47e62b77c9785df44aede9f1833640e54c0969873c16ab9/jentic_apitools_common-1.0.0a27.tar.gz", hash = "sha256:dae53a8084d17d95b6f22c114d767509fdc72b2fc0f04171d06edd12f76e7918", size = 29931, upload-time = "2026-11-11T15:37:40.132Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/0e/a32370960537a2a46e475a4e7f564bfd7b7efbf96bcc418c0f082122e3ae/jentic_apitools_common-1.0.0a26-py3-none-any.whl", hash = "sha256:6688d41f685878ee0d0f7647b7e614fbf3efe045d4e24a62f3ed08d8c1bbd7a3", size = 33816, upload-time = "2026-11-10T15:57:44.222Z" },
+    { url = "https://files.pythonhosted.org/packages/89/cd/75b02edac00be1940997ac080aa1e0879487196861684e5d8117afe28529/jentic_apitools_common-1.0.0a27-py3-none-any.whl", hash = "sha256:02e2671e30de827353e1d276a642425acb8b0ab1f6c098829c2f02791251d041", size = 33814, upload-time = "2026-11-11T15:37:31.048Z" },
 ]
 
 [[package]]
@@ -625,7 +625,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jentic-apitools-common", specifier = "==1.0.0a26" },
+    { name = "jentic-apitools-common", specifier = "==1.0.0a27" },
     { name = "jentic-apitools-pipelines", specifier = "==1.0.0a25" },
     { name = "requests", specifier = ">=2.34.2,<3" },
 ]
