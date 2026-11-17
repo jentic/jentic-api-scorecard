@@ -22,30 +22,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.41"
+version = "1.44.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/5b/e91af651bf4e902f86b9e2f8bc09ca20dbd1ad3c1e21b70bf34651cf3cee/boto3-1.43.41.tar.gz", hash = "sha256:0f56811f13677bfb4542daa0cce8532c95d9afd27b4ba7b681af36a0568624ad", size = 112677, upload-time = "2026-07-06T19:39:38.788Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/b8/149e2c2a599a6a3d3818bb7d9c30996be703d6bfc71b2bbe11b7c1a86ecc/boto3-1.44.5.tar.gz", hash = "sha256:667b344e25d2bcbb7c42fcf6b92a07bb1d73ee9d6d12c3a7873ec4c490b6fb64", size = 112787, upload-time = "2026-11-17T20:24:23.125Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/4a/babb2de16f6ff0688697d2eac7d95566151c255f6b08f547306f57dabfc2/boto3-1.43.41-py3-none-any.whl", hash = "sha256:f48f862d2720ea9203ed2d842d436b8eb2d459ea31654a7ad7c0756fdf36c6b2", size = 140029, upload-time = "2026-07-06T19:39:37.125Z" },
+    { url = "https://files.pythonhosted.org/packages/47/b1/89e65362f9409fa3233fa227d1798e3e39012f7461a75b8ca9472c3d3b0b/boto3-1.44.5-py3-none-any.whl", hash = "sha256:70c3e0409794b29ec1900bcaff0695b73234a2d32ffaed35045b94caa26212a5", size = 140158, upload-time = "2026-11-17T20:24:21.741Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.43.41"
+version = "1.44.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/a1/48a0f38b0cac8196764607c0bca7e3ca50d3cffc825087b743d3635413f2/botocore-1.43.41.tar.gz", hash = "sha256:27627d79af0df7dcb7ecf78d8d3d1310da09a5e9460be30bf759f1c2ed095ee8", size = 15647567, upload-time = "2026-07-06T19:39:27.119Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/09/f4/ca9bcb9774e8d0a903b95743abb252c78d05d80faa97eb6ee7f9c7167e0b/botocore-1.44.5.tar.gz", hash = "sha256:a988f39e3a4484def0b8010f41128f71157da0515a4804fccce4739aa8f216da", size = 16859049, upload-time = "2026-11-17T20:24:18.73Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/4f/19e0b97ce1801c66a4d1d35117f36240aa20f864338f093fccc23873a231/botocore-1.43.41-py3-none-any.whl", hash = "sha256:0cc6e79b30a2a98374f16a31cd9c7a9106a51b60650bd8c34cc8223f58ae6b8d", size = 15331199, upload-time = "2026-07-06T19:39:23.694Z" },
+    { url = "https://files.pythonhosted.org/packages/73/0b/9f5dad3e0acf5307f34e38fa9a3c3e93f3e4da51667a5939846015269587/botocore-1.44.5-py3-none-any.whl", hash = "sha256:8f16a56d1dff125dd65322ae021efa7ba5195a6db5102b96862566055b748921", size = 16555415, upload-time = "2026-11-17T20:24:14.604Z" },
 ]
 
 [[package]]
@@ -273,14 +273,14 @@ wheels = [
 
 [[package]]
 name = "datadog"
-version = "0.52.1"
+version = "0.56.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/e6/ec5e4b4dbecd63cecae94009ef6dde9ab421d7d0022e6027586cc3776921/datadog-0.52.1.tar.gz", hash = "sha256:44c6deb563c4522dba206fba2e2bb93d3b04113c40191851ba3a241d82b5fd0b", size = 368037, upload-time = "2025-07-31T15:49:43.425Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/e5/c689275f5017159088c50511de40080fcd7e606a797fc4f8565b945e0fe5/datadog-0.56.0.tar.gz", hash = "sha256:834367bebacbe3381b2290c96b31d359eb6bcc76322185be260e26dac51b0989", size = 421563, upload-time = "2026-11-04T18:26:54.82Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/19/e0e39f10169ca3e37fa6b5be2f6d1c729c92d677f1bd21ad6d448df8bec8/datadog-0.52.1-py2.py3-none-any.whl", hash = "sha256:b8c92cd761618ee062f114171067e4c400d48c9f0dad16cb285042439d9d5d4e", size = 129952, upload-time = "2025-07-31T15:49:41.8Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/f1/02a74ebb9ff633eacdeeab0c9b72ad7d538cdb39873536e7035123d69915/datadog-0.56.0-py2.py3-none-any.whl", hash = "sha256:7b77da845d8d4c01e3a2e74dc8a6b835593185a3875c37c763d2cfc3f2a176bf", size = 154858, upload-time = "2026-11-04T18:26:53.386Z" },
 ]
 
 [[package]]
@@ -370,7 +370,7 @@ wheels = [
 
 [[package]]
 name = "jentic-apitools-analyze"
-version = "1.0.0a25"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "deepdiff" },
@@ -382,9 +382,9 @@ dependencies = [
     { name = "jentic-openapi-validator-spectral" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/76/77/21b1f6f7c147390a5931ef8af707c9368ab1e2894f9f2fbbcb60e4c3bf77/jentic_apitools_analyze-1.0.0a25.tar.gz", hash = "sha256:e7b37e3c7667a4055bae07c87eb025a321fae1f66765b3992d8588bef17516d8", size = 31330, upload-time = "2026-07-07T08:49:13.649Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/f0/633710f977ee1915bf6fff058fad0d9a2a0b4b2e403a23874ac1f28f9788/jentic_apitools_analyze-1.0.0a27.tar.gz", hash = "sha256:42046eec23f0e596efe93c90aaf27167b0fa20b12c8042fc00d4c2eb1d740729", size = 32891, upload-time = "2026-11-11T15:37:38.172Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/82/c28692194e3d755d8fc96ee0d6f2e0ee289c86512fad755da8935cd1eff1/jentic_apitools_analyze-1.0.0a25-py3-none-any.whl", hash = "sha256:5840745229fbb40171e855f611a86324f8330d8d77608298b44fbe471981a35c", size = 51546, upload-time = "2026-07-07T08:49:05.338Z" },
+    { url = "https://files.pythonhosted.org/packages/90/45/395c69b1bc005a8d24dc3b4724f21ab2addc32a2cf2cfa0ce99385003539/jentic_apitools_analyze-1.0.0a27-py3-none-any.whl", hash = "sha256:cb3045b33d057f7b5d18f60d0271c3be77a54e8f3e77773d2bab6146df951d9f", size = 51546, upload-time = "2026-11-11T15:37:28.846Z" },
 ]
 
 [[package]]
@@ -404,7 +404,7 @@ wheels = [
 
 [[package]]
 name = "jentic-apitools-llm"
-version = "1.0.0a25"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -413,14 +413,14 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/6e/32b0c1876a9b0a9cd5739062ae55910dcc5e96a531267b303318450500d2/jentic_apitools_llm-1.0.0a25.tar.gz", hash = "sha256:f51b10fbd01386b5dd8feb84d61e5a5d3474077bab8685a3928c83901d3e1d70", size = 17977, upload-time = "2026-07-07T08:49:16.358Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/52/210c2674d6ab692b175c1bf8cbd98782eebebde609cc461f377edafbcb3b/jentic_apitools_llm-1.0.0a27.tar.gz", hash = "sha256:f669d0e8fb17bd1612fd111233dc8b6902afe2c2bc3ceea74caf30a2cfad6b39", size = 19155, upload-time = "2026-11-11T15:37:41.519Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/c1/56b26961a1e889be2bf417e22b0989a829b16c4ae1deabe8af07051d89e2/jentic_apitools_llm-1.0.0a25-py3-none-any.whl", hash = "sha256:51a5f37fac64923628f627ba6715504baaff384e191ab23547f828cb599261a2", size = 25865, upload-time = "2026-07-07T08:49:09.152Z" },
+    { url = "https://files.pythonhosted.org/packages/da/70/64a7f1760d7ca72f91f24042da690593ed73f10f2992d856e57b6c6d245f/jentic_apitools_llm-1.0.0a27-py3-none-any.whl", hash = "sha256:074f183f96b8229811af0a2d31b57042e31c5f24e99657e6736c05fd082166e0", size = 25867, upload-time = "2026-11-11T15:37:33.099Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-pipelines"
-version = "1.0.0a25"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "datadog" },
@@ -436,28 +436,28 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/d8/a4113ca696708fbdb7add398c89f3ee50ff1dbfeef3f8ee831dd19a1ae1c/jentic_apitools_pipelines-1.0.0a25.tar.gz", hash = "sha256:472514e10edb1c6f190cc00d4a7c089c0f40335f0d343c0d560ff5e07b14a546", size = 45918, upload-time = "2026-07-07T08:49:17.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/13/565f80210ab9d0f3064fe035bec6221a51599b5c6a1e1683084afc8e3e7c/jentic_apitools_pipelines-1.0.0a27.tar.gz", hash = "sha256:66f56e2ac1b150e78bc61a25134a8bb36488fcab3f1a479890038ff01b9a1494", size = 47833, upload-time = "2026-11-11T15:37:42.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/a4/25f6740a05cb47ad460e0e5665417616c45e3ea5ead1b6b95c8afd4fea8a/jentic_apitools_pipelines-1.0.0a25-py3-none-any.whl", hash = "sha256:38a98e5b713214b672bac505d1ef5e09e4ad7e072d8d123b85c1e142eda09a28", size = 55726, upload-time = "2026-07-07T08:49:10.007Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/7f/15dfa17e726fd778efe5bb830f62ddb3f08432cf9712c2c2f9434919bb3e/jentic_apitools_pipelines-1.0.0a27-py3-none-any.whl", hash = "sha256:71a4be093e61d2b7a62cbc37d0c4d66e17abed9e18329893bc7ce21741d81b7d", size = 56109, upload-time = "2026-11-11T15:37:34.067Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-score"
-version = "1.0.0a25"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jentic-apitools-analyze" },
     { name = "jentic-apitools-common" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/7c/b60d8b3a1435e8af138b5123e9a60cf3610754df9be9c07db9fc8820eee9/jentic_apitools_score-1.0.0a25.tar.gz", hash = "sha256:3fc67d513c41180ce7dc8c6a8af5b8f256766b9493952158ad3c409d591682c1", size = 56277, upload-time = "2026-07-07T08:49:18.353Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/4e/549002f99083e109a22ce88cbb039d31038550e466f09bff0810505f002f/jentic_apitools_score-1.0.0a27.tar.gz", hash = "sha256:4512418433cf78d67ba4c7529d0735892df9d4513252a2505d5b54b81a668738", size = 59196, upload-time = "2026-11-11T15:37:43.862Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/b0/dfad4cd614fb91d5dddd34f2330a755e27c2ef4febcfad43bc56c7c36f35/jentic_apitools_score-1.0.0a25-py3-none-any.whl", hash = "sha256:de58515f1eba845d44c92ffe59e64eb505a7a1a2f0c6dfd38ca48e5e714303dc", size = 95400, upload-time = "2026-07-07T08:49:11.836Z" },
+    { url = "https://files.pythonhosted.org/packages/98/11/079e79f34f87e35b294e15fa2d95cdd43d03136d9bd7ab571bc5cff7f8a8/jentic_apitools_score-1.0.0a27-py3-none-any.whl", hash = "sha256:1c87e1970a3d4453f012e9b2f65a3cbf64546f7d47362fc613b0f471a348f5c8", size = 95403, upload-time = "2026-11-11T15:37:36.132Z" },
 ]
 
 [[package]]
 name = "jentic-apitools-storage"
-version = "1.0.0a25"
+version = "1.0.0a27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jentic-apitools-common" },
@@ -465,9 +465,9 @@ dependencies = [
     { name = "pygithub" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/71/d0/eaf17c8768ce338c1b903b73baa67d024f51f168951b6a8018314ae91ef5/jentic_apitools_storage-1.0.0a25.tar.gz", hash = "sha256:57f6c60103016acc04adf3d67e6a741df95c9b944d151d3ddcc87604ccbafdfd", size = 17265, upload-time = "2026-07-07T08:49:19.13Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/a0/34bcc954205edce9a1154ae818a3a71429d75e8bd6b75daeb8eec9055674/jentic_apitools_storage-1.0.0a27.tar.gz", hash = "sha256:2d538aab50c4973f19ca5d442e49f9019f934c3c84f65380d232a7496fb1254d", size = 18269, upload-time = "2026-11-11T15:37:44.583Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/fc/05fe6cade0bf56141a47248a77b0b7215cf7482304450e06ffec15eb3007/jentic_apitools_storage-1.0.0a25-py3-none-any.whl", hash = "sha256:a3f459729dce15cc566de37b0c6962ac920cfefc51e1e15c7ee750006398ad40", size = 25019, upload-time = "2026-07-07T08:49:12.833Z" },
+    { url = "https://files.pythonhosted.org/packages/14/3b/270c8ac5276db4fd5e77a5d509f0d2f332d59c974b9d200e8e1bdd48d929/jentic_apitools_storage-1.0.0a27-py3-none-any.whl", hash = "sha256:fb9b8d14653966f210348c5a49c19f207840ea9a86a2023751ff4e70e5c7800b", size = 25020, upload-time = "2026-11-11T15:37:37.165Z" },
 ]
 
 [[package]]
@@ -626,7 +626,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jentic-apitools-common", specifier = "==1.0.0a27" },
-    { name = "jentic-apitools-pipelines", specifier = "==1.0.0a25" },
+    { name = "jentic-apitools-pipelines", specifier = "==1.0.0a27" },
     { name = "requests", specifier = ">=2.34.2,<3" },
 ]
 
