@@ -186,6 +186,66 @@ class TestRealKeyValidation:
         assert check_gate(url=None) == ExitCode.AUTH_INVALID_KEY
 
 
+class TestLowRemainingWarning:
+    """Warning emitted when X-RateLimit-Remaining is at or below threshold."""
+
+    def test_warning_emitted_at_threshold(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=204, headers={"X-RateLimit-Remaining": "10", "X-RateLimit-Limit": "100"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        err = capsys.readouterr().err
+        assert "10 of 100 scoring(s) remaining" in err
+
+    def test_warning_emitted_below_threshold(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=204, headers={"X-RateLimit-Remaining": "3", "X-RateLimit-Limit": "100"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        err = capsys.readouterr().err
+        assert "3 of 100 scoring(s) remaining" in err
+
+    def test_warning_omits_limit_when_header_absent(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=204, headers={"X-RateLimit-Remaining": "5"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        err = capsys.readouterr().err
+        assert "5 scoring(s) remaining" in err
+        assert "of" not in err
+
+    def test_no_warning_above_threshold(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=204, headers={"X-RateLimit-Remaining": "11", "X-RateLimit-Limit": "100"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        assert capsys.readouterr().err == ""
+
+    def test_no_warning_when_headers_absent(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data("", status=204)
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        assert capsys.readouterr().err == ""
+
+    def test_no_warning_for_allowlisted_url(self, monkeypatch, capsys):
+        url = "https://raw.githubusercontent.com/jentic/jentic-public-apis/refs/heads/main/apis/openapi/petstore/openapi.yaml"
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=url) == ExitCode.SUCCESS
+        assert capsys.readouterr().err == ""
+
+    def test_malformed_remaining_header_ignored(self, base_url, monkeypatch, capsys):
+        base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data(
+            "", status=204, headers={"X-RateLimit-Remaining": "not-a-number"}
+        )
+        monkeypatch.setenv("JENTIC_API_KEY", "real-key")
+        assert check_gate(url=None) == ExitCode.SUCCESS
+        assert capsys.readouterr().err == ""
+
+
 class TestFailOpen:
     def test_5xx_fails_open_with_warning(self, base_url, monkeypatch, capsys):
         base_url.expect_request(_USAGE_PATH, method="POST").respond_with_data("boom", status=503)
